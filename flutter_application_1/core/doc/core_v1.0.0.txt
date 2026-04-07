@@ -1,0 +1,27 @@
+
+FILE: d:\1-Now\1_Ung_dung_da_nen_tang\flutter_application_1\core\lib\core.dart
+export 'di/injector.dart';
+export 'storage/app_storage.dart';
+
+
+FILE: d:\1-Now\1_Ung_dung_da_nen_tang\flutter_application_1\core\lib\di\injector.dart
+final injector = {};
+
+T get<T>() => injector[T] as T;
+
+void put<T>(T instance) {
+  injector[T] = instance;
+}
+
+
+FILE: d:\1-Now\1_Ung_dung_da_nen_tang\flutter_application_1\core\lib\storage\app_storage.dart
+class AppStorage {
+  String? token;
+  String? userId;
+
+  void clear() {
+    token = null;
+    userId = null;
+  }
+}
+
