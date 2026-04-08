@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:user_module/output/user_output.dart';
 import 'user_root.dart';
 
 class AppRoot extends StatelessWidget {
   final String currentModule;
-  final Function(String) onOutput;
+  final Function(UserOutput) onOutput;
 
   const AppRoot({
     super.key,

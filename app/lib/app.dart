@@ -1,4 +1,7 @@
+import 'package:core/di/injector.dart';
+import 'package:core/storage/app_storage.dart';
 import 'package:flutter/material.dart';
+import 'package:user_module/output/user_output.dart';
 import 'root/app_root.dart';
 
 class MyApp extends StatefulWidget {
@@ -11,12 +14,14 @@ class MyApp extends StatefulWidget {
 class _MyAppState extends State<MyApp> {
   String currentModule = 'USER';
 
-  void handleOutput(String output) {
-    if (output == 'GO_TO_USER') {
-      setState(() => currentModule = 'USER');
-    }
+  void handleOutput(UserOutput output) {
+    if (output.type == 'LOGIN_SUCCESS') {
+      final user = output.user!;
 
-    if (output == 'GO_TO_ORDER') {
+      // 👉 Lưu vào AppStorage (app làm, module không biết)
+      final storage = get<AppStorage>();
+      storage.userId = user.id;
+
       setState(() => currentModule = 'ORDER');
     }
   }
