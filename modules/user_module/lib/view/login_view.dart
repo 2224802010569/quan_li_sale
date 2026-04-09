@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
-import '../logic_uc/login_uc.dart';
-import '../output/user_output.dart';
+import 'package:user_module/logic_uc/login_uc.dart';
+import 'package:user_module/output/login_output.dart';
 
 class LoginView extends StatefulWidget {
-  final Function(UserOutput) onOutput;
+  final Function(LoginOutput) onOutput;
 
   const LoginView({super.key, required this.onOutput});
 
@@ -24,7 +24,7 @@ class _LoginViewState extends State<LoginView> {
       final user = _loginUC.execute(phoneController.text, passController.text);
 
       if (user != null) {
-        widget.onOutput(UserOutput.loginSuccess(user));
+        widget.onOutput(LoginOutput.loginSuccess(user));
       } else {
         setState(() => error = "Sai tài khoản hoặc mật khẩu");
       }

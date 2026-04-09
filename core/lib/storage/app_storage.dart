@@ -1,13 +1,19 @@
 class AppStorage {
-  String? token;
-  String? userId;
-  String? role;
+  final Map<String, dynamic> _data = {};
 
-  bool get isLoggedIn => token != null;
+  T? get<T>(String key) {
+    return _data[key] as T?;
+  }
+
+  void set(String key, dynamic value) {
+    _data[key] = value;
+  }
+
+  void remove(String key) {
+    _data.remove(key);
+  }
 
   void clear() {
-    token = null;
-    userId = null;
-    role = null;
+    _data.clear();
   }
 }

@@ -1,6 +1,9 @@
 
 FILE: d:\1-Now\1_Ung_dung_da_nen_tang\quan_li_sale\app\lib\app.dart
+import 'package:core/di/injector.dart';
+import 'package:core/storage/app_storage.dart';
 import 'package:flutter/material.dart';
+import 'package:user_module/output/login_output.dart';
 import 'root/app_root.dart';
 
 class MyApp extends StatefulWidget {
@@ -11,24 +14,40 @@ class MyApp extends StatefulWidget {
 }
 
 class _MyAppState extends State<MyApp> {
-  String currentModule = 'USER';
+  String currentView = AppView.userLogin;
 
-  void handleOutput(String output) {
-    if (output == 'GO_TO_USER') {
-      setState(() => currentModule = 'USER');
+  final AppStorage storage = get<AppStorage>();
+
+  void handleUserOutput(LoginOutput output) {
+    final storage = get<AppStorage>();
+
+    if (output.data != null) {
+      output.data!.forEach((key, value) {
+        storage.set(key, value);
+      });
     }
 
-    if (output == 'GO_TO_ORDER') {
-      setState(() => currentModule = 'ORDER');
-    }
+    final targetView = '${output.to}_${output.view}';
+
+    setState(() {
+      currentView = targetView;
+    });
   }
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      home: AppRoot(currentModule: currentModule, onOutput: handleOutput),
+      home: AppRoot(currentView: currentView, onUserOutput: handleUserOutput),
     );
   }
+}
+
+/// định nghĩa view dùng chung toàn app
+class AppView {
+  static const userLogin = 'USER_LOGIN';
+  static const userStaff = 'USER_STAFF';
+  static const orderHome = 'ORDER_HOME';
+  static const routeStoreHome = 'ROUTE_STORE_HOME';
 }
 
 
@@ -38,50 +57,80 @@ import 'package:core/core.dart';
 import 'app.dart';
 
 void main() {
-  put(AppStorage()); // dùng core
+  final storage = AppStorage();
+  put<AppStorage>(storage);
   runApp(const MyApp());
 }
 
 
 FILE: d:\1-Now\1_Ung_dung_da_nen_tang\quan_li_sale\app\lib\root\app_root.dart
 import 'package:flutter/material.dart';
+import 'package:user_module/output/login_output.dart';
+import 'package:core/di/injector.dart';
+import 'package:core/storage/app_storage.dart';
+import '../app.dart';
 import 'user_root.dart';
+import 'route_store_root.dart';
 
 class AppRoot extends StatelessWidget {
-  final String currentModule;
-  final Function(String) onOutput;
+  final String currentView;
+  final Function(LoginOutput) onUserOutput;
 
   const AppRoot({
     super.key,
-    required this.currentModule,
-    required this.onOutput,
+    required this.currentView,
+    required this.onUserOutput,
   });
 
   @override
   Widget build(BuildContext context) {
-    switch (currentModule) {
-      case 'USER':
-        return UserRoot(onOutput: onOutput);
-
-      default:
-        return const Scaffold(body: Center(child: Text('Unknown module')));
+    /// USER
+    if (currentView == AppView.userLogin) {
+      return UserRoot.openLogin(onUserOutput);
     }
+
+    // if (currentView == AppView.userStaff) {
+    //   return UserRoot.openStaffManagement(onUserOutput);
+    // }
+
+    if (currentView == AppView.routeStoreHome) {
+      final storage = get<AppStorage>();
+      final role = storage.get<String>('role') ?? '';
+      return RouteStoreRoot.openHome(role);
+    }
+    return const Scaffold(body: Center(child: Text('View không tồn tại')));
+  }
+}
+
+
+FILE: d:\1-Now\1_Ung_dung_da_nen_tang\quan_li_sale\app\lib\root\route_store_root.dart
+import 'package:flutter/material.dart';
+import 'package:route_store_module/view/route_store_view.dart';
+import 'package:route_store_module/input/route_store_input.dart';
+
+class RouteStoreRoot {
+  static Widget openHome(String role) {
+    final input = RouteStoreInput(role: role);
+
+    if (!input.canOpenHome()) {
+      return const Scaffold(
+        body: Center(child: Text('Không có quyền truy cập')),
+      );
+    }
+
+    return RouteStoreView();
   }
 }
 
 
 FILE: d:\1-Now\1_Ung_dung_da_nen_tang\quan_li_sale\app\lib\root\user_root.dart
 import 'package:flutter/material.dart';
+import 'package:user_module/output/login_output.dart';
 import 'package:user_module/user_module.dart';
 
-class UserRoot extends StatelessWidget {
-  final Function(String) onOutput;
-
-  const UserRoot({super.key, required this.onOutput});
-
-  @override
-  Widget build(BuildContext context) {
-    return UserScreen(onOutput: onOutput);
+class UserRoot {
+  static Widget openLogin(Function(LoginOutput) onOutput) {
+    return UserScreen(onOutput: onOutput, view: '');
   }
 }
 

@@ -41,13 +41,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.19.1"
-  core:
-    dependency: "direct main"
-    description:
-      path: "../core"
-      relative: true
-    source: path
-    version: "0.0.1"
   cupertino_icons:
     dependency: "direct main"
     description:
@@ -82,14 +75,6 @@ packages:
     description: flutter
     source: sdk
     version: "0.0.0"
-  get_it:
-    dependency: transitive
-    description:
-      name: get_it
-      sha256: d85128a5dae4ea777324730dc65edd9c9f43155c109d5cc0a69cab74139fbac1
-      url: "https://pub.dev"
-    source: hosted
-    version: "7.7.0"
   leak_tracker:
     dependency: transitive
     description:
@@ -154,13 +139,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.9.1"
-  route_store_module:
-    dependency: "direct main"
-    description:
-      path: "../modules/route_store_module"
-      relative: true
-    source: path
-    version: "1.0.0+1"
   sky_engine:
     dependency: transitive
     description: flutter
@@ -214,13 +192,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "0.7.4"
-  user_module:
-    dependency: "direct main"
-    description:
-      path: "../modules/user_module"
-      relative: true
-    source: path
-    version: "0.0.1"
   vector_math:
     dependency: transitive
     description:

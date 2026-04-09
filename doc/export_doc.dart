@@ -2,9 +2,7 @@ import 'dart:io';
 
 void main() async {
   const name = "quan_li_sale";
-  const version = "0.0.0";
-
-  // Lấy root project (cùng cấp với app/, module/)
+  const version = "0.1.2";
   final rootDir = Directory(Platform.script.resolve('../').toFilePath());
 
   if (!await rootDir.exists()) {
@@ -14,10 +12,8 @@ void main() async {
 
   final fileName = "${name}_v$version.txt";
   final output = File(Platform.script.resolve(fileName).toFilePath());
-
   final buffer = StringBuffer();
 
-  // 🔥 Duyệt toàn bộ project
   await for (var entity in rootDir.list(recursive: true)) {
     // ✅ Chỉ lấy folder tên "lib"
     if (entity is Directory &&

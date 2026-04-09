@@ -1,5 +1,5 @@
 import '../logic_data/user_data.dart';
-import '../entity/route.dart';
+import '../entity/user.dart';
 
 class LoginUC {
   final _data = UserData();

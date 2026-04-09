@@ -1,0 +1,654 @@
+
+FILE: d:\1-Now\1_Ung_dung_da_nen_tang\quan_li_sale\app\lib\app.dart
+import 'package:core/di/injector.dart';
+import 'package:core/storage/app_storage.dart';
+import 'package:flutter/material.dart';
+import 'package:user_module/output/login_output.dart';
+import 'root/app_root.dart';
+
+class MyApp extends StatefulWidget {
+  const MyApp({super.key});
+
+  @override
+  State<MyApp> createState() => _MyAppState();
+}
+
+class _MyAppState extends State<MyApp> {
+  List<String> viewStack = [AppView.userLogin];
+
+  final AppStorage storage = get<AppStorage>();
+
+  void handleUserOutput(LoginOutput output) {
+    final storage = get<AppStorage>();
+
+    if (output.data != null) {
+      output.data!.forEach((key, value) {
+        storage.set(key, value);
+      });
+    }
+
+    final targetView = '${output.to}_${output.view}';
+
+    setState(() {
+      viewStack.add(targetView);
+    });
+  }
+
+  void handleBack() {
+    if (viewStack.length > 1) {
+      setState(() {
+        viewStack.removeLast();
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final currentView = viewStack.last;
+    return MaterialApp(
+      home: AppRoot(
+        currentView: currentView,
+        onUserOutput: handleUserOutput,
+        onBack: handleBack,
+      ),
+    );
+  }
+}
+
+/// định nghĩa view dùng chung toàn app
+class AppView {
+  static const userLogin = 'USER_LOGIN';
+  static const userStaff = 'USER_STAFF';
+  static const orderHome = 'ORDER_HOME';
+  static const routeStoreHome = 'ROUTE_STORE_HOME';
+}
+
+
+FILE: d:\1-Now\1_Ung_dung_da_nen_tang\quan_li_sale\app\lib\main.dart
+import 'package:flutter/material.dart';
+import 'package:core/core.dart';
+import 'app.dart';
+
+void main() {
+  final storage = AppStorage();
+  put<AppStorage>(storage);
+  runApp(const MyApp());
+}
+
+
+FILE: d:\1-Now\1_Ung_dung_da_nen_tang\quan_li_sale\app\lib\root\app_root.dart
+import 'package:flutter/material.dart';
+import 'package:user_module/output/login_output.dart';
+import 'package:core/di/injector.dart';
+import 'package:core/storage/app_storage.dart';
+import '../app.dart';
+import 'user_root.dart';
+import 'route_store_root.dart';
+
+class AppRoot extends StatelessWidget {
+  final String currentView;
+  final Function(LoginOutput) onUserOutput;
+  final void Function() onBack;
+
+  const AppRoot({
+    super.key,
+    required this.currentView,
+    required this.onUserOutput,
+    required this.onBack,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    /// USER
+    if (currentView == AppView.userLogin) {
+      return UserRoot.openLogin(onUserOutput);
+    }
+
+    // if (currentView == AppView.userStaff) {
+    //   return UserRoot.openStaffManagement(onUserOutput);
+    // }
+
+    if (currentView == AppView.routeStoreHome) {
+      final storage = get<AppStorage>();
+      final role = storage.get<String>('role') ?? '';
+      return RouteStoreRoot.openHome(role, onBack);
+    }
+    return const Scaffold(body: Center(child: Text('View không tồn tại')));
+  }
+}
+
+
+FILE: d:\1-Now\1_Ung_dung_da_nen_tang\quan_li_sale\app\lib\root\route_store_root.dart
+import 'package:flutter/material.dart';
+import 'package:route_store_module/input/route_store_input.dart';
+
+import 'package:route_store_module/view/screens/sale/route_home_sale_view.dart';
+import 'package:route_store_module/view/screens/manager/route_home_manager_view.dart';
+
+class RouteStoreRoot {
+  static Widget openHome(String role, VoidCallback onBack) {
+    final input = RouteStoreInput(role: role);
+
+    if (input.isSale()) {
+      return RouteHomeSaleView(onBack: onBack);
+    }
+
+    if (input.isManager()) {
+      return RouteHomeManagerView(onBack: onBack);
+    }
+
+    return const Scaffold(body: Center(child: Text('Không có quyền')));
+  }
+}
+
+
+FILE: d:\1-Now\1_Ung_dung_da_nen_tang\quan_li_sale\app\lib\root\user_root.dart
+import 'package:flutter/material.dart';
+import 'package:user_module/output/login_output.dart';
+import 'package:user_module/user_module.dart';
+
+class UserRoot {
+  static Widget openLogin(Function(LoginOutput) onOutput) {
+    return UserScreen(onOutput: onOutput, view: '');
+  }
+}
+
+
+FILE: d:\1-Now\1_Ung_dung_da_nen_tang\quan_li_sale\core\lib\core.dart
+export 'di/injector.dart';
+export 'storage/app_storage.dart';
+
+
+FILE: d:\1-Now\1_Ung_dung_da_nen_tang\quan_li_sale\core\lib\di\injector.dart
+final injector = {};
+
+T get<T>() => injector[T] as T;
+
+void put<T>(T instance) {
+  injector[T] = instance;
+}
+
+
+FILE: d:\1-Now\1_Ung_dung_da_nen_tang\quan_li_sale\core\lib\storage\app_storage.dart
+class AppStorage {
+  final Map<String, dynamic> _data = {};
+
+  T? get<T>(String key) {
+    return _data[key] as T?;
+  }
+
+  void set(String key, dynamic value) {
+    _data[key] = value;
+  }
+
+  void remove(String key) {
+    _data.remove(key);
+  }
+
+  void clear() {
+    _data.clear();
+  }
+}
+
+
+FILE: d:\1-Now\1_Ung_dung_da_nen_tang\quan_li_sale\modules\route_store_module\lib\entity\user.dart
+class User {
+  final String id;
+  final String phone;
+  final String role;
+  final String token;
+
+  User({
+    required this.id,
+    required this.phone,
+    required this.role,
+    required this.token,
+  });
+}
+
+
+FILE: d:\1-Now\1_Ung_dung_da_nen_tang\quan_li_sale\modules\route_store_module\lib\input\route_store_input.dart
+class RouteStoreInput {
+  final String role;
+
+  RouteStoreInput({required this.role});
+
+  bool isSale() => role == 'Sale';
+
+  bool isManager() => role == 'Manager';
+}
+
+
+FILE: d:\1-Now\1_Ung_dung_da_nen_tang\quan_li_sale\modules\route_store_module\lib\logic_data\user_data.dart
+import '../entity/user.dart';
+
+class UserData {
+  final List<Map<String, dynamic>> _fakeDb = [
+    {'id': '1', 'phone': '1', 'password': '123', 'role': 'Sale'},
+    {'id': '2', 'phone': '2', 'password': '123', 'role': 'Manager'},
+  ];
+
+  User? login(String phone, String password) {
+    try {
+      final data = _fakeDb.firstWhere(
+        (e) => e['phone'] == phone && e['password'] == password,
+      );
+
+      return User(
+        id: data['id'],
+        phone: data['phone'],
+        role: data['role'],
+        token: "fake_token_${data['id']}",
+      );
+    } catch (_) {
+      return null;
+    }
+  }
+}
+
+
+FILE: d:\1-Now\1_Ung_dung_da_nen_tang\quan_li_sale\modules\route_store_module\lib\logic_uc\login_uc.dart
+import '../logic_data/user_data.dart';
+import '../entity/user.dart';
+
+class LoginUC {
+  final _data = UserData();
+
+  User? execute(String phone, String password) {
+    if (phone.isEmpty || password.isEmpty) {
+      throw Exception("Thiếu thông tin");
+    }
+
+    return _data.login(phone, password);
+  }
+}
+
+
+FILE: d:\1-Now\1_Ung_dung_da_nen_tang\quan_li_sale\modules\route_store_module\lib\output\user_output.dart
+import '../entity/user.dart';
+
+class LoginOutput {
+  final String from;
+  final String to;
+  final String view;
+  final Map<String, dynamic>? data;
+
+  LoginOutput({
+    required this.from,
+    required this.to,
+    required this.view,
+    this.data,
+  });
+
+  factory LoginOutput.loginSuccess(User user) {
+    return LoginOutput(
+      from: 'USER',
+      to: 'ROUTE_STORE',
+      view: 'HOME',
+      data: {'userId': user.id, 'role': user.role, 'token': user.token},
+    );
+  }
+}
+
+
+FILE: d:\1-Now\1_Ung_dung_da_nen_tang\quan_li_sale\modules\route_store_module\lib\view\components\route_list.dart
+import 'package:flutter/material.dart';
+
+class RouteList extends StatelessWidget {
+  final List<String> routes;
+  final Function(String)? onTap;
+
+  const RouteList({super.key, required this.routes, this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    if (routes.isEmpty) {
+      return const Center(child: Text('Chưa có tuyến'));
+    }
+
+    return ListView.builder(
+      itemCount: routes.length,
+      itemBuilder: (context, index) {
+        final route = routes[index];
+        return ListTile(
+          leading: const Icon(Icons.route),
+          title: Text(route),
+          onTap: () => onTap?.call(route),
+        );
+      },
+    );
+  }
+}
+
+
+FILE: d:\1-Now\1_Ung_dung_da_nen_tang\quan_li_sale\modules\route_store_module\lib\view\screens\manager\route_create_view.dart
+import 'package:flutter/material.dart';
+
+class RouteCreateView extends StatefulWidget {
+  const RouteCreateView({super.key});
+
+  @override
+  State<RouteCreateView> createState() => _RouteCreateViewState();
+}
+
+class _RouteCreateViewState extends State<RouteCreateView> {
+  final nameController = TextEditingController();
+
+  void handleCreate() {
+    final name = nameController.text;
+
+    if (name.isEmpty) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Nhập tên tuyến')));
+      return;
+    }
+
+    // demo: chỉ quay lại
+    Navigator.pop(context);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Tạo tuyến')),
+      body: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          children: [
+            TextField(
+              controller: nameController,
+              decoration: const InputDecoration(labelText: 'Tên tuyến'),
+            ),
+            const SizedBox(height: 16),
+            ElevatedButton(onPressed: handleCreate, child: const Text('Lưu')),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+
+FILE: d:\1-Now\1_Ung_dung_da_nen_tang\quan_li_sale\modules\route_store_module\lib\view\screens\manager\route_home_manager_view.dart
+import 'package:flutter/material.dart';
+import '../../components/route_list.dart';
+import 'route_create_view.dart';
+
+class RouteHomeManagerView extends StatelessWidget {
+  final VoidCallback onBack;
+
+  const RouteHomeManagerView({super.key, required this.onBack});
+
+  @override
+  Widget build(BuildContext context) {
+    final routes = <String>[]; // demo rỗng
+
+    return WillPopScope(
+      onWillPop: () async {
+        onBack();
+        return false;
+      },
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text('Quản lý tuyến'),
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back),
+            onPressed: onBack,
+          ),
+        ),
+        body: Column(
+          children: [
+            const SizedBox(height: 12),
+
+            ElevatedButton(
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const RouteCreateView()),
+                );
+              },
+              child: const Text('Tạo tuyến'),
+            ),
+
+            const SizedBox(height: 12),
+
+            Expanded(child: RouteList(routes: routes)),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+
+FILE: d:\1-Now\1_Ung_dung_da_nen_tang\quan_li_sale\modules\route_store_module\lib\view\screens\sale\route_home_sale_view.dart
+import 'package:flutter/material.dart';
+import '../../components/route_list.dart';
+
+class RouteHomeSaleView extends StatelessWidget {
+  final VoidCallback onBack;
+
+  const RouteHomeSaleView({super.key, required this.onBack});
+
+  @override
+  Widget build(BuildContext context) {
+    final routes = ['Tuyến Quận 1', 'Tuyến Quận 7'];
+
+    return WillPopScope(
+      onWillPop: () async {
+        onBack();
+        return false;
+      },
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text('Tuyến làm việc'),
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back),
+            onPressed: onBack,
+          ),
+        ),
+        body: RouteList(routes: routes),
+      ),
+    );
+  }
+}
+
+
+FILE: d:\1-Now\1_Ung_dung_da_nen_tang\quan_li_sale\modules\user_module\lib\entity\route.dart
+class User {
+  final String id;
+  final String phone;
+  final String role;
+  final String token;
+
+  User({
+    required this.id,
+    required this.phone,
+    required this.role,
+    required this.token,
+  });
+}
+
+
+FILE: d:\1-Now\1_Ung_dung_da_nen_tang\quan_li_sale\modules\user_module\lib\input\login_input.dart
+class LoginInput {
+  bool canOpen() {
+    return true; // luôn cho vào login
+  }
+}
+
+
+FILE: d:\1-Now\1_Ung_dung_da_nen_tang\quan_li_sale\modules\user_module\lib\logic_data\user_data.dart
+import '../entity/route.dart';
+
+class UserData {
+  final List<Map<String, dynamic>> _fakeDb = [
+    {'id': '1', 'phone': '1', 'password': '123', 'role': 'Sale'},
+    {'id': '2', 'phone': '2', 'password': '123', 'role': 'Manager'},
+  ];
+
+  User? login(String phone, String password) {
+    try {
+      final data = _fakeDb.firstWhere(
+        (e) => e['phone'] == phone && e['password'] == password,
+      );
+
+      return User(
+        id: data['id'],
+        phone: data['phone'],
+        role: data['role'],
+        token: "fake_token_${data['id']}",
+      );
+    } catch (_) {
+      return null;
+    }
+  }
+}
+
+
+FILE: d:\1-Now\1_Ung_dung_da_nen_tang\quan_li_sale\modules\user_module\lib\logic_uc\login_uc.dart
+import '../logic_data/user_data.dart';
+import '../entity/route.dart';
+
+class LoginUC {
+  final _data = UserData();
+
+  User? execute(String phone, String password) {
+    if (phone.isEmpty || password.isEmpty) {
+      throw Exception("Thiếu thông tin");
+    }
+
+    return _data.login(phone, password);
+  }
+}
+
+
+FILE: d:\1-Now\1_Ung_dung_da_nen_tang\quan_li_sale\modules\user_module\lib\output\login_output.dart
+import '../entity/route.dart';
+
+class LoginOutput {
+  final String from;
+  final String to;
+  final String view;
+  final Map<String, dynamic>? data;
+
+  LoginOutput({
+    required this.from,
+    required this.to,
+    required this.view,
+    this.data,
+  });
+
+  factory LoginOutput.loginSuccess(User user) {
+    return LoginOutput(
+      from: 'USER',
+      to: 'ROUTE_STORE',
+      view: 'HOME',
+      data: {'userId': user.id, 'role': user.role, 'token': user.token},
+    );
+  }
+}
+
+
+FILE: d:\1-Now\1_Ung_dung_da_nen_tang\quan_li_sale\modules\user_module\lib\user_module.dart
+import 'package:flutter/material.dart';
+import 'view/login_view.dart';
+import 'input/login_input.dart';
+import 'output/login_output.dart';
+
+class UserScreen extends StatelessWidget {
+  final Function(LoginOutput) onOutput;
+  final String view;
+  final String? role;
+
+  const UserScreen({
+    super.key,
+    required this.onOutput,
+    required this.view,
+    this.role,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    /// STAFF
+    // if (view == 'USER_STAFF') {
+    //   final input = StaffInput(role: role);
+
+    //   if (!input.canOpen()) {
+    //     return const Scaffold(body: Center(child: Text('Không có quyền')));
+    //   }
+
+    //   return const StaffView();
+    // }
+
+    /// LOGIN
+    return LoginView(onOutput: onOutput);
+  }
+}
+
+
+FILE: d:\1-Now\1_Ung_dung_da_nen_tang\quan_li_sale\modules\user_module\lib\view\login_view.dart
+import 'package:flutter/material.dart';
+import 'package:user_module/logic_uc/login_uc.dart';
+import 'package:user_module/output/login_output.dart';
+
+class LoginView extends StatefulWidget {
+  final Function(LoginOutput) onOutput;
+
+  const LoginView({super.key, required this.onOutput});
+
+  @override
+  State<LoginView> createState() => _LoginViewState();
+}
+
+class _LoginViewState extends State<LoginView> {
+  final phoneController = TextEditingController();
+  final passController = TextEditingController();
+
+  final _loginUC = LoginUC();
+
+  String error = '';
+
+  void handleLogin() {
+    try {
+      final user = _loginUC.execute(phoneController.text, passController.text);
+
+      if (user != null) {
+        widget.onOutput(LoginOutput.loginSuccess(user));
+      } else {
+        setState(() => error = "Sai tài khoản hoặc mật khẩu");
+      }
+    } catch (e) {
+      setState(() => error = e.toString());
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Login')),
+      body: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          children: [
+            TextField(
+              controller: phoneController,
+              decoration: const InputDecoration(labelText: 'Phone'),
+            ),
+            TextField(
+              controller: passController,
+              decoration: const InputDecoration(labelText: 'Password'),
+              obscureText: true,
+            ),
+            const SizedBox(height: 16),
+            ElevatedButton(onPressed: handleLogin, child: const Text('Login')),
+            if (error.isNotEmpty)
+              Text(error, style: const TextStyle(color: Colors.red)),
+          ],
+        ),
+      ),
+    );
+  }
+}
+

@@ -3,6 +3,7 @@ import 'package:core/core.dart';
 import 'app.dart';
 
 void main() {
-  put(AppStorage()); // dùng core
+  final storage = AppStorage();
+  put<AppStorage>(storage);
   runApp(const MyApp());
 }
