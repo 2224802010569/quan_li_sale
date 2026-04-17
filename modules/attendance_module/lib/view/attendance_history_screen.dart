@@ -18,6 +18,7 @@ class _AttendanceHistoryScreenState extends State<AttendanceHistoryScreen> {
   List<User> _allUsers = [];
   List<Attendance> _history = [];
   bool _isLoading = true;
+  User? _loggedInUser;
 
   @override
   void initState() {
@@ -26,16 +27,57 @@ class _AttendanceHistoryScreenState extends State<AttendanceHistoryScreen> {
   }
 
   Future<void> _loadData() async {
-    final user = await _useCase.getCurrentUser();
-    final users = await _useCase.getAllUsers();
-    final history = await _useCase.getAttendanceHistory();
+    try {
+      final user = await _useCase.getCurrentUser();
+      
+      List<User> users = [];
+      if (user.role == 'Manager' && user.groupId != null) {
+        users = await _useCase.getUsersByGroup(user.groupId!, user.id);
+        // Add a dummy 'All' user at the beginning
+        final allRecord = User(
+          id: 'all',
+          name: 'Tất cả nhân viên',
+          employeeCode: 'N/A',
+          currentRoute: 'N/A',
+          isEnoughWorkingDays: false,
+          lastUpdated: '',
+          role: 'Manager',
+          groupId: user.groupId,
+        );
+        users.insert(0, allRecord);
+      } else {
+        users = [user];
+      }
 
-    setState(() {
-      _currentUser = user;
-      _allUsers = users;
-      _history = history;
-      _isLoading = false;
-    });
+      final history = await _useCase.getAttendanceHistory();
+
+      if (mounted) {
+        setState(() {
+          _loggedInUser = user;
+          _allUsers = users;
+          
+          if (_allUsers.isNotEmpty) {
+            _currentUser = _allUsers.first;
+          } else {
+            _currentUser = null;
+          }
+          _history = history;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Lỗi tải dữ liệu: ${e.toString().replaceAll("Exception: ", "")}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
   }
 
   @override
@@ -67,56 +109,91 @@ class _AttendanceHistoryScreenState extends State<AttendanceHistoryScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Filter dropdown
-                    Container(
-                      padding: const EdgeInsets.all(16.0),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text(
-                            'LỌC NHÂN VIÊN',
-                            style: TextStyle(fontSize: 10, color: Colors.grey, fontWeight: FontWeight.bold),
-                          ),
-                          const SizedBox(height: 8),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 12),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFFF4F6FA),
-                              borderRadius: BorderRadius.circular(8),
+                    // Filter dropdown (Only hidden if explicitly NOT manager, though allUsers will be empty/single if Sale)
+                    if (_loggedInUser?.role == 'Manager')
+                      Container(
+                        padding: const EdgeInsets.all(16.0),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'LỌC NHÂN VIÊN',
+                              style: TextStyle(fontSize: 10, color: Colors.grey, fontWeight: FontWeight.bold),
                             ),
-                            child: DropdownButtonHideUnderline(
-                              child: DropdownButton<User>(
-                                isExpanded: true,
-                                value: _currentUser,
-                                icon: const Icon(Icons.keyboard_arrow_down, color: Colors.grey),
-                                items: _allUsers.map((user) {
-                                  return DropdownMenuItem<User>(
-                                    value: user,
-                                    child: Text(user.name, style: const TextStyle(fontWeight: FontWeight.w500)),
-                                  );
-                                }).toList(),
-                                onChanged: (User? newValue) {
-                                  if (newValue != null) {
-                                    setState(() {
-                                      _currentUser = newValue;
-                                    });
-                                    // In a real app, reload history based on user
-                                  }
-                                },
+                            const SizedBox(height: 8),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 12),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFF4F6FA),
+                                borderRadius: BorderRadius.circular(8),
                               ),
+                              child: _allUsers.isEmpty 
+                                ? const SizedBox()
+                                : DropdownButtonHideUnderline(
+                                    child: DropdownButton<User>(
+                                      isExpanded: true,
+                                      value: _currentUser,
+                                      icon: const Icon(Icons.keyboard_arrow_down, color: Colors.grey),
+                                      items: _allUsers.map((user) {
+                                        return DropdownMenuItem<User>(
+                                          value: user,
+                                          child: Text(user.name, style: const TextStyle(fontWeight: FontWeight.w500)),
+                                        );
+                                      }).toList(),
+                                      onChanged: (User? newValue) async {
+                                        if (newValue != null && newValue.id != _currentUser?.id) {
+                                          setState(() {
+                                            _currentUser = newValue;
+                                            _isLoading = true;
+                                          });
+                                          
+                                          // Reload history based on selected user
+                                          try {
+                                            final updatedHistory = await _useCase.getAttendanceHistory(
+                                              userId: newValue.id == 'all' ? null : newValue.id
+                                            );
+                                            if (mounted) {
+                                              setState(() {
+                                                _history = updatedHistory;
+                                                _isLoading = false;
+                                              });
+                                            }
+                                          } catch (e) {
+                                            if (mounted) {
+                                              setState(() { _isLoading = false; });
+                                              ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Lỗi tải lịch sử')));
+                                            }
+                                          }
+                                        }
+                                      },
+                                    ),
+                                  ),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 16),
+                    if (_loggedInUser?.role == 'Manager')
+                      const SizedBox(height: 16),
                     
-                    // Employee Info
-                    if (_currentUser != null) EmployeeInfoCard(user: _currentUser!),
+                    // Employee Info (only show for a specific employee, not 'All')
+                    if (_currentUser != null && _currentUser!.id != 'all') 
+                      EmployeeInfoCard(user: _currentUser!)
+                    else if (_currentUser != null && _currentUser!.id == 'all')
+                      Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12)),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.group, color: Color(0xFF0F3c8f), size: 40),
+                            const SizedBox(width: 16),
+                            const Text('Đang xem lịch sử toàn đội', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Color(0xFF0F3c8f))),
+                          ],
+                        ),
+                      ),
                     const SizedBox(height: 24),
                     
                     // History List Header

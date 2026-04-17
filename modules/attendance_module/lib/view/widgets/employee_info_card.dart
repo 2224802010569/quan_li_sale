@@ -28,10 +28,10 @@ class EmployeeInfoCard extends StatelessWidget {
           Container(
             width: 60,
             height: 60,
-            decoration: BoxDecoration(
+            decoration: const BoxDecoration(
               shape: BoxShape.circle,
               image: DecorationImage(
-                image: NetworkImage(user.avatarUrl),
+                image: NetworkImage('https://via.placeholder.com/150'),
                 fit: BoxFit.cover,
               ),
             ),

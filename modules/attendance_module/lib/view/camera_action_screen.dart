@@ -8,9 +8,9 @@ import 'widgets/camera_view_finder.dart';
 import 'widgets/store_info_bottom_sheet.dart';
 
 class CameraActionScreen extends StatefulWidget {
-  final bool isCheckIn;
+  final Store store;
 
-  const CameraActionScreen({Key? key, required this.isCheckIn})
+  const CameraActionScreen({Key? key, required this.store})
     : super(key: key);
 
   @override
@@ -19,16 +19,14 @@ class CameraActionScreen extends StatefulWidget {
 
 class _CameraActionScreenState extends State<CameraActionScreen> {
   final AttendanceUseCase _useCase = AttendanceUseCase();
-  Store? _currentStore;
+  late Store _currentStore;
   bool _isLoading = true;
 
   CameraController? _cameraController;
   bool _isCameraInitialized = false;
   String? _cameraError;
 
-  // Mock store location (replace with actual logic later)
-  final double destLat = 10.979938;
-  final double destLng = 106.674564;
+  bool _isCheckIn = true; // default before checking DB
 
   double? _currentDistance;
   StreamSubscription<Position>? _positionStream;
@@ -36,20 +34,39 @@ class _CameraActionScreenState extends State<CameraActionScreen> {
   @override
   void initState() {
     super.initState();
+    _currentStore = widget.store;
     _initializeAll();
   }
 
   Future<void> _initializeAll() async {
-    await _loadStoreInfo();
+    await _checkStatus();
     await _initCamera();
-    _startLocationStream();
+    if (_currentStore.latitude != null && _currentStore.longitude != null) {
+      _startLocationStream(_currentStore.latitude!, _currentStore.longitude!);
+    } else {
+      if (mounted) {
+        setState(() {
+          _cameraError = 'Cửa hàng không có dữ liệu tọa độ (Latitude/Longitude).';
+        });
+      }
+    }
   }
 
-  Future<void> _loadStoreInfo() async {
-    final store = await _useCase.getCurrentStoreInfo();
-    setState(() {
-      _currentStore = store;
-    });
+  Future<void> _checkStatus() async {
+    try {
+      final ongoing = await _useCase.hasOngoingCheckIn(_currentStore.id);
+      if (mounted) {
+        setState(() {
+          _isCheckIn = !ongoing;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Lỗi tải trạng thái: ${e.toString().replaceAll("Exception: ", "")}')),
+        );
+      }
+    }
   }
 
   Future<void> _initCamera() async {
@@ -82,7 +99,7 @@ class _CameraActionScreenState extends State<CameraActionScreen> {
     }
   }
 
-  void _startLocationStream() async {
+  void _startLocationStream(double destLat, double destLng) async {
     bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
     if (!serviceEnabled) return;
 
@@ -121,10 +138,7 @@ class _CameraActionScreenState extends State<CameraActionScreen> {
   }
 
   void _handleAction() async {
-    if (_currentStore == null ||
-        _cameraController == null ||
-        !_isCameraInitialized)
-      return;
+    if (_cameraController == null || !_isCameraInitialized) return;
 
     // Show loading
     showDialog(
@@ -136,15 +150,15 @@ class _CameraActionScreenState extends State<CameraActionScreen> {
     try {
       final imagePath = await _useCase.checkLocationAndCapture(
         cameraController: _cameraController!,
-        destLat: destLat,
-        destLng: destLng,
+        destLat: _currentStore.latitude ?? 0,
+        destLng: _currentStore.longitude ?? 0,
       );
 
       bool success;
-      if (widget.isCheckIn) {
-        success = await _useCase.submitCheckIn(_currentStore!.id, imagePath);
+      if (_isCheckIn) {
+        success = await _useCase.submitCheckIn(_currentStore.id, imagePath, routeId: _currentStore.routeId);
       } else {
-        success = await _useCase.submitCheckOut(_currentStore!.id, imagePath);
+        success = await _useCase.submitCheckOut(_currentStore.id, imagePath);
       }
 
       Navigator.pop(context); // Close loading
@@ -153,11 +167,11 @@ class _CameraActionScreenState extends State<CameraActionScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              '${widget.isCheckIn ? "Check-in" : "Check-out"} thành công! Ảnh lưu tại: $imagePath',
+              '${_isCheckIn ? "Check-in" : "Check-out"} thành công!',
             ),
           ),
         );
-        Navigator.pop(context);
+        Navigator.pop(context); // Pop back to list
       }
     } catch (e) {
       Navigator.pop(context); // Close loading
@@ -224,7 +238,7 @@ class _CameraActionScreenState extends State<CameraActionScreen> {
                       ),
                       const SizedBox(width: 8),
                       Text(
-                        widget.isCheckIn ? 'Check-in' : 'Check-out',
+                        _isCheckIn ? 'Check-in' : 'Check-out',
                         style: const TextStyle(
                           color: Colors.white,
                           fontSize: 18,
@@ -256,10 +270,10 @@ class _CameraActionScreenState extends State<CameraActionScreen> {
                     padding: EdgeInsets.all(32.0),
                     child: CircularProgressIndicator(color: Colors.white),
                   )
-                else if (_currentStore != null)
+                else
                   StoreInfoBottomSheet(
-                    store: _currentStore!,
-                    isCheckIn: widget.isCheckIn,
+                    store: _currentStore,
+                    isCheckIn: _isCheckIn,
                     onActionPressed: _handleAction,
                     currentDistance: _currentDistance,
                   ),

@@ -1,0 +1,29 @@
+﻿Analyzing attendance_module...                                  
+
+   info - Don't invoke 'print' in production code - doc\export_doc.dart:10:5 - avoid_print
+   info - Don't invoke 'print' in production code - doc\export_doc.dart:31:3 - avoid_print
+   info - 'desiredAccuracy' is deprecated and shouldn't be used. use settings parameter with AndroidSettings, AppleSettings, WebSettings, or LocationSettings - lib\logic_uc\attendance_uc.dart:55:53 - deprecated_member_use
+   info - 'desiredAccuracy' is deprecated and shouldn't be used. use settings parameter with AndroidSettings, AppleSettings, WebSettings, or LocationSettings - lib\logic_uc\attendance_uc.dart:126:58 - deprecated_member_use
+   info - Don't invoke 'print' in production code - lib\main.dart:21:5 - avoid_print
+   info - Don't invoke 'print' in production code - lib\main.dart:22:5 - avoid_print
+   info - Don't invoke 'print' in production code - lib\main.dart:23:5 - avoid_print
+   info - Parameter 'key' could be a super parameter - lib\main.dart:32:9 - use_super_parameters
+   info - Parameter 'key' could be a super parameter - lib\main.dart:50:9 - use_super_parameters
+warning - The operand can't be 'null', so the condition is always 'true' - lib\repository\attendance_repository.dart:58:18 - unnecessary_null_comparison
+   info - Use the null-aware marker '?' rather than a null check via an 'if' - lib\repository\attendance_repository.dart:123:7 - use_null_aware_elements
+   info - Parameter 'key' could be a super parameter - lib\view\attendance_history_screen.dart:9:9 - use_super_parameters
+   info - Parameter 'key' could be a super parameter - lib\view\auth_wrapper.dart:9:9 - use_super_parameters
+   info - Parameter 'key' could be a super parameter - lib\view\auth_wrapper.dart:84:9 - use_super_parameters
+   info - Parameter 'key' could be a super parameter - lib\view\camera_action_screen.dart:13:9 - use_super_parameters
+   info - Statements in an if should be enclosed in a block - lib\view\camera_action_screen.dart:109:7 - curly_braces_in_flow_control_structures
+   info - Don't use 'BuildContext's across async gaps - lib\view\camera_action_screen.dart:164:21 - use_build_context_synchronously
+   info - Don't use 'BuildContext's across async gaps - lib\view\camera_action_screen.dart:177:21 - use_build_context_synchronously
+   info - Parameter 'key' could be a super parameter - lib\view\store_selection_screen.dart:7:9 - use_super_parameters
+   info - Parameter 'key' could be a super parameter - lib\view\widgets\camera_view_finder.dart:4:9 - use_super_parameters
+   info - Parameter 'key' could be a super parameter - lib\view\widgets\employee_info_card.dart:7:9 - use_super_parameters
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\view\widgets\employee_info_card.dart:18:33 - deprecated_member_use
+   info - Parameter 'key' could be a super parameter - lib\view\widgets\history_card.dart:7:9 - use_super_parameters
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\view\widgets\history_card.dart:28:33 - deprecated_member_use
+   info - Parameter 'key' could be a super parameter - lib\view\widgets\store_info_bottom_sheet.dart:10:9 - use_super_parameters
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\view\widgets\store_info_bottom_sheet.dart:65:73 - deprecated_member_use
+

@@ -1,0 +1,28 @@
+1. Thư mục lib/entity/ (Lớp Thực thể - Data Models)
+Đây là nơi định nghĩa cấu trúc dữ liệu thô, dùng để ánh xạ (map) dữ liệu từ Database về Objects trong code.
+
+user.dart: Định nghĩa đối tượng Người dùng (ID, tên, vai trò Manager/Sale, mã nhân viên, nhóm làm việc...).
+store.dart: Định nghĩa đối tượng Cửa hàng (Tọa độ GPS, địa chỉ, tên tuyến, trạng thái đã hoàn thành hay chưa).
+attendance.dart: Định nghĩa một bản ghi Chấm công (Thời gian vào/ra, hình ảnh check-in/out, trạng thái...).
+2. Thư mục lib/repository/ (Lớp Dữ liệu - Data Access)
+Lớp này chịu trách nhiệm giao tiếp trực tiếp với Supabase.
+
+attendance_repository.dart: Chứa toàn bộ các câu lệnh SQL/Query. Ví dụ: Lấy danh sách tuyến được phân công, up ảnh lên Storage, lưu bản ghi chấm công vào bảng attendance.
+3. Thư mục lib/logic_uc/ (Lớp Xử lý - Use Case)
+Đây là "bộ não" của module, chứa các logic nghiệp vụ phức tạp.
+
+attendance_uc.dart: Xử lý các phép tính như: Kiểm tra khoảng cách GPS giữa người dùng và cửa hàng (có đủ gần <20m không?), đếm số lần check-in để xác định "Đủ công", sắp xếp cửa hàng nào gần thì hiện lên trước.
+4. Thư mục lib/view/ (Lớp Giao diện - UI)
+Nơi chứa các màn hình và widget hiển thị cho người dùng.
+
+auth_wrapper.dart: File quan trọng nhất để điều hướng. Nó kiểm tra xem bạn là Sale hay Manager để đẩy vào màn hình tương ứng. (Có chứa chế độ Dev Mode để test nhanh).
+store_selection_screen.dart: Màn hình danh sách cửa hàng dành cho Sale. Cho phép chọn shop để bắt đầu làm việc.
+camera_action_screen.dart: Màn hình chụp ảnh. Tích hợp logic mở camera, quét GPS thời gian thực và thực hiện nút bấm Check-in/Check-out.
+attendance_history_screen.dart: Màn hình Quản lý dành cho Manager. Có tính năng lọc nhân viên theo nhóm và xem lịch sử toàn đội.
+sale_attendance_history_screen.dart: Màn hình Lịch sử cá nhân của Sale. Chỉ hiện dữ liệu của bản thân người đó.
+5. Thư mục lib/view/widgets/ (Các thành phần nhỏ)
+history_card.dart: Thẻ hiển thị từng lần chấm công (đã được nâng cấp để hiện 2 ảnh song song: Check-in và Check-out).
+employee_info_card.dart: Thẻ thông tin nhân viên hiện ở trên cùng các trang lịch sử (hiện tên, mã số, và badge Đủ công/Thiếu công).
+store_info_bottom_sheet.dart: Bảng hiện lên ở dưới cùng màn hình camera để xác nhận thông tin shop trước khi chụp.
+6. Thư mục doc/ (Tài liệu & SQL)
+seed_script.sql: Chứa mã SQL để bạn copy-paste vào Supabase. Nó giúp tạo dữ liệu mẫu (Tuyến đường, Cửa hàng, Phân công công việc) để bạn có cái mà test ngay lập tức.

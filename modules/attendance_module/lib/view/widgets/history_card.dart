@@ -1,4 +1,3 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
 import '../../entity/attendance.dart';
 
@@ -36,40 +35,106 @@ class HistoryCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Image part
-          Stack(
+          Row(
             children: [
-              ClipRRect(
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
-                child: Image.file(
-                  File(attendance.imageUrl),
-                  height: 150,
-                  width: double.infinity,
-                  fit: BoxFit.cover,
-                  errorBuilder: (context, error, stackTrace) => Container(
-                    height: 150,
-                    width: double.infinity,
-                    color: Colors.grey[300],
-                    child: const Icon(Icons.image, size: 50, color: Colors.grey),
-                  ),
+              // Check-in Image
+              Expanded(
+                child: Stack(
+                  children: [
+                    ClipRRect(
+                      borderRadius: const BorderRadius.only(topLeft: Radius.circular(12)),
+                      child: Image.network(
+                        attendance.checkinImage,
+                        height: 150,
+                        width: double.infinity,
+                        fit: BoxFit.cover,
+                        errorBuilder: (context, error, stackTrace) => Container(
+                          height: 150,
+                          width: double.infinity,
+                          color: Colors.grey[300],
+                          child: const Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(Icons.image_not_supported, size: 40, color: Colors.grey),
+                              SizedBox(height: 4),
+                              Text('Lỗi tải ảnh', style: TextStyle(fontSize: 10, color: Colors.grey)),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                    Positioned(
+                      top: 8,
+                      left: 8,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.9), // Keeping single withOpacity for tiny tags
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: const Text(
+                          'CHECK-IN',
+                          style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFF1A1A1A)),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
-              Positioned(
-                top: 12,
-                left: 12,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Text(
-                    isCheckIn ? 'CHECK-IN' : 'CHECK-OUT',
-                    style: const TextStyle(
-                      fontSize: 10,
-                      fontWeight: FontWeight.bold,
-                      color: Color(0xFF1A1A1A),
+              // Separator
+              Container(width: 2, height: 150, color: Colors.white),
+              // Check-out Image
+              Expanded(
+                child: Stack(
+                  children: [
+                    ClipRRect(
+                      borderRadius: const BorderRadius.only(topRight: Radius.circular(12)),
+                      child: attendance.checkoutImage.isNotEmpty
+                          ? Image.network(
+                              attendance.checkoutImage,
+                              height: 150,
+                              width: double.infinity,
+                              fit: BoxFit.cover,
+                              errorBuilder: (context, error, stackTrace) => Container(
+                                height: 150,
+                                width: double.infinity,
+                                color: Colors.grey[300],
+                                child: const Icon(Icons.image_not_supported, size: 40, color: Colors.grey),
+                              ),
+                            )
+                          : Container(
+                              height: 150,
+                              width: double.infinity,
+                              color: const Color(0xFFF4F6FA),
+                              child: const Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(Icons.pending_actions, size: 40, color: Colors.orange),
+                                  SizedBox(height: 8),
+                                  Text(
+                                    'Waiting for Check-out',
+                                    style: TextStyle(fontSize: 10, color: Colors.orange, fontWeight: FontWeight.bold),
+                                  ),
+                                ],
+                              ),
+                            ),
                     ),
-                  ),
+                    Positioned(
+                      top: 8,
+                      right: 8,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.9),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: const Text(
+                          'CHECK-OUT',
+                          style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFF1A1A1A)),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ],
