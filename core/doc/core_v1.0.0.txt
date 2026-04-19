@@ -1,10 +1,10 @@
 
-FILE: d:\1-Now\1_Ung_dung_da_nen_tang\flutter_application_1\core\lib\core.dart
-export 'di/injector.dart';
+FILE: d:\1-Now\1_Ung_dung_da_nen_tang\quan_li_sale\core\lib\core.dart
+// export 'di/firebase.dart';
 export 'storage/app_storage.dart';
 
 
-FILE: d:\1-Now\1_Ung_dung_da_nen_tang\flutter_application_1\core\lib\di\injector.dart
+FILE: d:\1-Now\1_Ung_dung_da_nen_tang\quan_li_sale\core\lib\di\injector.dart
 final injector = {};
 
 T get<T>() => injector[T] as T;
@@ -14,14 +14,24 @@ void put<T>(T instance) {
 }
 
 
-FILE: d:\1-Now\1_Ung_dung_da_nen_tang\flutter_application_1\core\lib\storage\app_storage.dart
+FILE: d:\1-Now\1_Ung_dung_da_nen_tang\quan_li_sale\core\lib\storage\app_storage.dart
 class AppStorage {
-  String? token;
-  String? userId;
+  final Map<String, dynamic> _data = {};
+
+  T? get<T>(String key) {
+    return _data[key] as T?;
+  }
+
+  void set(String key, dynamic value) {
+    _data[key] = value;
+  }
+
+  void remove(String key) {
+    _data.remove(key);
+  }
 
   void clear() {
-    token = null;
-    userId = null;
+    _data.clear();
   }
 }
 
