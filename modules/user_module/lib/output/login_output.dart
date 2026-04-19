@@ -1,4 +1,4 @@
-import '../entity/route.dart';
+import '../entity/user.dart';
 
 class LoginOutput {
   final String from;
@@ -18,7 +18,7 @@ class LoginOutput {
       from: 'USER',
       to: 'ROUTE_STORE',
       view: 'HOME',
-      data: {'userId': user.id, 'role': user.role, 'token': user.token},
+      data: {'userId': user.id, 'role': user.role, 'groupId': user.groupId},
     );
   }
 }

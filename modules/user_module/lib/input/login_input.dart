@@ -1,5 +1,7 @@
+import '../storage/app_storage.dart';
+
 class LoginInput {
   bool canOpen() {
-    return true; // luôn cho vào login
+    return AppStorage.getUser() == null;
   }
 }

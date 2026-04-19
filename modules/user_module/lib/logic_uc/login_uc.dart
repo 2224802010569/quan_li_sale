@@ -1,14 +1,25 @@
 import '../logic_data/user_data.dart';
-import '../entity/route.dart';
+import '../entity/user.dart';
+import '../storage/app_storage.dart';
 
 class LoginUC {
   final _data = UserData();
 
-  User? execute(String phone, String password) {
-    if (phone.isEmpty || password.isEmpty) {
+  User? execute(String id, String password) {
+    if (id.isEmpty || password.isEmpty) {
       throw Exception("Thiếu thông tin");
     }
 
-    return _data.login(phone, password);
+    final user = _data.login(id, password);
+
+    if (user != null) {
+      AppStorage.saveUser({
+        'id': user.id,
+        'role': user.role,
+        'groupId': user.groupId,
+      });
+    }
+
+    return user;
   }
 }
