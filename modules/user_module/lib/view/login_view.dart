@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:user_module/logic_uc/login_uc.dart';
-import 'package:user_module/output/login_output.dart';
+// import 'package:user_module/output/login_output.dart';
+import 'package:user_module/output/user_event.dart';
 
 class LoginView extends StatefulWidget {
-  final Function(LoginOutput) onOutput;
-
-  const LoginView({super.key, required this.onOutput});
+  final Function(UserEvent) onEvent;
+  const LoginView({super.key, required this.onEvent});
 
   @override
   State<LoginView> createState() => _LoginViewState();
@@ -24,7 +24,13 @@ class _LoginViewState extends State<LoginView> {
       final user = _loginUC.execute(idController.text, passController.text);
 
       if (user != null) {
-        widget.onOutput(LoginOutput.loginSuccess(user));
+        widget.onEvent(
+          UserEvent.loginSuccess({
+            'user_id': user.id,
+            'role': user.role,
+            'groupId': user.groupId,
+            }),
+        );
       } else {
         setState(() => error = "Sai tài khoản hoặc mật khẩu");
       }

@@ -1,10 +1,26 @@
 
 FILE: d:\1-Now\1_Ung_dung_da_nen_tang\quan_li_sale\app\lib\app.dart
+import 'package:app/root/app_output.dart';
+import 'package:flutter/material.dart';
 import 'package:core/di/injector.dart';
 import 'package:core/storage/app_storage.dart';
-import 'package:flutter/material.dart';
-import 'package:user_module/output/login_output.dart';
-import 'root/app_root.dart';
+import 'package:test_module/test_module.dart';
+import 'root/user_root.dart';
+import 'root/route_store_root.dart';
+// import thêm module mới ở đây
+// import 'root/test_root.dart';
+
+// void main() {
+//   final storage = AppStorage();
+//   put<AppStorage>(storage);
+
+//   runApp(const MyApp());
+// }
+
+class AppState {
+  final String module;
+  AppState({required this.module});
+}
 
 class MyApp extends StatefulWidget {
   const MyApp({super.key});
@@ -14,21 +30,27 @@ class MyApp extends StatefulWidget {
 }
 
 class _MyAppState extends State<MyApp> {
-  List<AppState> moduleStack = [AppState(module: 'USER', view: 'LOGIN')];
-
   final AppStorage storage = get<AppStorage>();
 
-  void handleUserOutput(LoginOutput output) {
-    final storage = get<AppStorage>();
+  /// chỉ quản lý module
+  List<AppState> moduleStack = [AppState(module: 'USER')];
 
+  /// registry
+  late final Map<String, Widget Function()> moduleRegistry = {
+    'USER': () => UserRoot().build(handleOutput),
+    // 'ROUTE_STORE': () => RouteStoreRoot().build(handleOutput),
+    'TEST': () => const MyHomePage(title: 'Test Module'),
+  };
+
+  /// handle output
+  void handleOutput(AppOutput output) {
     if (output.data != null) {
-      output.data!.forEach((key, value) {
-        storage.set(key, value);
-      });
+      output.data!.forEach((k, v) => storage.set(k, v));
     }
-
+    final current = moduleStack.last;
+    if (current.module == output.toModule) return;
     setState(() {
-      moduleStack.add(AppState(module: output.to, view: output.view));
+      moduleStack.add(AppState(module: output.toModule));
     });
   }
 
@@ -43,22 +65,13 @@ class _MyAppState extends State<MyApp> {
   @override
   Widget build(BuildContext context) {
     final current = moduleStack.last;
-    return MaterialApp(
-      home: AppRoot(
-        currentModule: current.module,
-        currentView: current.view,
-        onUserOutput: handleUserOutput,
-        onBack: handleBack,
-      ),
-    );
+
+    final builder =
+        moduleRegistry[current.module] ??
+        () => const Scaffold(body: Center(child: Text('Module không tồn tại')));
+
+    return MaterialApp(home: builder());
   }
-}
-
-class AppState {
-  final String module;
-  final String view;
-
-  AppState({required this.module, required this.view});
 }
 
 
@@ -90,52 +103,12 @@ void main() async {
 }
 
 
-FILE: d:\1-Now\1_Ung_dung_da_nen_tang\quan_li_sale\app\lib\root\app_root.dart
-import 'package:flutter/material.dart';
-import 'package:user_module/output/login_output.dart';
-import 'package:core/di/injector.dart';
-import 'package:core/storage/app_storage.dart';
+FILE: d:\1-Now\1_Ung_dung_da_nen_tang\quan_li_sale\app\lib\root\app_output.dart
+class AppOutput {
+  final String toModule;
+  final Map<String, dynamic>? data;
 
-import 'user_root.dart';
-import 'route_store_root.dart';
-
-class AppRoot extends StatelessWidget {
-  final String currentModule;
-  final String currentView;
-  final Function(LoginOutput) onUserOutput;
-  final VoidCallback onBack;
-
-  const AppRoot({
-    super.key,
-    required this.currentModule,
-    required this.currentView,
-    required this.onUserOutput,
-    required this.onBack,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final storage = get<AppStorage>();
-
-    final Map<String, Widget Function()> moduleRouter = {
-      /// USER MODULE
-      'USER': () => UserRoot.openLogin(onUserOutput),
-
-      /// ROUTE STORE MODULE
-      'ROUTE_STORE': () {
-        final role = storage.get<String>('role') ?? '';
-        return RouteStoreRoot.openHome(role, onBack);
-      },
-    };
-
-    final builder = moduleRouter[currentModule];
-
-    if (builder != null) {
-      return builder();
-    }
-
-    return const Scaffold(body: Center(child: Text('Module không tồn tại')));
-  }
+  AppOutput({required this.toModule, this.data});
 }
 
 
@@ -146,32 +119,54 @@ import 'package:route_store_module/input/route_store_input.dart';
 import 'package:route_store_module/view/screens/sale/route_home_sale_view.dart';
 import 'package:route_store_module/view/screens/manager/route_home_manager_view.dart';
 
-class RouteStoreRoot {
-  static Widget openHome(String role, VoidCallback onBack) {
-    final input = RouteStoreInput(role: role);
+// class RouteStoreRoot {
+//   static Widget openHome(String role, VoidCallback onBack) {
+//     final input = RouteStoreInput(role: role);
 
-    if (input.isSale()) {
-      return RouteHomeSaleView(onBack: onBack);
-    }
+//     if (input.isSale()) {
+//       return RouteHomeSaleView(onBack: onBack);
+//     }
 
-    if (input.isManager()) {
-      return RouteHomeManagerView(onBack: onBack);
-    }
+//     if (input.isManager()) {
+//       return RouteHomeManagerView(onBack: onBack);
+//     }
 
-    return const Scaffold(body: Center(child: Text('Không có quyền')));
-  }
-}
+//     return const Scaffold(body: Center(child: Text('Không có quyền')));
+//   }
+// }
 
 
 FILE: d:\1-Now\1_Ung_dung_da_nen_tang\quan_li_sale\app\lib\root\user_root.dart
+import 'package:app/root/app_output.dart';
 import 'package:flutter/material.dart';
-import 'package:user_module/output/login_output.dart';
 import 'package:user_module/user_module.dart';
+import 'package:user_module/output/user_event.dart';
 
 class UserRoot {
-  static Widget openLogin(Function(LoginOutput) onOutput) {
-    return UserScreen(onOutput: onOutput, view: '');
+  Widget build(Function(AppOutput) onNavigate) {
+    return UserScreen(
+      onEvent: (event) => _handleEvent(event as UserEvent, onNavigate),
+    ); 
   }
+
+  void _handleEvent(UserEvent event, Function(AppOutput) onNavigate) {
+    switch (event.type) {
+      case UserEventType.loginSuccess:
+        _goToTestModule(event, onNavigate);
+        break;
+    }
+  }
+
+  /// =========================
+  /// NAVIGATION FUNCTIONS
+  /// =========================
+  void _goToTestModule(UserEvent event, Function(AppOutput) onNavigate) {
+    onNavigate(AppOutput(toModule: 'TEST', data: event.data));
+  }
+
+  // void _goToRouteStore(UserEvent event, Function(AppOutput) onNavigate) {
+  //   onNavigate(AppOutput(toModule: 'ROUTE_STORE', data: event.data));
+  // }
 }
 
 
@@ -194090,13 +194085,23 @@ class User {
 
 FILE: d:\1-Now\1_Ung_dung_da_nen_tang\quan_li_sale\modules\route_store_module\lib\input\route_store_input.dart
 class RouteStoreInput {
-  final String role;
+  final bool requireLogin;
 
-  RouteStoreInput({required this.role});
+  RouteStoreInput({required this.requireLogin});
 
-  bool isSale() => role == 'Sale';
+  factory RouteStoreInput.requireLogin() {
+    return RouteStoreInput(requireLogin: true);
+  }
 
-  bool isManager() => role == 'Manager';
+  bool isValid({String? userId, String? role}) {
+    if (requireLogin && userId == null) return false;
+    return true;
+  }
+
+  String defaultView(String role) {
+    if (role == 'Manager') return 'HOME_MANAGER';
+    return 'HOME_SALE';
+  }
 }
 
 
@@ -289056,53 +289061,6 @@ class UrlLauncherWindows extends UrlLauncherPlatform {
 }
 
 
-FILE: d:\1-Now\1_Ung_dung_da_nen_tang\quan_li_sale\modules\user_module\example\lib\main.dart
-import 'package:flutter/material.dart';
-// Lưu ý: Thay 'user_module' bằng tên package khai báo trong pubspec.yaml của module
-import 'package:user_module/user_module.dart';
-import 'package:user_module/view/home_view.dart';
-import 'package:user_module/view/profile_view.dart';
-import 'package:user_module/view/change_password_view.dart';
-import 'package:user_module/view/manage_user_view.dart';
-import 'package:user_module/view/login_view.dart';
-
-void main() {
-  runApp(const MyModuleTestApp());
-}
-
-class MyModuleTestApp extends StatelessWidget {
-  const MyModuleTestApp({super.key});
-
-  void handleLogin(BuildContext context, output) {
-    print("Chuyển từ: ${output.from} sang ${output.to}");
-    Navigator.pushReplacementNamed(context, '/home');
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Test User Module',
-      debugShowCheckedModeBanner: false,
-      theme: ThemeData(primarySwatch: Colors.blue),
-
-      initialRoute: '/',
-      routes: {
-        '/': (context) =>
-            LoginView(onOutput: (output) => handleLogin(context, output)),
-
-        '/login': (context) =>
-            LoginView(onOutput: (output) => handleLogin(context, output)),
-
-        '/home': (context) => HomeView(),
-        '/profile': (context) => ProfileView(),
-        '/change': (context) => ChangePasswordView(),
-        '/manage': (context) => ManageUserView(),
-      },
-    );
-  }
-}
-
-
 FILE: d:\1-Now\1_Ung_dung_da_nen_tang\quan_li_sale\modules\user_module\lib\entity\route.dart
 class User {
   final String id;
@@ -289266,29 +289224,17 @@ class ManageUserUC {
 }
 
 
-FILE: d:\1-Now\1_Ung_dung_da_nen_tang\quan_li_sale\modules\user_module\lib\output\login_output.dart
-import '../entity/user.dart';
+FILE: d:\1-Now\1_Ung_dung_da_nen_tang\quan_li_sale\modules\user_module\lib\output\user_event.dart
+enum UserEventType { loginSuccess }
 
-class LoginOutput {
-  final String from;
-  final String to;
-  final String view;
+class UserEvent {
+  final UserEventType type;
   final Map<String, dynamic>? data;
 
-  LoginOutput({
-    required this.from,
-    required this.to,
-    required this.view,
-    this.data,
-  });
+  UserEvent({required this.type, this.data});
 
-  factory LoginOutput.loginSuccess(User user) {
-    return LoginOutput(
-      from: 'USER',
-      to: 'ROUTE_STORE',
-      view: 'HOME',
-      data: {'userId': user.id, 'role': user.role, 'groupId': user.groupId},
-    );
+  factory UserEvent.loginSuccess(Map<String, dynamic> data) {
+    return UserEvent(type: UserEventType.loginSuccess, data: data);
   }
 }
 
@@ -289313,13 +289259,15 @@ class AppStorage {
 
 FILE: d:\1-Now\1_Ung_dung_da_nen_tang\quan_li_sale\modules\user_module\lib\user_module.dart
 import 'package:flutter/material.dart';
+import 'package:user_module/output/login_output.dart';
 import 'view/login_view.dart';
 import 'view/home_view.dart';
 
 class UserScreen extends StatelessWidget {
+  final Function(UserEvent) onEvent;
   final String view;
 
-  const UserScreen({super.key, required this.view});
+  const UserScreen({super.key, required this.onEvent, this.view = ''});
 
   @override
   Widget build(BuildContext context) {
@@ -289327,7 +289275,7 @@ class UserScreen extends StatelessWidget {
       case 'HOME':
         return HomeView();
       default:
-        return LoginView(onOutput: (_) {});
+        return LoginView(onEvent: (e) => onEvent(e as UserEvent));
     }
   }
 }
@@ -289435,12 +289383,12 @@ class HomeView extends StatelessWidget {
 FILE: d:\1-Now\1_Ung_dung_da_nen_tang\quan_li_sale\modules\user_module\lib\view\login_view.dart
 import 'package:flutter/material.dart';
 import 'package:user_module/logic_uc/login_uc.dart';
-import 'package:user_module/output/login_output.dart';
+// import 'package:user_module/output/login_output.dart';
+import 'package:user_module/output/user_event.dart';
 
 class LoginView extends StatefulWidget {
-  final Function(LoginOutput) onOutput;
-
-  const LoginView({super.key, required this.onOutput});
+  final Function(UserEvent) onEvent;
+  const LoginView({super.key, required this.onEvent});
 
   @override
   State<LoginView> createState() => _LoginViewState();
@@ -289459,7 +289407,13 @@ class _LoginViewState extends State<LoginView> {
       final user = _loginUC.execute(idController.text, passController.text);
 
       if (user != null) {
-        widget.onOutput(LoginOutput.loginSuccess(user));
+        widget.onEvent(
+          UserEvent.loginSuccess({
+            'user_id': user.id,
+            'role': user.role,
+            'groupId': user.groupId,
+            }),
+        );
       } else {
         setState(() => error = "Sai tài khoản hoặc mật khẩu");
       }
