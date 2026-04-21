@@ -5,12 +5,12 @@ import '../storage/app_storage.dart';
 class LoginUC {
   final _data = UserData();
 
-  User? execute(String id, String password) {
+  Future<User?> execute(String id, String password) async {
     if (id.isEmpty || password.isEmpty) {
       throw Exception("Thiếu thông tin");
     }
 
-    final user = _data.login(id, password);
+    final user = await _data.login(id, password);
 
     if (user != null) {
       AppStorage.saveUser({

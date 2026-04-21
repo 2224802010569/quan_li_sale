@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:user_module/output/user_event.dart';
-import 'view/login_view.dart';
+import 'view/common/login_view.dart';
 import 'view/home_view.dart';
 
 class UserScreen extends StatelessWidget {
@@ -15,6 +15,7 @@ class UserScreen extends StatelessWidget {
       case 'HOME':
         return HomeView();
       default:
-        return LoginView(onEvent: onEvent);    }
+        return LoginView(onEvent: onEvent);    
+    }
   }
 }
