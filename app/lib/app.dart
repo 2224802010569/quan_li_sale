@@ -5,7 +5,7 @@ import 'package:core/di/injector.dart';
 import 'package:core/storage/app_storage.dart';
 import 'package:test_module/test_module.dart';
 import 'root/user_root.dart';
-import 'root/route_store_root.dart';
+// import 'root/route_store_root.dart';
 
 class AppState {
   final String module;
@@ -24,7 +24,7 @@ class _MyAppState extends State<MyApp> {
   List<AppState> moduleStack = [AppState(module: 'USER')];
   late final Map<String, Widget Function()> moduleRegistry = {
     'USER': () => UserRoot().build(handleOutput),
-    // 'ROUTE_STORE': () => RouteStoreRoot().build(handleOutput),
+    'USER_PROFILE': () => UserRoot().buildProfile(handleOutput),
     'TEST': () => const MyHomePage(title: 'Test Module'),
   };
 
@@ -58,7 +58,9 @@ class _MyAppState extends State<MyApp> {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       home: Scaffold(
-        drawer: Drawer(child: Menu(onOutput: handleOutput)),
+        drawer: Drawer(
+          child: Menu(onOutput: handleOutput, currentModule: current.module),
+        ),
         appBar: AppBar(title: const Text('App')),
         body: builder(),
       ),

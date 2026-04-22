@@ -1,11 +1,27 @@
-class ManageUserUC {
-  final List<Map<String, dynamic>> users = [];
+import '../logic_data/user_data.dart';
+import '../storage/app_storage.dart';
+import '../entity/user.dart';
 
-  void addUser(Map<String, dynamic> user) {
-    users.add(user);
-  }
+class ManagerUserUC {
+  final _data = UserData();
 
-  List<Map<String, dynamic>> getAll() {
-    return users;
+  Future<List<User>> getUsers() async {
+    final current = AppStorage.getUser();
+
+    if (current == null) {
+      throw Exception("Chưa đăng nhập");
+    }
+
+    if (current['role'] != 'Manager') {
+      throw Exception("Không có quyền");
+    }
+
+    final groupId = current['groupId'];
+
+    final users = await _data.getAllUsers();
+
+    return users
+        .where((u) => u.groupId == groupId && u.role == 'Sale')
+        .toList();
   }
 }

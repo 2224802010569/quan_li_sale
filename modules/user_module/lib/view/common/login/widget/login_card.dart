@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:user_module/view/common/forgot_password/forgot_password_view.dart';
 import 'input_field.dart';
 
 class LoginCard extends StatelessWidget {
@@ -36,10 +37,17 @@ class LoginCard extends StatelessWidget {
             'Đăng nhập',
             style: TextStyle(fontSize: 30, color: Color(0xFF001D4E)),
           ),
+
           const SizedBox(height: 8),
-          const Text('Chào mừng trở lại', style: TextStyle(fontSize: 18)),
+
+          const Text(
+            'Chào mừng trở lại',
+            style: TextStyle(fontSize: 18),
+          ),
+
           const SizedBox(height: 32),
 
+          /// USERNAME / EMAIL
           InputField(
             label: 'TÊN ĐĂNG NHẬP',
             controller: idController,
@@ -48,6 +56,7 @@ class LoginCard extends StatelessWidget {
 
           const SizedBox(height: 24),
 
+          /// PASSWORD
           InputField(
             label: 'MẬT KHẨU',
             controller: passController,
@@ -55,13 +64,35 @@ class LoginCard extends StatelessWidget {
             obscure: true,
           ),
 
+          /// QUÊN MẬT KHẨU
+          Align(
+            alignment: Alignment.centerRight,
+            child: TextButton(
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => const ForgotPasswordView(),
+                  ),
+                );
+              },
+              child: const Text("Quên mật khẩu?"),
+            ),
+          ),
+
+          /// ERROR
+          if (error.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: Text(
+                error,
+                style: const TextStyle(color: Colors.red),
+              ),
+            ),
+
           const SizedBox(height: 16),
 
-          if (error.isNotEmpty)
-            Text(error, style: const TextStyle(color: Colors.red)),
-
-          const SizedBox(height: 24),
-
+          /// BUTTON LOGIN
           GestureDetector(
             onTap: onLogin,
             child: Container(

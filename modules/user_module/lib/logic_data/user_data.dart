@@ -82,4 +82,31 @@ class UserData {
     final users = await getAllUsers();
     return users.where((u) => (u.username == username || u.email == username) && u.password == password).toList().firstOrNull;
   }
+
+  Future<User?> getByEmail(String email) async {
+    final normalizedEmail = email.trim().toLowerCase();
+    final users = await getAllUsers();
+
+    for (final user in users) {
+      if (user.email.trim().toLowerCase() == normalizedEmail) {
+        return user;
+      }
+    }
+
+    return null;
+  }
+
+  Future<bool> updatePasswordByEmail(String email, String newPassword) async {
+    final normalizedEmail = email.trim().toLowerCase();
+
+    try {
+      await supabase
+          ?.from(table)
+          .update({'password': newPassword})
+          .eq('email', normalizedEmail);
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
 }

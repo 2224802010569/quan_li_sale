@@ -1,21 +1,13 @@
 
 FILE: d:\1-Now\1_Ung_dung_da_nen_tang\quan_li_sale\app\lib\app.dart
+import 'package:app/partial/menu/menu.dart';
 import 'package:app/root/app_output.dart';
 import 'package:flutter/material.dart';
 import 'package:core/di/injector.dart';
 import 'package:core/storage/app_storage.dart';
 import 'package:test_module/test_module.dart';
 import 'root/user_root.dart';
-import 'root/route_store_root.dart';
-// import thêm module mới ở đây
-// import 'root/test_root.dart';
-
-// void main() {
-//   final storage = AppStorage();
-//   put<AppStorage>(storage);
-
-//   runApp(const MyApp());
-// }
+// import 'root/route_store_root.dart';
 
 class AppState {
   final String module;
@@ -31,18 +23,13 @@ class MyApp extends StatefulWidget {
 
 class _MyAppState extends State<MyApp> {
   final AppStorage storage = get<AppStorage>();
-
-  /// chỉ quản lý module
   List<AppState> moduleStack = [AppState(module: 'USER')];
-
-  /// registry
   late final Map<String, Widget Function()> moduleRegistry = {
     'USER': () => UserRoot().build(handleOutput),
     // 'ROUTE_STORE': () => RouteStoreRoot().build(handleOutput),
     'TEST': () => const MyHomePage(title: 'Test Module'),
   };
 
-  /// handle output
   void handleOutput(AppOutput output) {
     if (output.data != null) {
       output.data!.forEach((k, v) => storage.set(k, v));
@@ -70,7 +57,14 @@ class _MyAppState extends State<MyApp> {
         moduleRegistry[current.module] ??
         () => const Scaffold(body: Center(child: Text('Module không tồn tại')));
 
-    return MaterialApp(debugShowCheckedModeBanner: false, home: builder());
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      home: Scaffold(
+        drawer: Drawer(child: Menu(onOutput: handleOutput, currentModule: '',)),
+        appBar: AppBar(title: const Text('App')),
+        body: builder(),
+      ),
+    );
   }
 }
 
@@ -81,12 +75,6 @@ import 'package:core/di/supabase.dart';
 import 'package:flutter/material.dart';
 import 'package:core/core.dart';
 import 'app.dart';
-
-// void main() {
-//   final storage = AppStorage();
-//   put<AppStorage>(storage);
-//   runApp(const MyApp());
-// }
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -100,6 +88,155 @@ void main() async {
   put<AppStorage>(storage);
 
   runApp(const MyApp());
+}
+
+
+FILE: d:\1-Now\1_Ung_dung_da_nen_tang\quan_li_sale\app\lib\partial\menu\menu.dart
+import 'package:app/partial/menu/menu_widget/menu_config.dart';
+import 'package:app/partial/menu/menu_widget/menu_item.dart';
+import 'package:app/root/app_output.dart';
+import 'package:flutter/material.dart';
+
+class Menu extends StatelessWidget {
+  final Function(AppOutput) onOutput;
+  final String currentModule;
+
+  const Menu({super.key, required this.onOutput, required this.currentModule});
+
+  void _navigate(BuildContext context, String module) {
+    Navigator.pop(context);
+    onOutput(AppOutput(toModule: module));
+  }
+
+  List<MenuConfig> get menus => const [
+    MenuConfig(title: 'User', icon: Icons.person, module: 'USER'),
+    MenuConfig(title: 'Test', icon: Icons.bug_report, module: 'TEST'),
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      child: Container(
+        color: const Color(0xFFF5F6FA),
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text(
+                  "Menu",
+                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.close),
+                  onPressed: () => Navigator.pop(context),
+                ),
+              ],
+            ),
+
+            const SizedBox(height: 24),
+            ...menus.map((item) {
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 16),
+                child: MenuItem(
+                  title: item.title,
+                  icon: item.icon,
+                  isActive: currentModule == item.module,
+                  onTap: () => _navigate(context, item.module),
+                ),
+              );
+            }),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+
+FILE: d:\1-Now\1_Ung_dung_da_nen_tang\quan_li_sale\app\lib\partial\menu\menu_widget\menu_config.dart
+import 'package:flutter/material.dart';
+
+class MenuConfig {
+  final String title;
+  final IconData icon;
+  final String module;
+
+  const MenuConfig({
+    required this.title,
+    required this.icon,
+    required this.module,
+  });
+}
+
+
+FILE: d:\1-Now\1_Ung_dung_da_nen_tang\quan_li_sale\app\lib\partial\menu\menu_widget\menu_item.dart
+import 'package:flutter/material.dart';
+
+class MenuItem extends StatelessWidget {
+  final String title;
+  final IconData icon;
+  final VoidCallback onTap;
+  final bool isActive;
+
+  const MenuItem({
+    super.key,
+    required this.title,
+    required this.icon,
+    required this.onTap,
+    this.isActive = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: isActive ? Colors.white : Colors.grey.shade200,
+          borderRadius: BorderRadius.circular(16),
+          border: isActive
+              ? const Border(left: BorderSide(color: Colors.blue, width: 4))
+              : null,
+          boxShadow: isActive
+              ? [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.05),
+                    blurRadius: 10,
+                    offset: const Offset(0, 4),
+                  ),
+                ]
+              : [],
+        ),
+        child: Row(
+          children: [
+            CircleAvatar(
+              backgroundColor: isActive
+                  ? Colors.blue.shade100
+                  : Colors.grey.shade300,
+              child: Icon(
+                icon,
+                color: isActive ? Colors.blue : Colors.grey.shade700,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                title,
+                style: TextStyle(
+                  fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
+                ),
+              ),
+            ),
+            const Icon(Icons.chevron_right),
+          ],
+        ),
+      ),
+    );
+  }
 }
 
 
@@ -289196,6 +289333,33 @@ class UserData {
     final users = await getAllUsers();
     return users.where((u) => (u.username == username || u.email == username) && u.password == password).toList().firstOrNull;
   }
+
+  Future<User?> getByEmail(String email) async {
+    final normalizedEmail = email.trim().toLowerCase();
+    final users = await getAllUsers();
+
+    for (final user in users) {
+      if (user.email.trim().toLowerCase() == normalizedEmail) {
+        return user;
+      }
+    }
+
+    return null;
+  }
+
+  Future<bool> updatePasswordByEmail(String email, String newPassword) async {
+    final normalizedEmail = email.trim().toLowerCase();
+
+    try {
+      await supabase
+          ?.from(table)
+          .update({'password': newPassword})
+          .eq('email', normalizedEmail);
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
 }
 
 
@@ -289237,13 +289401,171 @@ class UserDataLocal {
 
 
 FILE: d:\1-Now\1_Ung_dung_da_nen_tang\quan_li_sale\modules\user_module\lib\logic_uc\change_password_uc.dart
+import '../logic_data/user_data.dart';
+import '../logic_uc/login_uc.dart';
+
 class ChangePasswordUC {
-  bool execute(String oldPass, String newPass) {
-    if (oldPass == "123") {
-      return true;
+  final _data = UserData();
+  final _loginUC = LoginUC();
+
+  Future<void> execute({
+    required String email,
+    required String newPassword,
+  }) async {
+    if (newPassword.trim().length < 6) {
+      throw Exception("Mật khẩu phải >= 6 ký tự");
     }
-    return false;
+
+    final normalizedEmail = email.trim().toLowerCase();
+
+    final ok = await _data.updatePasswordByEmail(
+      normalizedEmail,
+      newPassword.trim(),
+    );
+
+    if (!ok) {
+      throw Exception("Không thể cập nhật mật khẩu");
+    }
+
+    final user = await _data.login(normalizedEmail, newPassword);
+
+    if (user == null) {
+      throw Exception("Tự động đăng nhập thất bại");
+    }
+
+    await _loginUC.execute(normalizedEmail, newPassword);
   }
+}
+
+
+FILE: d:\1-Now\1_Ung_dung_da_nen_tang\quan_li_sale\modules\user_module\lib\logic_uc\forgot_password_uc.dart
+import 'dart:math';
+import 'package:flutter/foundation.dart';
+import 'package:mailer/mailer.dart';
+import 'package:mailer/smtp_server/gmail.dart';
+import '../logic_data/user_data.dart';
+
+class ForgotPasswordUC {
+  static final ForgotPasswordUC _instance = ForgotPasswordUC._internal();
+  factory ForgotPasswordUC() => _instance;
+  ForgotPasswordUC._internal();
+
+  final _userData = UserData();
+  final Map<String, _OtpSession> _sessions = {};
+
+  String _generateCode() {
+    final rand = Random();
+    return (rand.nextInt(900000) + 100000).toString();
+  }
+
+  String _normalizeEmail(String email) => email.trim().toLowerCase();
+
+  Future<bool> sendCode(String email) async {
+    final normalizedEmail = _normalizeEmail(email);
+
+    if (normalizedEmail.isEmpty || !normalizedEmail.contains("@")) {
+      throw Exception("Email không hợp lệ");
+    }
+
+    final user = await _userData.getByEmail(normalizedEmail);
+    if (user == null) {
+      throw Exception("Email chưa được đăng ký");
+    }
+
+    final code = _generateCode();
+    _sessions[normalizedEmail] = _OtpSession(
+      code: code,
+      expiresAt: DateTime.now().add(const Duration(minutes: 5)),
+    );
+
+    const username = "2224802010569@student.tdmu.edu.vn";
+    const password = "jkpzkigyzjycfayq";
+    final smtpServer = gmail(username, password);
+    final message = Message()
+      ..from = Address(username, "Sale App")
+      ..recipients.add(normalizedEmail)
+      ..subject = "Mã xác thực tài khoản"
+      ..text = "Mã OTP của bạn là: $code\nCó hiệu lực trong 5 phút.";
+
+    try {
+      await send(message, smtpServer);
+      debugPrint("OTP[$normalizedEmail]: $code");
+      return true;
+    } catch (e) {
+      _sessions.remove(normalizedEmail);
+      throw Exception("Gửi email thất bại: $e");
+    }
+  }
+
+  Future<bool> verifyCode({
+    required String email,
+    required String code,
+  }) async {
+    final normalizedEmail = _normalizeEmail(email);
+    final session = _sessions[normalizedEmail];
+
+    if (session == null) {
+      throw Exception("Không tìm thấy phiên xác thực, vui lòng gửi lại mã");
+    }
+
+    if (DateTime.now().isAfter(session.expiresAt)) {
+      _sessions.remove(normalizedEmail);
+      throw Exception("Mã xác thực đã hết hạn");
+    }
+
+    final isValid = code.trim() == session.code;
+    debugPrint("VERIFY[$normalizedEmail]: ${code.trim()} / ${session.code}");
+
+    if (isValid) {
+      session.isVerified = true;
+    }
+
+    return isValid;
+  }
+
+  Future<bool> resetPassword({
+    required String email,
+    required String newPassword,
+  }) async {
+    final normalizedEmail = _normalizeEmail(email);
+    final session = _sessions[normalizedEmail];
+
+    if (session == null || !session.isVerified) {
+      throw Exception("Bạn cần xác thực mã trước khi đổi mật khẩu");
+    }
+
+    if (DateTime.now().isAfter(session.expiresAt)) {
+      _sessions.remove(normalizedEmail);
+      throw Exception("Phiên xác thực đã hết hạn");
+    }
+
+    if (newPassword.trim().length < 6) {
+      throw Exception("Mật khẩu mới phải có ít nhất 6 ký tự");
+    }
+
+    final updated = await _userData.updatePasswordByEmail(
+      normalizedEmail,
+      newPassword.trim(),
+    );
+
+    if (!updated) {
+      throw Exception("Không thể cập nhật mật khẩu");
+    }
+
+    _sessions.remove(normalizedEmail);
+    return true;
+  }
+}
+
+class _OtpSession {
+  final String code;
+  final DateTime expiresAt;
+  bool isVerified = false;
+
+  _OtpSession({
+    required this.code,
+    required this.expiresAt,
+  });
 }
 
 
@@ -289345,7 +289667,7 @@ class AppStorage {
 FILE: d:\1-Now\1_Ung_dung_da_nen_tang\quan_li_sale\modules\user_module\lib\user_module.dart
 import 'package:flutter/material.dart';
 import 'package:user_module/output/user_event.dart';
-import 'view/common/login_view.dart';
+import 'view/common/login/login_view.dart';
 import 'view/home_view.dart';
 
 class UserScreen extends StatelessWidget {
@@ -289366,44 +289688,172 @@ class UserScreen extends StatelessWidget {
 }
 
 
-FILE: d:\1-Now\1_Ung_dung_da_nen_tang\quan_li_sale\modules\user_module\lib\view\change_password_view.dart
+FILE: d:\1-Now\1_Ung_dung_da_nen_tang\quan_li_sale\modules\user_module\lib\view\common\change_password\change_password_view.dart
 import 'package:flutter/material.dart';
+import 'widget/change_password_card.dart';
 
-class ChangePasswordView extends StatefulWidget {
-  @override
-  State<ChangePasswordView> createState() => _State();
-}
+class ChangePasswordView extends StatelessWidget {
+  final String email;
 
-class _State extends State<ChangePasswordView> {
-  final oldCtrl = TextEditingController();
-  final newCtrl = TextEditingController();
-
-  String msg = "";
-
-  void handle() {
-    if (oldCtrl.text == "123") {
-      setState(() => msg = "Đổi mật khẩu thành công");
-    } else {
-      setState(() => msg = "Sai mật khẩu cũ");
-    }
-  }
+  const ChangePasswordView({super.key, required this.email});
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text("Change Password")),
-      body: Column(
+      backgroundColor: const Color(0xFFF9F9F9),
+      body: Center(
+        child: SingleChildScrollView(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 390),
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: ChangePasswordCard(email: email),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+
+FILE: d:\1-Now\1_Ung_dung_da_nen_tang\quan_li_sale\modules\user_module\lib\view\common\change_password\widget\change_password_card.dart
+import 'package:flutter/material.dart';
+import 'package:user_module/logic_uc/change_password_uc.dart';
+import '../../change_password/widget/input_field.dart';
+
+class ChangePasswordCard extends StatefulWidget {
+  final String email;
+
+  const ChangePasswordCard({super.key, required this.email});
+
+  @override
+  State<ChangePasswordCard> createState() => _ChangePasswordCardState();
+}
+
+class _ChangePasswordCardState extends State<ChangePasswordCard> {
+  final newCtrl = TextEditingController();
+  final confirmCtrl = TextEditingController();
+
+  final _uc = ChangePasswordUC();
+
+  String error = "";
+  bool loading = false;
+
+  Future<void> handle() async {
+    final newPass = newCtrl.text.trim();
+    final confirm = confirmCtrl.text.trim();
+
+    if (newPass.length < 6) {
+      setState(() => error = "Mật khẩu phải >= 6 ký tự");
+      return;
+    }
+
+    if (newPass != confirm) {
+      setState(() => error = "Mật khẩu xác nhận không khớp");
+      return;
+    }
+
+    setState(() {
+      loading = true;
+      error = "";
+    });
+
+    try {
+      await _uc.execute(email: widget.email, newPassword: newPass);
+
+      if (!mounted) return;
+
+      /// 🔥 auto login → về home
+      Navigator.popUntil(context, (route) => route.isFirst);
+    } catch (e) {
+      if (mounted) {
+        setState(() => error = e.toString());
+      }
+    } finally {
+      if (mounted) {
+        setState(() => loading = false);
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    newCtrl.dispose();
+    confirmCtrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x140D47A1),
+            blurRadius: 24,
+            offset: Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          TextField(
-            controller: oldCtrl,
-            decoration: const InputDecoration(labelText: "Old"),
+          const Text(
+            "Đổi mật khẩu",
+            style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold),
           ),
-          TextField(
+
+          const SizedBox(height: 8),
+          Text("Email: ${widget.email}"),
+
+          const SizedBox(height: 24),
+
+          InputField(
+            label: "MẬT KHẨU MỚI",
             controller: newCtrl,
-            decoration: const InputDecoration(labelText: "New"),
+            hint: "Nhập mật khẩu mới",
+            obscure: true,
           ),
-          ElevatedButton(onPressed: handle, child: const Text("Change")),
-          Text(msg),
+
+          const SizedBox(height: 16),
+
+          InputField(
+            label: "XÁC NHẬN",
+            controller: confirmCtrl,
+            hint: "Nhập lại mật khẩu",
+            obscure: true,
+          ),
+
+          if (error.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: Text(error, style: const TextStyle(color: Colors.red)),
+            ),
+
+          const SizedBox(height: 24),
+
+          GestureDetector(
+            onTap: loading ? null : handle,
+            child: Container(
+              height: 56,
+              width: double.infinity,
+              decoration: BoxDecoration(
+                color: Colors.blue,
+                borderRadius: BorderRadius.circular(999),
+              ),
+              child: Center(
+                child: loading
+                    ? const CircularProgressIndicator(color: Colors.white)
+                    : const Text(
+                        "Xác nhận",
+                        style: TextStyle(color: Colors.white),
+                      ),
+              ),
+            ),
+          ),
         ],
       ),
     );
@@ -289411,7 +289861,461 @@ class _State extends State<ChangePasswordView> {
 }
 
 
-FILE: d:\1-Now\1_Ung_dung_da_nen_tang\quan_li_sale\modules\user_module\lib\view\common\login_view.dart
+FILE: d:\1-Now\1_Ung_dung_da_nen_tang\quan_li_sale\modules\user_module\lib\view\common\change_password\widget\input_field.dart
+import 'package:flutter/material.dart';
+
+class InputField extends StatelessWidget {
+  final String label;
+  final String hint;
+  final TextEditingController controller;
+  final bool obscure;
+
+  const InputField({
+    super.key,
+    required this.label,
+    required this.controller,
+    required this.hint,
+    this.obscure = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: const TextStyle(
+            color: Color(0xFF434652),
+            fontSize: 14,
+            letterSpacing: 0.35,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Container(
+          height: 56,
+          padding: const EdgeInsets.symmetric(horizontal: 20),
+          decoration: BoxDecoration(
+            color: const Color(0xFFE8E8E8),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          alignment: Alignment.centerLeft,
+          child: TextField(
+            controller: controller,
+            obscureText: obscure,
+            decoration: InputDecoration(
+              hintText: hint,
+              border: InputBorder.none,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+
+FILE: d:\1-Now\1_Ung_dung_da_nen_tang\quan_li_sale\modules\user_module\lib\view\common\forgot_password\forgot_password_view.dart
+import 'package:flutter/material.dart';
+import '../../../logic_uc/forgot_password_uc.dart';
+import 'widget/forgot_card.dart';
+import 'verify_view.dart';
+
+class ForgotPasswordView extends StatefulWidget {
+  const ForgotPasswordView({super.key});
+
+  @override
+  State<ForgotPasswordView> createState() => _State();
+}
+
+class _State extends State<ForgotPasswordView> {
+  final emailCtrl = TextEditingController();
+  final _uc = ForgotPasswordUC();
+
+  String error = "";
+  bool loading = false;
+
+  Future<void> handleSend() async {
+    final email = emailCtrl.text.trim().toLowerCase();
+
+    setState(() {
+      loading = true;
+      error = "";
+    });
+
+    try {
+      final ok = await _uc.sendCode(email);
+
+      if (ok && mounted) {
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => VerifyView(email: email)),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => error = e.toString());
+      }
+    }
+
+    if (mounted) {
+      setState(() => loading = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xFFF9F9F9),
+      body: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 390),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: ForgotCard(
+              emailCtrl: emailCtrl,
+              onSend: handleSend,
+              error: error,
+              loading: loading,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+
+FILE: d:\1-Now\1_Ung_dung_da_nen_tang\quan_li_sale\modules\user_module\lib\view\common\forgot_password\verify_view.dart
+import 'package:flutter/material.dart';
+import 'package:user_module/view/common/change_password/change_password_view.dart';
+import 'dart:async';
+import '../../../logic_uc/forgot_password_uc.dart';
+import 'widget/verify_card.dart';
+
+class VerifyView extends StatefulWidget {
+  final String email;
+
+  const VerifyView({super.key, required this.email});
+
+  @override
+  State<VerifyView> createState() => _State();
+}
+
+class _State extends State<VerifyView> {
+  final codeCtrl = TextEditingController();
+  final _uc = ForgotPasswordUC();
+
+  String error = "";
+  int seconds = 300;
+  bool loading = false;
+  Timer? _timer;
+
+  @override
+  void initState() {
+    super.initState();
+    startCountdown();
+  }
+
+  void startCountdown() {
+    _timer?.cancel();
+    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (!mounted) {
+        timer.cancel();
+        return;
+      }
+
+      if (seconds <= 0) {
+        timer.cancel();
+        return;
+      }
+
+      setState(() => seconds--);
+    });
+  }
+
+  String formatTime() {
+    final m = (seconds ~/ 60).toString().padLeft(2, '0');
+    final s = (seconds % 60).toString().padLeft(2, '0');
+    return "$m:$s";
+  }
+
+  Future<void> handleVerify() async {
+    setState(() {
+      loading = true;
+      error = "";
+    });
+
+    try {
+      final ok = await _uc.verifyCode(email: widget.email, code: codeCtrl.text);
+
+      if (!mounted) {
+        return;
+      }
+
+      if (ok) {
+        await Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (_) => ChangePasswordView(email: widget.email),
+          ),
+        );
+      } else {
+        setState(() => error = "Mã không đúng");
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => error = e.toString());
+      }
+    } finally {
+      if (mounted) {
+        setState(() => loading = false);
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    codeCtrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xFFF9F9F9),
+      body: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 390),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: VerifyCard(
+              codeCtrl: codeCtrl,
+              onVerify: handleVerify,
+              error: error,
+              time: formatTime(),
+              loading: loading,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+
+FILE: d:\1-Now\1_Ung_dung_da_nen_tang\quan_li_sale\modules\user_module\lib\view\common\forgot_password\widget\forgot_card.dart
+import 'package:flutter/material.dart';
+import 'package:user_module/view/common/forgot_password/widget/input_field.dart';
+
+class ForgotCard extends StatelessWidget {
+  final TextEditingController emailCtrl;
+  final VoidCallback onSend;
+  final String error;
+  final bool loading;
+
+  const ForgotCard({
+    super.key,
+    required this.emailCtrl,
+    required this.onSend,
+    required this.error,
+    required this.loading,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x140D47A1),
+            blurRadius: 24,
+            offset: Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            "Khôi phục tài khoản",
+            style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold),
+          ),
+
+          const SizedBox(height: 8),
+
+          const Text("Nhập email để nhận mã xác thực"),
+
+          const SizedBox(height: 24),
+
+          InputField(
+            label: "EMAIL",
+            controller: emailCtrl,
+            hint: "name@gmail.com",
+          ),
+
+          if (error.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: Text(error, style: const TextStyle(color: Colors.red)),
+            ),
+
+          const SizedBox(height: 24),
+
+          GestureDetector(
+            onTap: loading ? null : onSend,
+            child: Container(
+              height: 56,
+              width: double.infinity,
+              decoration: BoxDecoration(
+                color: Colors.blue,
+                borderRadius: BorderRadius.circular(999),
+              ),
+              child: Center(
+                child: loading
+                    ? const CircularProgressIndicator(color: Colors.white)
+                    : const Text(
+                        "Gửi mã xác thực",
+                        style: TextStyle(color: Colors.white),
+                      ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+
+FILE: d:\1-Now\1_Ung_dung_da_nen_tang\quan_li_sale\modules\user_module\lib\view\common\forgot_password\widget\input_field.dart
+import 'package:flutter/material.dart';
+
+class InputField extends StatelessWidget {
+  final String label;
+  final String hint;
+  final TextEditingController controller;
+  final bool obscure;
+
+  const InputField({
+    super.key,
+    required this.label,
+    required this.controller,
+    required this.hint,
+    this.obscure = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: const TextStyle(
+            color: Color(0xFF434652),
+            fontSize: 14,
+            letterSpacing: 0.35,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Container(
+          height: 56,
+          padding: const EdgeInsets.symmetric(horizontal: 20),
+          decoration: BoxDecoration(
+            color: const Color(0xFFE8E8E8),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          alignment: Alignment.centerLeft,
+          child: TextField(
+            controller: controller,
+            obscureText: obscure,
+            decoration: InputDecoration(
+              hintText: hint,
+              border: InputBorder.none,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+
+FILE: d:\1-Now\1_Ung_dung_da_nen_tang\quan_li_sale\modules\user_module\lib\view\common\forgot_password\widget\verify_card.dart
+import 'package:flutter/material.dart';
+
+class VerifyCard extends StatelessWidget {
+  final TextEditingController codeCtrl;
+  final Future<void> Function() onVerify;
+  final String error;
+  final String time;
+  final bool loading;
+
+  const VerifyCard({
+    super.key,
+    required this.codeCtrl,
+    required this.onVerify,
+    required this.error,
+    required this.time,
+    required this.loading,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x140D47A1),
+            blurRadius: 24,
+            offset: Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          TextField(
+            controller: codeCtrl,
+            keyboardType: TextInputType.number,
+            onSubmitted: (_) => loading ? null : onVerify(),
+            decoration: const InputDecoration(hintText: "Nhập mã 6 số"),
+          ),
+
+          const SizedBox(height: 16),
+
+          if (error.isNotEmpty)
+            Text(error, style: const TextStyle(color: Colors.red)),
+
+          const SizedBox(height: 16),
+
+          ElevatedButton(
+            onPressed: loading ? null : onVerify,
+            child: loading
+                ? const SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Text("Xác thực"),
+          ),
+
+          const SizedBox(height: 12),
+
+          Text("Hết hạn sau: $time"),
+        ],
+      ),
+    );
+  }
+}
+
+
+FILE: d:\1-Now\1_Ung_dung_da_nen_tang\quan_li_sale\modules\user_module\lib\view\common\login\login_view.dart
 import 'package:flutter/material.dart';
 import 'package:user_module/logic_uc/login_uc.dart';
 import 'package:user_module/output/user_event.dart';
@@ -289488,7 +290392,7 @@ class _LoginViewState extends State<LoginView> {
 }
 
 
-FILE: d:\1-Now\1_Ung_dung_da_nen_tang\quan_li_sale\modules\user_module\lib\view\common\widget\input_field.dart
+FILE: d:\1-Now\1_Ung_dung_da_nen_tang\quan_li_sale\modules\user_module\lib\view\common\login\widget\input_field.dart
 import 'package:flutter/material.dart';
 
 class InputField extends StatelessWidget {
@@ -289542,8 +290446,9 @@ class InputField extends StatelessWidget {
 }
 
 
-FILE: d:\1-Now\1_Ung_dung_da_nen_tang\quan_li_sale\modules\user_module\lib\view\common\widget\login_card.dart
+FILE: d:\1-Now\1_Ung_dung_da_nen_tang\quan_li_sale\modules\user_module\lib\view\common\login\widget\login_card.dart
 import 'package:flutter/material.dart';
+import 'package:user_module/view/common/forgot_password/forgot_password_view.dart';
 import 'input_field.dart';
 
 class LoginCard extends StatelessWidget {
@@ -289581,10 +290486,17 @@ class LoginCard extends StatelessWidget {
             'Đăng nhập',
             style: TextStyle(fontSize: 30, color: Color(0xFF001D4E)),
           ),
+
           const SizedBox(height: 8),
-          const Text('Chào mừng trở lại', style: TextStyle(fontSize: 18)),
+
+          const Text(
+            'Chào mừng trở lại',
+            style: TextStyle(fontSize: 18),
+          ),
+
           const SizedBox(height: 32),
 
+          /// USERNAME / EMAIL
           InputField(
             label: 'TÊN ĐĂNG NHẬP',
             controller: idController,
@@ -289593,6 +290505,7 @@ class LoginCard extends StatelessWidget {
 
           const SizedBox(height: 24),
 
+          /// PASSWORD
           InputField(
             label: 'MẬT KHẨU',
             controller: passController,
@@ -289600,13 +290513,35 @@ class LoginCard extends StatelessWidget {
             obscure: true,
           ),
 
+          /// QUÊN MẬT KHẨU
+          Align(
+            alignment: Alignment.centerRight,
+            child: TextButton(
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => const ForgotPasswordView(),
+                  ),
+                );
+              },
+              child: const Text("Quên mật khẩu?"),
+            ),
+          ),
+
+          /// ERROR
+          if (error.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: Text(
+                error,
+                style: const TextStyle(color: Colors.red),
+              ),
+            ),
+
           const SizedBox(height: 16),
 
-          if (error.isNotEmpty)
-            Text(error, style: const TextStyle(color: Colors.red)),
-
-          const SizedBox(height: 24),
-
+          /// BUTTON LOGIN
           GestureDetector(
             onTap: onLogin,
             child: Container(
@@ -289633,7 +290568,7 @@ class LoginCard extends StatelessWidget {
 }
 
 
-FILE: d:\1-Now\1_Ung_dung_da_nen_tang\quan_li_sale\modules\user_module\lib\view\common\widget\login_header.dart
+FILE: d:\1-Now\1_Ung_dung_da_nen_tang\quan_li_sale\modules\user_module\lib\view\common\login\widget\login_header.dart
 import 'package:flutter/material.dart';
 
 class LoginHeader extends StatelessWidget {

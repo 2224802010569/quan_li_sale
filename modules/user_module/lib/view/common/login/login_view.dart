@@ -30,9 +30,14 @@ class _LoginViewState extends State<LoginView> {
       if (user != null) {
         widget.onEvent(
           UserEvent.loginSuccess({
-            'user_id': user.id,
-            'role': user.role,
-            'groupId': user.groupId,
+            'user': {
+              'id': user.id,
+              'role': user.role,
+              'groupId': user.groupId,
+              'email': user.email,
+              'phone': user.phone,
+              'fullName': user.fullName,
+            },
           }),
         );
       } else {

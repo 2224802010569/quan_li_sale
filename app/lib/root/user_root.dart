@@ -1,7 +1,9 @@
 import 'package:app/root/app_output.dart';
 import 'package:flutter/material.dart';
+import 'package:user_module/input/profile_input.dart';
 import 'package:user_module/user_module.dart';
 import 'package:user_module/output/user_event.dart';
+import 'package:user_module/view/common/profile/profile_view.dart';
 
 class UserRoot {
   Widget build(Function(AppOutput) onNavigate) {
@@ -10,6 +12,10 @@ class UserRoot {
     ); 
   }
 
+  Widget buildProfile(Function(AppOutput) onNavigate) {
+    return ProfileView(input: ProfileInput());
+  }
+  
   void _handleEvent(UserEvent event, Function(AppOutput) onNavigate) {
     switch (event.type) {
       case UserEventType.loginSuccess:
