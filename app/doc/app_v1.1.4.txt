@@ -1,0 +1,361 @@
+
+FILE: d:\1-Now\1_Ung_dung_da_nen_tang\quan_li_sale\app\lib\app.dart
+import 'package:app/partial/menu/menu.dart';
+import 'package:app/root/app_output.dart';
+import 'package:flutter/material.dart';
+import 'package:core/di/injector.dart';
+import 'package:core/storage/app_storage.dart';
+import 'package:test_module/test_module.dart';
+import 'root/user_root.dart';
+// import 'root/route_store_root.dart';
+
+class AppState {
+  final String module;
+  AppState({required this.module});
+}
+
+class MyApp extends StatefulWidget {
+  const MyApp({super.key});
+
+  @override
+  State<MyApp> createState() => _MyAppState();
+}
+
+class _MyAppState extends State<MyApp> {
+  final AppStorage storage = get<AppStorage>();
+  List<AppState> moduleStack = [AppState(module: 'USER')];
+  late final Map<String, Widget Function()> moduleRegistry = {
+    'USER': () => UserRoot().build(handleOutput),
+    'USER_PROFILE': () => UserRoot().buildProfile(handleOutput),
+    'USER_MANAGER_VIEW': () => UserRoot().buildManager(handleOutput),
+    'TEST': () => const MyHomePage(title: 'Test Module'),
+  };
+
+  void handleOutput(AppOutput output) {
+    if (output.data != null) {
+      output.data!.forEach((k, v) => storage.set(k, v));
+    }
+    final current = moduleStack.last;
+    if (current.module == output.toModule) return;
+    setState(() {
+      moduleStack.add(AppState(module: output.toModule));
+    });
+  }
+
+  void handleBack() {
+    if (moduleStack.length > 1) {
+      setState(() {
+        moduleStack.removeLast();
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final current = moduleStack.last;
+
+    final builder =
+        moduleRegistry[current.module] ??
+        () => const Scaffold(body: Center(child: Text('Module không tồn tại')));
+
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      home: Scaffold(
+        drawer: Drawer(
+          child: Menu(onOutput: handleOutput, currentModule: current.module),
+        ),
+        appBar: AppBar(title: const Text('App')),
+        body: builder(),
+      ),
+    );
+  }
+}
+
+
+FILE: d:\1-Now\1_Ung_dung_da_nen_tang\quan_li_sale\app\lib\main.dart
+import 'package:core/di/injector.dart';
+import 'package:core/di/supabase.dart';
+import 'package:flutter/material.dart';
+import 'package:core/core.dart';
+import 'app.dart';
+
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  final supabase = SupabaseConnect();
+  await supabase.init();
+
+  put<SupabaseConnect>(supabase);
+
+  final storage = AppStorage();
+  put<AppStorage>(storage);
+
+  runApp(const MyApp());
+}
+
+
+FILE: d:\1-Now\1_Ung_dung_da_nen_tang\quan_li_sale\app\lib\partial\menu\menu.dart
+import 'package:app/partial/menu/menu_widget/menu_config.dart';
+import 'package:app/partial/menu/menu_widget/menu_item.dart';
+import 'package:app/root/app_output.dart';
+import 'package:core/di/injector.dart';
+import 'package:core/storage/app_storage.dart';
+import 'package:flutter/material.dart';
+
+class Menu extends StatelessWidget {
+  final Function(AppOutput) onOutput;
+  final String currentModule;
+
+  const Menu({super.key, required this.onOutput, required this.currentModule});
+  static const List<MenuConfig> _allMenus = [
+    MenuConfig(
+      title: 'Login',
+      icon: Icons.person,
+      module: 'USER',
+      roles: ['Sale', 'Manager'],
+    ),
+
+    MenuConfig(
+      title: 'Profile',
+      icon: Icons.person,
+      module: 'USER_PROFILE',
+      roles: ['Sale', 'Manager'],
+    ),
+
+    MenuConfig(
+      title: 'Quản lý nhân sự',
+      icon: Icons.group,
+      module: 'USER_MANAGER_VIEW',
+      roles: ['Manager'],),
+
+    MenuConfig(title: 'Test', icon: Icons.bug_report, module: 'TEST'),
+  ];
+  
+  void _navigate(BuildContext context, String module) {
+    Navigator.pop(context);
+    onOutput(AppOutput(toModule: module));
+  }
+
+  List<MenuConfig> get menus {
+    final storage = get<AppStorage>();
+    final user = storage.get<Map<String, dynamic>>('user');
+    if (user == null) {
+      return _allMenus.where((m) => m.roles.isEmpty).toList();
+    }
+
+    final role = user['role'];
+    return _allMenus.where((m) {
+      if (m.roles.isEmpty) return true;
+      return m.roles.contains(role);
+    }).toList();
+  }
+
+  
+
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      child: Container(
+        color: const Color(0xFFF5F6FA),
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text(
+                  "Menu",
+                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.close),
+                  onPressed: () => Navigator.pop(context),
+                ),
+              ],
+            ),
+
+            const SizedBox(height: 24),
+            ...menus.map((item) {
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 16),
+                child: MenuItem(
+                  title: item.title,
+                  icon: item.icon,
+                  isActive: currentModule == item.module,
+                  onTap: () => _navigate(context, item.module),
+                ),
+              );
+            }),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+
+FILE: d:\1-Now\1_Ung_dung_da_nen_tang\quan_li_sale\app\lib\partial\menu\menu_widget\menu_config.dart
+import 'package:flutter/material.dart';
+
+class MenuConfig {
+  final String title;
+  final IconData icon;
+  final String module;
+  final List<String> roles;
+
+  const MenuConfig({
+    required this.title,
+    required this.icon,
+    required this.module,
+    this.roles = const [],
+  });
+}
+
+
+FILE: d:\1-Now\1_Ung_dung_da_nen_tang\quan_li_sale\app\lib\partial\menu\menu_widget\menu_item.dart
+import 'package:flutter/material.dart';
+
+class MenuItem extends StatelessWidget {
+  final String title;
+  final IconData icon;
+  final VoidCallback onTap;
+  final bool isActive;
+
+  const MenuItem({
+    super.key,
+    required this.title,
+    required this.icon,
+    required this.onTap,
+    this.isActive = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: isActive ? Colors.white : Colors.grey.shade200,
+          borderRadius: BorderRadius.circular(16),
+          border: isActive
+              ? const Border(left: BorderSide(color: Colors.blue, width: 4))
+              : null,
+          boxShadow: isActive
+              ? [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.05),
+                    blurRadius: 10,
+                    offset: const Offset(0, 4),
+                  ),
+                ]
+              : [],
+        ),
+        child: Row(
+          children: [
+            CircleAvatar(
+              backgroundColor: isActive
+                  ? Colors.blue.shade100
+                  : Colors.grey.shade300,
+              child: Icon(
+                icon,
+                color: isActive ? Colors.blue : Colors.grey.shade700,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                title,
+                style: TextStyle(
+                  fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
+                ),
+              ),
+            ),
+            const Icon(Icons.chevron_right),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+
+FILE: d:\1-Now\1_Ung_dung_da_nen_tang\quan_li_sale\app\lib\root\app_output.dart
+class AppOutput {
+  final String toModule;
+  final Map<String, dynamic>? data;
+
+  AppOutput({required this.toModule, this.data});
+}
+
+
+FILE: d:\1-Now\1_Ung_dung_da_nen_tang\quan_li_sale\app\lib\root\route_store_root.dart
+import 'package:flutter/material.dart';
+import 'package:route_store_module/input/route_store_input.dart';
+
+import 'package:route_store_module/view/screens/sale/route_home_sale_view.dart';
+import 'package:route_store_module/view/screens/manager/route_home_manager_view.dart';
+
+// class RouteStoreRoot {
+//   static Widget openHome(String role, VoidCallback onBack) {
+//     final input = RouteStoreInput(role: role);
+
+//     if (input.isSale()) {
+//       return RouteHomeSaleView(onBack: onBack);
+//     }
+
+//     if (input.isManager()) {
+//       return RouteHomeManagerView(onBack: onBack);
+//     }
+
+//     return const Scaffold(body: Center(child: Text('Không có quyền')));
+//   }
+// }
+
+
+FILE: d:\1-Now\1_Ung_dung_da_nen_tang\quan_li_sale\app\lib\root\user_root.dart
+import 'package:app/root/app_output.dart';
+import 'package:flutter/material.dart';
+import 'package:user_module/input/manager_input.dart';
+import 'package:user_module/input/profile_input.dart';
+import 'package:user_module/user_module.dart';
+import 'package:user_module/output/user_event.dart';
+import 'package:user_module/view/common/profile/profile_view.dart';
+import 'package:user_module/view/manager/manage_user_view.dart';
+
+class UserRoot {
+  Widget build(Function(AppOutput) onNavigate) {
+    return UserScreen(
+      onEvent: (UserEvent event) => _handleEvent(event, onNavigate)
+    ); 
+  }
+
+  Widget buildProfile(Function(AppOutput) onNavigate) {
+    return ProfileView(input: ProfileInput());
+  }
+  
+  Widget buildManager(Function(AppOutput) onOutput) {
+    return ManagerView(input: ManagerInput());
+  }
+  
+  void _handleEvent(UserEvent event, Function(AppOutput) onNavigate) {
+    switch (event.type) {
+      case UserEventType.loginSuccess:
+        _goToTestModule(event, onNavigate);
+        break;
+    }
+  }
+
+  /// =========================
+  /// NAVIGATION FUNCTIONS
+  /// =========================
+  void _goToTestModule(UserEvent event, Function(AppOutput) onNavigate) {
+    onNavigate(AppOutput(toModule: 'TEST', data: event.data));
+  }
+
+  // void _goToRouteStore(UserEvent event, Function(AppOutput) onNavigate) {
+  //   onNavigate(AppOutput(toModule: 'ROUTE_STORE', data: event.data));
+  // }
+}
+

@@ -1,9 +1,9 @@
+import 'package:user_module/logic_data/session_manager.dart';
 import '../logic_data/user_data.dart';
-import '../logic_uc/login_uc.dart';
 
 class ChangePasswordUC {
   final _data = UserData();
-  final _loginUC = LoginUC();
+  final _session = SessionManager();
 
   Future<void> execute({
     required String email,
@@ -13,10 +13,8 @@ class ChangePasswordUC {
       throw Exception("Mật khẩu phải >= 6 ký tự");
     }
 
-    final normalizedEmail = email.trim().toLowerCase();
-
     final ok = await _data.updatePasswordByEmail(
-      normalizedEmail,
+      email.trim().toLowerCase(),
       newPassword.trim(),
     );
 
@@ -24,12 +22,12 @@ class ChangePasswordUC {
       throw Exception("Không thể cập nhật mật khẩu");
     }
 
-    final user = await _data.login(normalizedEmail, newPassword);
+    final user = await _data.login(email, newPassword);
 
     if (user == null) {
       throw Exception("Tự động đăng nhập thất bại");
     }
 
-    await _loginUC.execute(normalizedEmail, newPassword);
+    await _session.saveUser(user);
   }
 }

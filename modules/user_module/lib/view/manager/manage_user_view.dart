@@ -8,8 +8,13 @@ import '../../input/profile_input.dart';
 
 class ManagerView extends StatefulWidget {
   final ManagerInput input;
+  final void Function(String userId)? onOpenProfile;
 
-  const ManagerView({super.key, required this.input});
+  const ManagerView({
+    super.key,
+    required this.input,
+    this.onOpenProfile,
+  });
 
   @override
   State<ManagerView> createState() => _ManagerViewState();
@@ -101,6 +106,11 @@ class _ManagerViewState extends State<ManagerView> {
   }
 
   void openProfile(User user) {
+    if (widget.onOpenProfile != null) {
+      widget.onOpenProfile!(user.id);
+      return;
+    }
+
     Navigator.push(
       context,
       MaterialPageRoute(
@@ -110,6 +120,5 @@ class _ManagerViewState extends State<ManagerView> {
   }
 
   void openAddUser() {
-    /// TODO: AddUserView
   }
 }

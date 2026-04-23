@@ -12,16 +12,23 @@ class Menu extends StatelessWidget {
   const Menu({super.key, required this.onOutput, required this.currentModule});
   static const List<MenuConfig> _allMenus = [
     MenuConfig(
+      title: 'Login',
+      icon: Icons.person,
+      module: 'USER',
+      roles: ['Sale', 'Manager'],
+    ),
+
+    MenuConfig(
       title: 'Profile',
       icon: Icons.person,
-      module: 'PROFILE',
+      module: 'USER_PROFILE',
       roles: ['Sale', 'Manager'],
     ),
 
     MenuConfig(
       title: 'Quản lý nhân sự',
       icon: Icons.group,
-      module: 'MANAGER',
+      module: 'USER_MANAGER_VIEW',
       roles: ['Manager'],),
 
     MenuConfig(title: 'Test', icon: Icons.bug_report, module: 'TEST'),
@@ -32,12 +39,6 @@ class Menu extends StatelessWidget {
     onOutput(AppOutput(toModule: module));
   }
 
-  // List<MenuConfig> get menus => const [
-  //   MenuConfig(title: 'User', icon: Icons.person, module: 'USER'),
-  //   MenuConfig(title: 'Profile', icon: Icons.person, module: 'USER_PROFILE',),
-  //   MenuConfig(title: 'Test', icon: Icons.bug_report, module: 'TEST'),
-  // ];
-
   List<MenuConfig> get menus {
     final storage = get<AppStorage>();
     final user = storage.get<Map<String, dynamic>>('user');
@@ -45,14 +46,14 @@ class Menu extends StatelessWidget {
       return _allMenus.where((m) => m.roles.isEmpty).toList();
     }
 
-    final role = user['role'];
+    final role = (user['role'] ?? '').toString().trim().toLowerCase();
     return _allMenus.where((m) {
       if (m.roles.isEmpty) return true;
-      return m.roles.contains(role);
+      return m.roles.any(
+        (allowedRole) => allowedRole.trim().toLowerCase() == role,
+      );
     }).toList();
   }
-
-  
 
   @override
   Widget build(BuildContext context) {

@@ -1,7 +1,9 @@
-import '../storage/app_storage.dart';
+import 'package:core/di/injector.dart';
+import 'package:core/storage/app_storage.dart';
 
 class LogoutUC {
   void execute() {
-    AppStorage.clear();
+    final storage = get<AppStorage>();
+    storage.clear();
   }
 }

@@ -13,6 +13,7 @@ void main() async {
   put<SupabaseConnect>(supabase);
 
   final storage = AppStorage();
+  await storage.init();
   put<AppStorage>(storage);
 
   runApp(const MyApp());

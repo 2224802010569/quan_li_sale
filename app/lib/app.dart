@@ -21,16 +21,35 @@ class MyApp extends StatefulWidget {
 
 class _MyAppState extends State<MyApp> {
   final AppStorage storage = get<AppStorage>();
-  List<AppState> moduleStack = [AppState(module: 'USER')];
+  late final List<AppState> moduleStack = [
+    AppState(module: _getInitialModule()),
+  ];
   late final Map<String, Widget Function()> moduleRegistry = {
     'USER': () => UserRoot().build(handleOutput),
     'USER_PROFILE': () => UserRoot().buildProfile(handleOutput),
+    'USER_MANAGER_VIEW': () => UserRoot().buildManager(handleOutput),
     'TEST': () => const MyHomePage(title: 'Test Module'),
   };
 
+  String _getInitialModule() {
+    final user = storage.get<Map<String, dynamic>>('user');
+    return user == null ? 'USER' : 'TEST';
+  }
+
   void handleOutput(AppOutput output) {
-    if (output.data != null) {
-      output.data!.forEach((k, v) => storage.set(k, v));
+    final payload = output.data;
+    if (payload != null) {
+      payload.forEach((k, v) => storage.set(k, v));
+      if (payload.containsKey('id') && payload.containsKey('role')) {
+        storage.set('user', payload);
+      }
+    }
+    if (output.toModule == 'USER_PROFILE' &&
+        (payload == null || !payload.containsKey('profile_user_id'))) {
+      storage.remove('profile_user_id');
+    }
+    if (output.toModule != 'USER_PROFILE') {
+      storage.remove('profile_user_id');
     }
     final current = moduleStack.last;
     if (current.module == output.toModule) return;

@@ -1,12 +1,14 @@
 import '../logic_data/user_data.dart';
-import '../storage/app_storage.dart';
+import 'package:core/di/injector.dart';
+import 'package:core/storage/app_storage.dart';
 import '../entity/user.dart';
 
 class ManagerUserUC {
   final _data = UserData();
 
   Future<List<User>> getUsers() async {
-    final current = AppStorage.getUser();
+    final storage = get<AppStorage>();
+    final current = storage.get<Map<String, dynamic>>('user');
 
     if (current == null) {
       throw Exception("Chưa đăng nhập");

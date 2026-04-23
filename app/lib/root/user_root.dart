@@ -1,9 +1,13 @@
 import 'package:app/root/app_output.dart';
+import 'package:core/di/injector.dart';
+import 'package:core/storage/app_storage.dart';
 import 'package:flutter/material.dart';
+import 'package:user_module/input/manager_input.dart';
 import 'package:user_module/input/profile_input.dart';
 import 'package:user_module/user_module.dart';
 import 'package:user_module/output/user_event.dart';
 import 'package:user_module/view/common/profile/profile_view.dart';
+import 'package:user_module/view/manager/manage_user_view.dart';
 
 class UserRoot {
   Widget build(Function(AppOutput) onNavigate) {
@@ -13,7 +17,23 @@ class UserRoot {
   }
 
   Widget buildProfile(Function(AppOutput) onNavigate) {
-    return ProfileView(input: ProfileInput());
+    final storage = get<AppStorage>();
+    final selectedUserId = storage.get<String>('profile_user_id');
+    return ProfileView(input: ProfileInput(userId: selectedUserId));
+  }
+  
+  Widget buildManager(Function(AppOutput) onOutput) {
+    return ManagerView(
+      input: ManagerInput(),
+      onOpenProfile: (userId) {
+        onOutput(
+          AppOutput(
+            toModule: 'USER_PROFILE',
+            data: {'profile_user_id': userId},
+          ),
+        );
+      },
+    );
   }
   
   void _handleEvent(UserEvent event, Function(AppOutput) onNavigate) {

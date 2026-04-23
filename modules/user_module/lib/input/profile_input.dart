@@ -1,4 +1,6 @@
-import '../storage/app_storage.dart';
+import 'package:core/di/injector.dart';
+import 'package:core/storage/app_storage.dart';
+import 'package:user_module/logic_data/session_manager.dart';
 
 class ProfileInput {
   final String? userId;
@@ -6,7 +8,8 @@ class ProfileInput {
   ProfileInput({this.userId});
 
   bool canOpen() {
-    final current = AppStorage.getUser();
+    final _session = SessionManager();
+    final current = _session.getUser();
 
     if (current == null) return false;
 
