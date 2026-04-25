@@ -45,8 +45,14 @@ dependencies:
   test_module:
     path: ../modules/test_module
 
-  # attendance_module:
-  #   path: ../modules/attendance_module
+  attendance_module:
+    path: ../modules/attendance_module
+
+  oder_module:
+    path: ../modules/oder_module
+
+  inventory_module:
+    path: ../modules/inventory_module
 
   # The following adds the Cupertino Icons font to your application.
   # Use with the CupertinoIcons class for iOS style icons.

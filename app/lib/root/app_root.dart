@@ -3,8 +3,13 @@ import 'package:user_module/output/login_output.dart';
 import 'package:core/di/injector.dart';
 import 'package:core/storage/app_storage.dart';
 
+import 'package:inventory_module/inventory_module_export.dart';
+
 import 'user_root.dart';
 import 'route_store_root.dart';
+import 'attendance_root.dart';
+import 'order_root.dart';
+import 'inventory_root.dart';
 
 class AppRoot extends StatelessWidget {
   final String currentModule;
@@ -33,6 +38,23 @@ class AppRoot extends StatelessWidget {
         final role = storage.get<String>('role') ?? '';
         return RouteStoreRoot.openHome(role, onBack);
       },
+
+      /// ATTENDANCE MODULE
+      'ATTENDANCE': () => AttendanceRoot.open(onBack),
+
+      /// ORDER MODULE
+      'ORDER': () => OrderRoot.openOrder(onBack),
+
+      /// INVENTORY MODULE
+      'INVENTORY': () => InventoryRoot.openInventory(onBack, (output) {
+            if (output is InventoryOutput) {
+              onUserOutput(LoginOutput(
+                from: output.from,
+                to: output.to,
+                view: output.view,
+              ));
+            }
+          }),
     };
 
     final builder = moduleRouter[currentModule];

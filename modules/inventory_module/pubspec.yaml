@@ -1,0 +1,27 @@
+name: inventory_module
+description: "A new Flutter project."
+publish_to: 'none'
+version: 0.1.0+1
+
+environment:
+  sdk: ^3.11.4
+
+dependencies:
+  flutter:
+    sdk: flutter
+  supabase_flutter: ^2.4.0
+  mobile_scanner: ^3.5.6
+  camera: ^0.12.0+1
+  cached_network_image: ^3.3.1
+  provider: ^6.1.1
+  image_picker: ^1.2.1
+  core:
+    path: ../../core
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true
