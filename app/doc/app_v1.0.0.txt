@@ -14,7 +14,7 @@ class MyApp extends StatefulWidget {
 }
 
 class _MyAppState extends State<MyApp> {
-  String currentView = AppView.userLogin;
+  List<AppState> moduleStack = [AppState(module: 'USER', view: 'LOGIN')];
 
   final AppStorage storage = get<AppStorage>();
 
@@ -27,38 +27,65 @@ class _MyAppState extends State<MyApp> {
       });
     }
 
-    final targetView = '${output.to}_${output.view}';
-
     setState(() {
-      currentView = targetView;
+      moduleStack.add(AppState(module: output.to, view: output.view));
     });
+  }
+
+  void handleBack() {
+    if (moduleStack.length > 1) {
+      setState(() {
+        moduleStack.removeLast();
+      });
+    }
   }
 
   @override
   Widget build(BuildContext context) {
+    final current = moduleStack.last;
     return MaterialApp(
-      home: AppRoot(currentView: currentView, onUserOutput: handleUserOutput),
+      home: AppRoot(
+        currentModule: current.module,
+        currentView: current.view,
+        onUserOutput: handleUserOutput,
+        onBack: handleBack,
+      ),
     );
   }
 }
 
-/// định nghĩa view dùng chung toàn app
-class AppView {
-  static const userLogin = 'USER_LOGIN';
-  static const userStaff = 'USER_STAFF';
-  static const orderHome = 'ORDER_HOME';
-  static const routeStoreHome = 'ROUTE_STORE_HOME';
+class AppState {
+  final String module;
+  final String view;
+
+  AppState({required this.module, required this.view});
 }
 
 
 FILE: d:\1-Now\1_Ung_dung_da_nen_tang\quan_li_sale\app\lib\main.dart
+import 'package:core/di/injector.dart';
+import 'package:core/di/supabase.dart';
 import 'package:flutter/material.dart';
 import 'package:core/core.dart';
 import 'app.dart';
 
-void main() {
+// void main() {
+//   final storage = AppStorage();
+//   put<AppStorage>(storage);
+//   runApp(const MyApp());
+// }
+
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  final supabase = SupabaseConnect();
+  await supabase.init();
+
+  put<SupabaseConnect>(supabase);
+
   final storage = AppStorage();
   put<AppStorage>(storage);
+
   runApp(const MyApp());
 }
 
@@ -68,57 +95,70 @@ import 'package:flutter/material.dart';
 import 'package:user_module/output/login_output.dart';
 import 'package:core/di/injector.dart';
 import 'package:core/storage/app_storage.dart';
-import '../app.dart';
+
 import 'user_root.dart';
 import 'route_store_root.dart';
 
 class AppRoot extends StatelessWidget {
+  final String currentModule;
   final String currentView;
   final Function(LoginOutput) onUserOutput;
+  final VoidCallback onBack;
 
   const AppRoot({
     super.key,
+    required this.currentModule,
     required this.currentView,
     required this.onUserOutput,
+    required this.onBack,
   });
 
   @override
   Widget build(BuildContext context) {
-    /// USER
-    if (currentView == AppView.userLogin) {
-      return UserRoot.openLogin(onUserOutput);
+    final storage = get<AppStorage>();
+
+    final Map<String, Widget Function()> moduleRouter = {
+      /// USER MODULE
+      'USER': () => UserRoot.openLogin(onUserOutput),
+
+      /// ROUTE STORE MODULE
+      'ROUTE_STORE': () {
+        final role = storage.get<String>('role') ?? '';
+        return RouteStoreRoot.openHome(role, onBack);
+      },
+    };
+
+    final builder = moduleRouter[currentModule];
+
+    if (builder != null) {
+      return builder();
     }
 
-    // if (currentView == AppView.userStaff) {
-    //   return UserRoot.openStaffManagement(onUserOutput);
-    // }
-
-    if (currentView == AppView.routeStoreHome) {
-      final storage = get<AppStorage>();
-      final role = storage.get<String>('role') ?? '';
-      return RouteStoreRoot.openHome(role);
-    }
-    return const Scaffold(body: Center(child: Text('View không tồn tại')));
+    return const Scaffold(body: Center(child: Text('Module không tồn tại')));
   }
 }
 
 
 FILE: d:\1-Now\1_Ung_dung_da_nen_tang\quan_li_sale\app\lib\root\route_store_root.dart
 import 'package:flutter/material.dart';
-import 'package:route_store_module/view/route_store_view.dart';
 import 'package:route_store_module/input/route_store_input.dart';
 
+import 'package:route_store_module/view/screens/sale/route_home_sale_view.dart';
+import 'package:route_store_module/view/screens/manager/route_home_manager_view.dart';
+
 class RouteStoreRoot {
-  static Widget openHome(String role) {
+  static Widget openHome(String role, VoidCallback onBack) {
     final input = RouteStoreInput(role: role);
 
-    if (!input.canOpenHome()) {
-      return const Scaffold(
-        body: Center(child: Text('Không có quyền truy cập')),
-      );
+    if (input.isSale()) {
+      return RouteHomeSaleView(onBack: onBack);
     }
 
-    return RouteStoreView();
+    if (input.isManager()) {
+      return RouteHomeManagerView(onBack: onBack);
+    }
+
+    return const Scaffold(body: Center(child: Text('Không có quyền')));
   }
 }
 

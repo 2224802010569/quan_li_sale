@@ -1,14 +1,22 @@
+import 'package:user_module/logic_data/session_manager.dart';
 import '../logic_data/user_data.dart';
-import '../entity/route.dart';
+import '../entity/user.dart';
 
 class LoginUC {
   final _data = UserData();
+  final _session = SessionManager();
 
-  User? execute(String phone, String password) {
-    if (phone.isEmpty || password.isEmpty) {
+  Future<User?> execute(String id, String pass) async {
+    if (id.trim().isEmpty || pass.isEmpty) {
       throw Exception("Thiếu thông tin");
     }
 
-    return _data.login(phone, password);
+    final user = await _data.login(id, pass);
+
+    if (user != null) {
+      await _session.saveUser(user);
+    }
+
+    return user;
   }
 }

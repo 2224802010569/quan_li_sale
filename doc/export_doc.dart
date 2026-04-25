@@ -2,7 +2,7 @@ import 'dart:io';
 
 void main() async {
   const name = "quan_li_sale";
-  const version = "0.1.0";
+  const version = "0.1.3";
   final rootDir = Directory(Platform.script.resolve('../').toFilePath());
 
   if (!await rootDir.exists()) {

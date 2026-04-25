@@ -31,7 +31,8 @@ dependencies:
   flutter:
     sdk: flutter
     
-  supabase_flutter: ^2.0.0
+  supabase_flutter: ^2.0.0    
+  mailer: ^7.1.0
 
   core:
     path: ../core
