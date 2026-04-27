@@ -4,8 +4,15 @@ import 'package:user_module/view/common/login/widget/login_header.dart';
 
 class ProfileCard extends StatelessWidget {
   final User user;
+  final VoidCallback? onChangeRole;
+  final bool changingRole;
 
-  const ProfileCard({required this.user});
+  const ProfileCard({
+    super.key,
+    required this.user,
+    this.onChangeRole,
+    this.changingRole = false,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -38,6 +45,22 @@ class ProfileCard extends StatelessWidget {
           _info("Phone", user.phone),
           _info("Role", user.role),
           _info("Group", user.groupId),
+          if (onChangeRole != null) ...[
+            const SizedBox(height: 24),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: changingRole ? null : onChangeRole,
+                child: changingRole
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Text("Đổi vai trò"),
+              ),
+            ),
+          ],
         ],
       ),
     );

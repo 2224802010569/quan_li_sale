@@ -2,7 +2,7 @@ import 'dart:io';
 
 void main() async {
   const name = "quan_li_sale";
-  const version = "0.1.3";
+  const version = "0.1.4";
   final rootDir = Directory(Platform.script.resolve('../').toFilePath());
 
   if (!await rootDir.exists()) {
@@ -15,12 +15,10 @@ void main() async {
   final buffer = StringBuffer();
 
   await for (var entity in rootDir.list(recursive: true)) {
-    // ✅ Chỉ lấy folder tên "lib"
     if (entity is Directory &&
         entity.path.split(Platform.pathSeparator).last == 'lib') {
       print("📂 Tìm thấy lib: ${entity.path}");
 
-      // 👉 Duyệt file trong lib đó
       await for (var file in entity.list(recursive: true)) {
         if (file is File && file.path.endsWith('.dart')) {
           buffer.writeln("\nFILE: ${file.path}");

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:user_module/logic_uc/manage_user_uc.dart';
 import 'package:user_module/view/common/profile/profile_view.dart';
+import 'package:user_module/view/manager/add_user_view.dart';
 import 'package:user_module/view/manager/widget/manager_card.dart';
 import '../../input/manager_input.dart';
 import '../../entity/user.dart';
@@ -120,5 +121,13 @@ class _ManagerViewState extends State<ManagerView> {
   }
 
   void openAddUser() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => const AddUserView()),
+    ).then((created) {
+      if (created == true) {
+        load();
+      }
+    });
   }
 }

@@ -36,7 +36,23 @@ class UserData {
       });
       return true;
     } catch (_) {
-      return false;
+      try {
+        _local.insert({
+          'id': user.id,
+          'username': user.username,
+          'email': user.email,
+          'password': user.password,
+          'phone': user.phone,
+          'role': user.role,
+          'fullName': user.fullName,
+          'full_name': user.fullName,
+          'groupId': user.groupId,
+          'group_id': user.groupId,
+        });
+        return true;
+      } catch (_) {
+        return false;
+      }
     }
   }
 
@@ -107,6 +123,49 @@ class UserData {
       return true;
     } catch (_) {
       return false;
+    }
+  }
+
+  Future<User?> getById(String userId) async {
+    final normalizedUserId = userId.trim();
+    final users = await getAllUsers();
+
+    for (final user in users) {
+      if (user.id.trim() == normalizedUserId) {
+        return user;
+      }
+    }
+
+    return null;
+  }
+
+  Future<bool> updateRoleAndGroup({
+    required String userId,
+    required String role,
+    required String groupId,
+  }) async {
+    final normalizedUserId = userId.trim();
+
+    try {
+      await supabase
+          ?.from(table)
+          .update({
+            'role': role,
+            'group_id': groupId,
+          })
+          .eq('id', normalizedUserId);
+      return true;
+    } catch (_) {
+      try {
+        final localUser = _local.getAll().firstWhere(
+          (item) => item['id'] == normalizedUserId,
+        );
+        localUser['role'] = role;
+        localUser['groupId'] = groupId;
+        return true;
+      } catch (_) {
+        return false;
+      }
     }
   }
 }

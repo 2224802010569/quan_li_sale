@@ -19,7 +19,9 @@ class UserRoot {
   Widget buildProfile(Function(AppOutput) onNavigate) {
     final storage = get<AppStorage>();
     final selectedUserId = storage.get<String>('profile_user_id');
-    return ProfileView(input: ProfileInput(userId: selectedUserId));
+    return ProfileView(
+      input: ProfileInput(userId: selectedUserId)
+    );
   }
   
   Widget buildManager(Function(AppOutput) onOutput) {
@@ -51,7 +53,4 @@ class UserRoot {
     onNavigate(AppOutput(toModule: 'TEST', data: event.data));
   }
 
-  // void _goToRouteStore(UserEvent event, Function(AppOutput) onNavigate) {
-  //   onNavigate(AppOutput(toModule: 'ROUTE_STORE', data: event.data));
-  // }
 }
