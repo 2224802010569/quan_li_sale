@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:core/di/injector.dart';
+import 'package:core/storage/app_storage.dart';
 import '../../../logic_data/order_data.dart';
 import '../../../entity/order.dart';
 import '../../widgets/order_history_card.dart';
@@ -34,6 +36,7 @@ class _OrderHistoryViewState extends State<OrderHistoryView> {
   DateTime _selectedMonth = DateTime(DateTime.now().year, DateTime.now().month, 1);
 
   List<Map<String, dynamic>> _teamSales = [];
+  List<String> _teamSaleIds = [];
   String? _selectedSaleId;
   bool _isInitLoading = true;
 
@@ -52,13 +55,32 @@ class _OrderHistoryViewState extends State<OrderHistoryView> {
   }
 
   Future<void> _initData() async {
-    if (widget.role == 'Manager' && widget.groupId != null) {
+    String? effectiveGroupId = widget.groupId;
+
+    // Fallback: nếu groupId null, thử lấy từ AppStorage
+    if (widget.role == 'Manager' && effectiveGroupId == null) {
       try {
-        _teamSales = await widget.orderData.getSalesInGroup(widget.groupId!);
+        final user = get<AppStorage>().get<Map<String, dynamic>>('user');
+        effectiveGroupId = user?['groupId']?.toString();
       } catch (e) {
-        // If fail to load sales, we'll just show empty or error
+        debugPrint('[OrderHistoryView] Không thể lấy groupId từ AppStorage: $e');
       }
     }
+
+    debugPrint('[OrderHistoryView] groupId = $effectiveGroupId');
+
+    if (widget.role == 'Manager' && effectiveGroupId != null) {
+      try {
+        _teamSales = await widget.orderData.getSalesInGroup(effectiveGroupId);
+        _teamSaleIds = _teamSales.map((s) => s['id'] as String).toList();
+      } catch (e) {
+        debugPrint('[OrderHistoryView] Lỗi khi load teamSales: $e');
+      }
+    }
+
+    debugPrint('[OrderHistoryView] _teamSales.length = ${_teamSales.length}');
+    debugPrint('[OrderHistoryView] _teamSaleIds = $_teamSaleIds');
+
     setState(() {
       _isInitLoading = false;
     });
@@ -71,21 +93,18 @@ class _OrderHistoryViewState extends State<OrderHistoryView> {
       _errorMessage = null;
     });
     try {
-      String? filterUserId = widget.userId;
-      List<String>? teamIds;
-
-      if (widget.role == 'Manager') {
-        if (_selectedSaleId != null) {
-          filterUserId = _selectedSaleId;
-        } else if (_teamSales.isNotEmpty) {
-          teamIds = _teamSales.map((s) => s['id'] as String).toList();
-        }
-      }
+      // Manager: chỉ dùng _selectedSaleId khi chọn cụ thể 1 nhân viên
+      // Không dùng widget.userId làm fallback — sẽ gây filter sai thành manager_id
+      final String? filterUserId = widget.role == 'Manager'
+          ? _selectedSaleId  // null = "Tất cả" → dùng userIds
+          : (_selectedSaleId ?? widget.userId);
 
       final response = await widget.orderData.getOrderHistory(
         storeId: widget.storeId,
         userId: filterUserId,
-        teamUserIds: teamIds,
+        userIds: (widget.role == 'Manager' && filterUserId == null)
+            ? _teamSaleIds
+            : null,
         month: _selectedMonth,
       );
       setState(() {
@@ -141,7 +160,7 @@ class _OrderHistoryViewState extends State<OrderHistoryView> {
 
     return Column(
       children: [
-        if (widget.role == 'Manager' && _teamSales.isNotEmpty)
+        if (widget.role == 'Manager')
           _buildFilterDropdown(),
         _buildMonthFilterRow(),
         Expanded(child: _buildContent()),
@@ -200,35 +219,56 @@ class _OrderHistoryViewState extends State<OrderHistoryView> {
   }
 
   Widget _buildFilterDropdown() {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-      color: Colors.white,
-      child: DropdownButtonFormField<String?>(
-        value: _selectedSaleId,
-        isExpanded: true,
-        decoration: InputDecoration(
-          labelText: 'Lọc theo nhân viên',
-          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+      child: Container(
+        padding: const EdgeInsets.all(16.0),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
         ),
-        items: [
-          const DropdownMenuItem<String?>(
-            value: null,
-            child: Text('Tất cả nhân viên'),
-          ),
-          ..._teamSales.map((sale) {
-            return DropdownMenuItem<String?>(
-              value: sale['id'],
-              child: Text(sale['full_name'] ?? 'Không tên'),
-            );
-          }),
-        ],
-        onChanged: (val) {
-          setState(() {
-            _selectedSaleId = val;
-          });
-          _loadHistory();
-        },
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'LỌC NHÂN VIÊN',
+              style: TextStyle(fontSize: 10, color: Colors.grey, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 8),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF4F6FA),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: DropdownButtonHideUnderline(
+                child: DropdownButton<String?>(
+                  isExpanded: true,
+                  value: _selectedSaleId,
+                  icon: const Icon(Icons.keyboard_arrow_down, color: Colors.grey),
+                  items: [
+                    const DropdownMenuItem<String?>(
+                      value: null,
+                      child: Text('Tất cả nhân viên', style: TextStyle(fontWeight: FontWeight.w500)),
+                    ),
+                    ..._teamSales.map((sale) {
+                      return DropdownMenuItem<String?>(
+                        value: sale['id'],
+                        child: Text(sale['full_name'] ?? 'Không tên', style: const TextStyle(fontWeight: FontWeight.w500)),
+                      );
+                    }),
+                  ],
+                  onChanged: (val) {
+                    setState(() {
+                      _selectedSaleId = val;
+                    });
+                    _loadHistory();
+                  },
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

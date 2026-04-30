@@ -6,7 +6,8 @@ import 'widgets/employee_info_card.dart';
 import 'widgets/history_card.dart';
 
 class AttendanceHistoryScreen extends StatefulWidget {
-  const AttendanceHistoryScreen({Key? key}) : super(key: key);
+  final VoidCallback onBack;
+  const AttendanceHistoryScreen({Key? key, required this.onBack}) : super(key: key);
 
   @override
   State<AttendanceHistoryScreen> createState() => _AttendanceHistoryScreenState();
@@ -19,6 +20,7 @@ class _AttendanceHistoryScreenState extends State<AttendanceHistoryScreen> {
   List<Attendance> _history = [];
   bool _isLoading = true;
   User? _loggedInUser;
+  DateTime _selectedMonth = DateTime(DateTime.now().year, DateTime.now().month, 1);
 
   @override
   void initState() {
@@ -49,7 +51,7 @@ class _AttendanceHistoryScreenState extends State<AttendanceHistoryScreen> {
         users = [user];
       }
 
-      final history = await _useCase.getAttendanceHistory();
+      final history = await _useCase.getAttendanceHistory(month: _selectedMonth);
 
       if (mounted) {
         setState(() {
@@ -80,6 +82,90 @@ class _AttendanceHistoryScreenState extends State<AttendanceHistoryScreen> {
     }
   }
 
+  /// Chỉ reload lịch sử theo tháng + nhân viên hiện tại — KHÔNG reset dropdown
+  Future<void> _reloadHistory() async {
+    if (!mounted) return;
+    setState(() => _isLoading = true);
+    try {
+      final selectedUserId =
+          (_currentUser == null || _currentUser!.id == 'all') ? null : _currentUser!.id;
+      final history = await _useCase.getAttendanceHistory(
+        userId: selectedUserId,
+        month: _selectedMonth,
+      );
+      if (mounted) {
+        setState(() {
+          _history = history;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isLoading = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Lỗi tải lịch sử: ${e.toString().replaceAll("Exception: ", "")}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  Widget _buildMonthFilterRow() {
+    final currentMonth = DateTime.now();
+    final months = [
+      DateTime(currentMonth.year, currentMonth.month, 1),
+      DateTime(currentMonth.year, currentMonth.month - 1, 1),
+      DateTime(currentMonth.year, currentMonth.month - 2, 1),
+    ];
+
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Row(
+        children: months.map((m) {
+          final isSelected =
+              _selectedMonth.year == m.year && _selectedMonth.month == m.month;
+          final title = m.year == currentMonth.year && m.month == currentMonth.month
+              ? 'Tháng hiện tại'
+              : 'Tháng ${m.month}/${m.year}';
+
+          return Padding(
+            padding: const EdgeInsets.only(right: 12),
+            child: GestureDetector(
+              onTap: () {
+                setState(() {
+                  _selectedMonth = m;
+                });
+                _reloadHistory(); // Giữ nguyên nhân viên đồ lọc
+              },
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                decoration: BoxDecoration(
+                  color: isSelected ? const Color(0xFF001D4E) : Colors.transparent,
+                  borderRadius: BorderRadius.circular(20),
+                  border: isSelected
+                      ? null
+                      : Border.all(color: const Color(0xFFCBD5E1)),
+                ),
+                child: Text(
+                  title,
+                  style: TextStyle(
+                    color: isSelected ? Colors.white : const Color(0xFF434651),
+                    fontFamily: 'Manrope',
+                    fontWeight:
+                        isSelected ? FontWeight.w700 : FontWeight.w500,
+                  ),
+                ),
+              ),
+            ),
+          );
+        }).toList(),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -89,7 +175,7 @@ class _AttendanceHistoryScreenState extends State<AttendanceHistoryScreen> {
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: Color(0xFF1A1A1A)),
-          onPressed: () => Navigator.pop(context),
+          onPressed: widget.onBack,
         ),
         title: const Text(
           'Quản lý công việc',
@@ -154,7 +240,8 @@ class _AttendanceHistoryScreenState extends State<AttendanceHistoryScreen> {
                                           // Reload history based on selected user
                                           try {
                                             final updatedHistory = await _useCase.getAttendanceHistory(
-                                              userId: newValue.id == 'all' ? null : newValue.id
+                                              userId: newValue.id == 'all' ? null : newValue.id,
+                                              month: _selectedMonth,
                                             );
                                             if (mounted) {
                                               setState(() {
@@ -178,7 +265,9 @@ class _AttendanceHistoryScreenState extends State<AttendanceHistoryScreen> {
                       ),
                     if (_loggedInUser?.role == 'Manager')
                       const SizedBox(height: 16),
-                    
+                    _buildMonthFilterRow(),
+                    const SizedBox(height: 8),
+
                     // Employee Info (only show for a specific employee, not 'All')
                     if (_currentUser != null && _currentUser!.id != 'all') 
                       EmployeeInfoCard(user: _currentUser!)

@@ -59,18 +59,27 @@ class OrderData {
     final response = await _client
         .from('users')
         .select('id, full_name')
-        .eq('role', 'Sale')
-        .eq('group_id', groupId);
+        .eq('group_id', groupId)
+        .eq('role', 'Sale');
     return List<Map<String, dynamic>>.from(response);
+  }
+
+  Future<List<String>> getSaleIdsByGroup(String groupId) async {
+    final response = await _client
+        .from('users')
+        .select('id')
+        .eq('group_id', groupId)
+        .eq('role', 'Sale');
+    return (response as List).map((e) => e['id'] as String).toList();
   }
 
   Future<List<Map<String, dynamic>>> getOrderHistory({
     int? storeId,
     String? userId,
-    List<String>? teamUserIds,
+    List<String>? userIds,
     DateTime? month,
   }) async {
-    var query = _client.from('orders').select('*, stores(store_name), order_items(*, products(product_name))');
+    var query = _client.from('orders').select('*, stores(store_name), users!inner(full_name, group_id), order_items(*, products(product_name))');
     
     if (month != null) {
       final start = DateTime(month.year, month.month, 1).toIso8601String();
@@ -91,8 +100,10 @@ class OrderData {
 
     if (userId != null) {
       query = query.eq('user_id', userId);
-    } else if (teamUserIds != null && teamUserIds.isNotEmpty) {
-      query = query.inFilter('user_id', teamUserIds);
+    } else if (userIds != null) {
+      // userIds rỗng = Manager không có sale nào trong group → trả về rỗng, không hiện toàn bộ DB
+      if (userIds.isEmpty) return [];
+      query = query.inFilter('user_id', userIds);
     }
 
     final response = await query.order('created_at', ascending: false);

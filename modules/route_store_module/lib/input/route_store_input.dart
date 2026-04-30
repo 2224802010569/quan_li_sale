@@ -1,19 +1,14 @@
 class RouteStoreInput {
-  final bool requireLogin;
+  final String role;
+  final String userId;
+  final String? groupId;
 
-  RouteStoreInput({required this.requireLogin});
+  const RouteStoreInput({
+    required this.role,
+    required this.userId,
+    this.groupId,
+  });
 
-  factory RouteStoreInput.requireLogin() {
-    return RouteStoreInput(requireLogin: true);
-  }
-
-  bool isValid({String? userId, String? role}) {
-    if (requireLogin && userId == null) return false;
-    return true;
-  }
-
-  String defaultView(String role) {
-    if (role == 'Manager') return 'HOME_MANAGER';
-    return 'HOME_SALE';
-  }
+  bool isSale() => role == 'Sale';
+  bool isManager() => role == 'Manager';
 }

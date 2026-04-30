@@ -32,6 +32,49 @@ class _InventoryAuditViewState extends State<InventoryAuditView> {
     });
   }
 
+  void _updateExactStock(String id, int value) {
+    setState(() {
+      if (value >= 0) {
+        _actualStocks[id] = value;
+      }
+    });
+  }
+
+  void _showQuantityDialog(BuildContext context, String productId, int initialValue) {
+    final controller = TextEditingController(text: initialValue.toString());
+    showDialog(
+      context: context,
+      builder: (ctx) {
+        return AlertDialog(
+          title: const Text('Nhập số lượng'),
+          content: TextField(
+            controller: controller,
+            keyboardType: TextInputType.number,
+            autofocus: true,
+            decoration: const InputDecoration(
+              border: OutlineInputBorder(),
+              labelText: 'Số lượng',
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Hủy'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                final val = int.tryParse(controller.text) ?? 0;
+                _updateExactStock(productId, val);
+                Navigator.pop(ctx);
+              },
+              child: const Text('Xác nhận'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   void _openProductPicker() async {
     final selectedProduct = await showModalBottomSheet<ProductEntity>(
       context: context,
@@ -162,14 +205,19 @@ class _InventoryAuditViewState extends State<InventoryAuditView> {
                                     onPressed: () => _updateStock(product.id, -1),
                                     color: Colors.red,
                                   ),
-                                  SizedBox(
-                                    width: 30,
-                                    child: Text(
-                                      '$currentStock',
-                                      textAlign: TextAlign.center,
-                                      style: const TextStyle(
-                                        fontSize: 18,
-                                        fontWeight: FontWeight.bold,
+                                  GestureDetector(
+                                    onTap: () => _showQuantityDialog(context, product.id, currentStock),
+                                    child: SizedBox(
+                                      width: 40,
+                                      child: Text(
+                                        '$currentStock',
+                                        textAlign: TextAlign.center,
+                                        style: const TextStyle(
+                                          fontSize: 18,
+                                          fontWeight: FontWeight.bold,
+                                          decoration: TextDecoration.underline,
+                                          color: Colors.blue,
+                                        ),
                                       ),
                                     ),
                                   ),

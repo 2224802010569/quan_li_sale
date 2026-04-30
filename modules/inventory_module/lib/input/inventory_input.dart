@@ -10,6 +10,6 @@ class InventoryInput {
   });
 
   bool canOpen() {
-    return userId.isNotEmpty && storeId.isNotEmpty && productIds.isNotEmpty;
+    return userId.isNotEmpty && storeId.isNotEmpty && storeId != '0';
   }
 }

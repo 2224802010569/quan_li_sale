@@ -7,6 +7,7 @@ import '../../../logic_uc/generate_pdf_uc.dart';
 import '../../widgets/product_item_card.dart';
 import '../../widgets/order_summary_panel.dart';
 import '../../widgets/camera_capture_box.dart';
+import '../../../output/order_output.dart';
 
 class CreateOrderView extends StatefulWidget {
   final CreateOrderUC createOrderUC;
@@ -15,6 +16,8 @@ class CreateOrderView extends StatefulWidget {
   final String employeeName;
   final int storeId;
   final String storeName;
+  final VoidCallback onBack;
+  final Function(OrderOutput)? onOutput;
 
   const CreateOrderView({
     super.key,
@@ -24,6 +27,8 @@ class CreateOrderView extends StatefulWidget {
     required this.employeeName,
     required this.storeId,
     required this.storeName,
+    required this.onBack,
+    this.onOutput,
   });
 
   @override
@@ -73,6 +78,12 @@ class _CreateOrderViewState extends State<CreateOrderView> {
   void _onDecrement(int productId) {
     setState(() {
       widget.createOrderUC.decrementQuantity(productId);
+    });
+  }
+
+  void _onUpdateQuantity(int productId, int qty) {
+    setState(() {
+      widget.createOrderUC.updateQuantity(productId, qty);
     });
   }
 
@@ -136,7 +147,11 @@ class _CreateOrderViewState extends State<CreateOrderView> {
         const SnackBar(content: Text('Đơn hàng đã được lưu thành công!')),
       );
 
-      Navigator.of(context).pop();
+      if (widget.onOutput != null) {
+        widget.onOutput!(OrderOutput.orderSuccess());
+      } else {
+        widget.onBack();
+      }
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -185,7 +200,7 @@ class _CreateOrderViewState extends State<CreateOrderView> {
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: Color(0xFF172554)),
-          onPressed: () => Navigator.of(context).pop(),
+          onPressed: widget.onBack,
         ),
         title: const Text(
           'Lên đơn hàng',
@@ -249,6 +264,7 @@ class _CreateOrderViewState extends State<CreateOrderView> {
                                 quantity: cartItem.quantity,
                                 onIncrement: () => _onIncrement(cartItem.product.id),
                                 onDecrement: () => _onDecrement(cartItem.product.id),
+                                onUpdateQuantity: (val) => _onUpdateQuantity(cartItem.product.id, val),
                               ),
                             )),
                       const SizedBox(height: 32),

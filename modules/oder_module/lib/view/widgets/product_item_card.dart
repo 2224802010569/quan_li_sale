@@ -7,6 +7,7 @@ class ProductItemCard extends StatelessWidget {
   final int quantity;
   final VoidCallback onIncrement;
   final VoidCallback onDecrement;
+  final ValueChanged<int> onUpdateQuantity;
 
   const ProductItemCard({
     super.key,
@@ -14,6 +15,7 @@ class ProductItemCard extends StatelessWidget {
     required this.quantity,
     required this.onIncrement,
     required this.onDecrement,
+    required this.onUpdateQuantity,
   });
 
   static final _currencyFormat = NumberFormat.currency(
@@ -90,17 +92,23 @@ class ProductItemCard extends StatelessWidget {
                       onTap: onDecrement,
                     ),
                     const SizedBox(width: 16),
-                    SizedBox(
-                      width: 48,
-                      child: Text(
-                        '$quantity',
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(
-                          color: Color(0xFF1E3A8A),
-                          fontSize: 16,
-                          fontFamily: 'Manrope',
-                          fontWeight: FontWeight.w900,
-                          height: 1.50,
+                    GestureDetector(
+                      onTap: () {
+                        _showQuantityDialog(context, quantity, onUpdateQuantity);
+                      },
+                      child: SizedBox(
+                        width: 48,
+                        child: Text(
+                          '$quantity',
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            color: Color(0xFF1E3A8A),
+                            fontSize: 16,
+                            fontFamily: 'Manrope',
+                            fontWeight: FontWeight.w900,
+                            height: 1.50,
+                            decoration: TextDecoration.underline,
+                          ),
                         ),
                       ),
                     ),
@@ -147,6 +155,41 @@ class ProductItemCard extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+
+  void _showQuantityDialog(BuildContext context, int initialValue, ValueChanged<int> onSaved) {
+    final controller = TextEditingController(text: initialValue.toString());
+    showDialog(
+      context: context,
+      builder: (ctx) {
+        return AlertDialog(
+          title: const Text('Nhập số lượng'),
+          content: TextField(
+            controller: controller,
+            keyboardType: TextInputType.number,
+            autofocus: true,
+            decoration: const InputDecoration(
+              border: OutlineInputBorder(),
+              labelText: 'Số lượng',
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Hủy'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                final val = int.tryParse(controller.text) ?? 0;
+                onSaved(val);
+                Navigator.pop(ctx);
+              },
+              child: const Text('Xác nhận'),
+            ),
+          ],
+        );
+      },
     );
   }
 }

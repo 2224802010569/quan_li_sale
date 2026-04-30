@@ -71,30 +71,44 @@ class OrderDetailView extends StatelessWidget {
                   order.orderImage!,
                   width: double.infinity,
                   fit: BoxFit.cover,
-                ),
-              ),
-            ],
-            if (order.pdfLink != null && order.pdfLink!.isNotEmpty) ...[
-              const SizedBox(height: 24),
-              SizedBox(
-                width: double.infinity,
-                child: OutlinedButton.icon(
-                  onPressed: () => _openPdf(order.pdfLink!),
-                  icon: const Icon(Icons.picture_as_pdf_outlined, size: 18),
-                  label: const Text('Xem chi tiết'),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: const Color(0xFF003178),
-                    side: const BorderSide(color: Color(0xFFCBD5E1)),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                    textStyle: const TextStyle(
-                      fontSize: 14,
-                      fontFamily: 'Manrope',
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
+                  loadingBuilder: (context, child, loadingProgress) {
+                    if (loadingProgress == null) return child;
+                    return Container(
+                      height: 200,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF3F3F3),
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: const Center(
+                        child: CircularProgressIndicator(color: Color(0xFF003178)),
+                      ),
+                    );
+                  },
+                  errorBuilder: (context, error, stackTrace) {
+                    return Container(
+                      height: 180,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF3F3F3),
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: const Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.broken_image_outlined,
+                              size: 40, color: Color(0xFF94A3B8)),
+                          SizedBox(height: 8),
+                          Text(
+                            'Không thể tải ảnh',
+                            style: TextStyle(
+                              color: Color(0xFF94A3B8),
+                              fontSize: 13,
+                              fontFamily: 'Manrope',
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
                 ),
               ),
             ],

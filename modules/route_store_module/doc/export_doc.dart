@@ -1,8 +1,8 @@
 import 'dart:io';
 
 void main() async {
-  const name = "attendance";
-  const version = "0.0.3";
+  const name = "route_store";
+  const version = "0.0.1";
 
   final libDir = Directory(Platform.script.resolve('../lib').toFilePath());
 

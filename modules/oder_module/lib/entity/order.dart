@@ -10,6 +10,7 @@ class Order {
   final DateTime? createdAt;
   final List<OrderItem> items;
   final String? storeName;
+  final String? saleName;
 
   Order({
     this.id,
@@ -21,10 +22,12 @@ class Order {
     this.createdAt,
     this.items = const [],
     this.storeName,
+    this.saleName,
   });
 
   factory Order.fromMap(Map<String, dynamic> map) {
     final sName = (map['stores'] != null) ? map['stores']['store_name'] : 'Cửa hàng #${map['store_id']}';
+    final employeeName = (map['users'] != null) ? map['users']['full_name'] : 'Không rõ';
     return Order(
       id: map['id'] as int?,
       userId: (map['user_id'] as String?) ?? '',
@@ -41,6 +44,7 @@ class Order {
               .toList()
           : [],
       storeName: sName,
+      saleName: employeeName,
     );
   }
 

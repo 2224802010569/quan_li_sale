@@ -7,10 +7,14 @@ import '../../logic_uc/attendance_uc.dart';
 import 'widgets/camera_view_finder.dart';
 import 'widgets/store_info_bottom_sheet.dart';
 
+import '../../output/attendance_output.dart';
+
 class CameraActionScreen extends StatefulWidget {
   final Store store;
+  final Function(AttendanceOutput) onOutput;
+  final VoidCallback onBack;
 
-  const CameraActionScreen({Key? key, required this.store})
+  const CameraActionScreen({Key? key, required this.store, required this.onOutput, required this.onBack})
     : super(key: key);
 
   @override
@@ -171,7 +175,12 @@ class _CameraActionScreenState extends State<CameraActionScreen> {
             ),
           ),
         );
-        Navigator.pop(context); // Pop back to list
+        widget.onOutput(AttendanceOutput(
+          success: true,
+          storeId: _currentStore.id,
+          storeName: _currentStore.name,
+          routeId: _currentStore.routeId,
+        ));
       }
     } catch (e) {
       Navigator.pop(context); // Close loading
@@ -234,7 +243,7 @@ class _CameraActionScreenState extends State<CameraActionScreen> {
                     children: [
                       IconButton(
                         icon: const Icon(Icons.close, color: Colors.white),
-                        onPressed: () => Navigator.pop(context),
+                        onPressed: widget.onBack,
                       ),
                       const SizedBox(width: 8),
                       Text(

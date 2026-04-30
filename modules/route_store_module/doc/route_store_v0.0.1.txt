@@ -1,0 +1,274 @@
+
+FILE: c:\Users\Admin\Documents\GitHub\quan_li_sale\modules\route_store_module\lib\entity\user.dart
+class User {
+  final String id;
+  final String phone;
+  final String role;
+  final String token;
+
+  User({
+    required this.id,
+    required this.phone,
+    required this.role,
+    required this.token,
+  });
+}
+
+
+FILE: c:\Users\Admin\Documents\GitHub\quan_li_sale\modules\route_store_module\lib\input\route_store_input.dart
+class RouteStoreInput {
+  final bool requireLogin;
+
+  RouteStoreInput({required this.requireLogin});
+
+  factory RouteStoreInput.requireLogin() {
+    return RouteStoreInput(requireLogin: true);
+  }
+
+  bool isValid({String? userId, String? role}) {
+    if (requireLogin && userId == null) return false;
+    return true;
+  }
+
+  String defaultView(String role) {
+    if (role == 'Manager') return 'HOME_MANAGER';
+    return 'HOME_SALE';
+  }
+}
+
+
+FILE: c:\Users\Admin\Documents\GitHub\quan_li_sale\modules\route_store_module\lib\logic_data\user_data.dart
+import '../entity/user.dart';
+
+class UserData {
+  final List<Map<String, dynamic>> _fakeDb = [
+    {'id': '1', 'phone': '1', 'password': '123', 'role': 'Sale'},
+    {'id': '2', 'phone': '2', 'password': '123', 'role': 'Manager'},
+  ];
+
+  User? login(String phone, String password) {
+    try {
+      final data = _fakeDb.firstWhere(
+        (e) => e['phone'] == phone && e['password'] == password,
+      );
+
+      return User(
+        id: data['id'],
+        phone: data['phone'],
+        role: data['role'],
+        token: "fake_token_${data['id']}",
+      );
+    } catch (_) {
+      return null;
+    }
+  }
+}
+
+
+FILE: c:\Users\Admin\Documents\GitHub\quan_li_sale\modules\route_store_module\lib\logic_uc\login_uc.dart
+import '../logic_data/user_data.dart';
+import '../entity/user.dart';
+
+class LoginUC {
+  final _data = UserData();
+
+  User? execute(String phone, String password) {
+    if (phone.isEmpty || password.isEmpty) {
+      throw Exception("Thiếu thông tin");
+    }
+
+    return _data.login(phone, password);
+  }
+}
+
+
+FILE: c:\Users\Admin\Documents\GitHub\quan_li_sale\modules\route_store_module\lib\output\user_output.dart
+import '../entity/user.dart';
+
+class LoginOutput {
+  final String from;
+  final String to;
+  final String view;
+  final Map<String, dynamic>? data;
+
+  LoginOutput({
+    required this.from,
+    required this.to,
+    required this.view,
+    this.data,
+  });
+
+  factory LoginOutput.loginSuccess(User user) {
+    return LoginOutput(
+      from: 'USER',
+      to: 'ROUTE_STORE',
+      view: 'HOME',
+      data: {'userId': user.id, 'role': user.role, 'token': user.token},
+    );
+  }
+}
+
+
+FILE: c:\Users\Admin\Documents\GitHub\quan_li_sale\modules\route_store_module\lib\view\components\route_list.dart
+import 'package:flutter/material.dart';
+
+class RouteList extends StatelessWidget {
+  final List<String> routes;
+  final Function(String)? onTap;
+
+  const RouteList({super.key, required this.routes, this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    if (routes.isEmpty) {
+      return const Center(child: Text('Chưa có tuyến'));
+    }
+
+    return ListView.builder(
+      itemCount: routes.length,
+      itemBuilder: (context, index) {
+        final route = routes[index];
+        return ListTile(
+          leading: const Icon(Icons.route),
+          title: Text(route),
+          onTap: () => onTap?.call(route),
+        );
+      },
+    );
+  }
+}
+
+
+FILE: c:\Users\Admin\Documents\GitHub\quan_li_sale\modules\route_store_module\lib\view\screens\manager\route_create_view.dart
+import 'package:flutter/material.dart';
+
+class RouteCreateView extends StatefulWidget {
+  const RouteCreateView({super.key});
+
+  @override
+  State<RouteCreateView> createState() => _RouteCreateViewState();
+}
+
+class _RouteCreateViewState extends State<RouteCreateView> {
+  final nameController = TextEditingController();
+
+  void handleCreate() {
+    final name = nameController.text;
+
+    if (name.isEmpty) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Nhập tên tuyến')));
+      return;
+    }
+
+    // demo: chỉ quay lại
+    Navigator.pop(context);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Tạo tuyến')),
+      body: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          children: [
+            TextField(
+              controller: nameController,
+              decoration: const InputDecoration(labelText: 'Tên tuyến'),
+            ),
+            const SizedBox(height: 16),
+            ElevatedButton(onPressed: handleCreate, child: const Text('Lưu')),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+
+FILE: c:\Users\Admin\Documents\GitHub\quan_li_sale\modules\route_store_module\lib\view\screens\manager\route_home_manager_view.dart
+import 'package:flutter/material.dart';
+import '../../components/route_list.dart';
+import 'route_create_view.dart';
+
+class RouteHomeManagerView extends StatelessWidget {
+  final VoidCallback onBack;
+
+  const RouteHomeManagerView({super.key, required this.onBack});
+
+  @override
+  Widget build(BuildContext context) {
+    final routes = <String>[]; // demo rỗng
+
+    return WillPopScope(
+      onWillPop: () async {
+        onBack();
+        return false;
+      },
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text('Quản lý tuyến'),
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back),
+            onPressed: onBack,
+          ),
+        ),
+        body: Column(
+          children: [
+            const SizedBox(height: 12),
+
+            ElevatedButton(
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const RouteCreateView()),
+                );
+              },
+              child: const Text('Tạo tuyến'),
+            ),
+
+            const SizedBox(height: 12),
+
+            Expanded(child: RouteList(routes: routes)),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+
+FILE: c:\Users\Admin\Documents\GitHub\quan_li_sale\modules\route_store_module\lib\view\screens\sale\route_home_sale_view.dart
+import 'package:flutter/material.dart';
+import '../../components/route_list.dart';
+
+class RouteHomeSaleView extends StatelessWidget {
+  final VoidCallback onBack;
+
+  const RouteHomeSaleView({super.key, required this.onBack});
+
+  @override
+  Widget build(BuildContext context) {
+    final routes = ['Tuyến Quận 1', 'Tuyến Quận 7'];
+
+    return WillPopScope(
+      onWillPop: () async {
+        onBack();
+        return false;
+      },
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text('Tuyến làm việc'),
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back),
+            onPressed: onBack,
+          ),
+        ),
+        body: RouteList(routes: routes),
+      ),
+    );
+  }
+}
+

@@ -8,16 +8,16 @@ import 'package:geolocator/geolocator.dart';
 class AttendanceUseCase {
   final AttendanceRepository _repository = AttendanceRepository();
 
-  Future<List<Attendance>> getAttendanceHistory({String? userId}) async {
+  Future<List<Attendance>> getAttendanceHistory({String? userId, DateTime? month}) async {
     final user = await getCurrentUser();
     if (user.role == 'Manager') {
       if (userId != null) {
-        return await _repository.getAttendanceHistory(userId: userId);
+        return await _repository.getAttendanceHistory(userId: userId, month: month);
       } else {
-        return await _repository.getAttendanceHistory(groupId: user.groupId);
+        return await _repository.getAttendanceHistory(groupId: user.groupId, month: month);
       }
     } else {
-      return await _repository.getAttendanceHistory(userId: user.id);
+      return await _repository.getAttendanceHistory(userId: user.id, month: month);
     }
   }
 

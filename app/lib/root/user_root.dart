@@ -50,7 +50,7 @@ class UserRoot {
   /// NAVIGATION FUNCTIONS
   /// =========================
   void _goToTestModule(UserEvent event, Function(AppOutput) onNavigate) {
-    onNavigate(AppOutput(toModule: 'TEST', data: event.data));
+    onNavigate(AppOutput(toModule: 'ROUTE_STORE', data: event.data));
   }
 
 }

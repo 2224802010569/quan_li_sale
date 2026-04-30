@@ -46,6 +46,8 @@ class OrderModule extends StatelessWidget {
         employeeName: input.employeeName ?? '',
         storeId: input.storeId!,
         storeName: input.storeName ?? '',
+        onBack: onBack,
+        onOutput: onOutput,
       );
     }
 

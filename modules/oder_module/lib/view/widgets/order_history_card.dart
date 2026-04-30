@@ -127,17 +127,39 @@ class OrderHistoryCard extends StatelessWidget {
                   const Icon(Icons.store_outlined,
                       size: 14, color: Color(0xFF94A3B8)),
                   const SizedBox(width: 6),
-                  Text(
-                    order.storeName ?? 'Cửa hàng #${order.storeId}',
-                    style: const TextStyle(
-                      color: Color(0xFF94A3B8),
-                      fontSize: 13,
-                      fontFamily: 'Manrope',
-                      fontWeight: FontWeight.w500,
+                  Expanded(
+                    child: Text(
+                      order.storeName ?? 'Cửa hàng #${order.storeId}',
+                      style: const TextStyle(
+                        color: Color(0xFF94A3B8),
+                        fontSize: 13,
+                        fontFamily: 'Manrope',
+                        fontWeight: FontWeight.w500,
+                      ),
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ),
                 ],
-              )
+              ),
+              if (order.saleName != null && order.saleName!.isNotEmpty) ...[
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    const Icon(Icons.person_outline,
+                        size: 14, color: Color(0xFF94A3B8)),
+                    const SizedBox(width: 6),
+                    Text(
+                      order.saleName!,
+                      style: const TextStyle(
+                        color: Color(0xFF94A3B8),
+                        fontSize: 13,
+                        fontFamily: 'Manrope',
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
             ],
           ),
         ),

@@ -1,20 +1,15 @@
-import 'package:app/partial/menu/menu.dart';
 import 'package:app/root/app_output.dart';
+import 'package:app/partial/menu/menu.dart';
 import 'package:flutter/material.dart';
 import 'package:core/di/injector.dart';
 import 'package:core/storage/app_storage.dart';
 import 'package:test_module/test_module.dart';
 import 'root/user_root.dart';
-// import 'root/route_store_root.dart';
+import 'root/attendance_root.dart';
+import 'root/inventory_root.dart';
+import 'root/order_root.dart';
+import 'root/route_store_root.dart';
 
-import 'package:app/partial/menu/menu.dart';
-import 'package:app/root/app_output.dart';
-import 'package:flutter/material.dart';
-import 'package:core/di/injector.dart';
-import 'package:core/storage/app_storage.dart';
-import 'package:test_module/test_module.dart';
-import 'root/user_root.dart';
-// import 'root/route_store_root.dart';
 
 class AppState {
   final String module;
@@ -42,8 +37,8 @@ class _MyAppState extends State<MyApp> {
   // MODULE
   // =========================
   String getInitialModule() {
-    final user = storage.get<Map<String, dynamic>>('user');
-    return user == null ? 'USER' : 'TEST';
+    // Luôn bắt đầu bằng màn hình đăng nhập
+    return 'USER';
   }
 
   Widget getScreen(String module) {
@@ -56,6 +51,27 @@ class _MyAppState extends State<MyApp> {
 
       case 'USER_MANAGER_VIEW':
         return UserRoot().buildManager(handleOutput);
+
+      case 'ATTENDANCE':
+        return AttendanceRoot().build(handleOutput);
+
+      case 'INVENTORY':
+        return InventoryRoot().build(handleOutput);
+
+      case 'ORDER':
+        return OrderRoot().build(handleOutput);
+
+      case 'CREATE_ORDER':
+        return OrderRoot().buildCreate(handleOutput);
+
+      case 'STORE_HOME':
+        return RouteStoreRoot().buildStoreHome(handleOutput);
+
+      case 'CHECKOUT':
+        return AttendanceRoot().buildCheckout(handleOutput);
+
+      case 'ROUTE_STORE':
+        return RouteStoreRoot().build(handleOutput);
 
       case 'TEST':
         return const MyHomePage(title: 'Test Module');

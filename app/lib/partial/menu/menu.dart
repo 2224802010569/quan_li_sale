@@ -11,27 +11,19 @@ class Menu extends StatelessWidget {
 
   const Menu({super.key, required this.onOutput, required this.currentModule});
   static const List<MenuConfig> _allMenus = [
-    MenuConfig(
-      title: 'Login',
-      icon: Icons.person,
-      module: 'USER',
-      roles: ['Sale', 'Manager'],
-    ),
+    // Không cần login
+    MenuConfig(title: 'Đăng nhập', icon: Icons.login, module: 'USER', roles: []),
 
-    MenuConfig(
-      title: 'Profile',
-      icon: Icons.person,
-      module: 'USER_PROFILE',
-      roles: ['Sale', 'Manager'],
-    ),
+    // Sale
+    MenuConfig(title: 'Danh sách cửa hàng',  icon: Icons.store,               module: 'ROUTE_STORE',    roles: ['Sale']),
+  //  MenuConfig(title: 'Chấm công',            icon: Icons.check_circle_outline, module: 'ATTENDANCE',     roles: ['Sale']),
+    MenuConfig(title: 'Lịch sử đơn hàng',    icon: Icons.history,              module: 'ORDER',          roles: ['Sale']),
+    MenuConfig(title: 'Profile',              icon: Icons.person,               module: 'USER_PROFILE',   roles: ['Sale', 'Manager']),
 
-    MenuConfig(
-      title: 'Quản lý nhân sự',
-      icon: Icons.group,
-      module: 'USER_MANAGER_VIEW',
-      roles: ['Manager'],),
-
-    MenuConfig(title: 'Test', icon: Icons.bug_report, module: 'TEST'),
+    // Manager
+    MenuConfig(title: 'Lịch sử chấm công', icon: Icons.access_time,  module: 'ATTENDANCE',        roles: ['Manager']),
+    MenuConfig(title: 'Lịch sử đơn hàng',  icon: Icons.history,      module: 'ORDER',             roles: ['Manager']),
+    MenuConfig(title: 'Quản lý nhân sự',   icon: Icons.group,        module: 'USER_MANAGER_VIEW', roles: ['Manager']),
   ];
   
   void _navigate(BuildContext context, String module) {

@@ -4,17 +4,20 @@ import '../entity/attendance.dart';
 import '../entity/store.dart';
 import '../entity/user.dart';
 import '../logic_uc/attendance_uc.dart'; // Just ensuring imports are clean
-import '../view/auth_wrapper.dart' show isDevMode, mockUserId;
+import 'package:core/di/injector.dart';
+import 'package:core/di/supabase.dart';
+import 'package:core/storage/app_storage.dart';
 
 class AttendanceRepository {
-  final SupabaseClient _client = Supabase.instance.client;
+  SupabaseClient get _client => get<SupabaseConnect>().client!;
 
   /// Lấy thông tin người dùng hiện tại bao gồm cả Role
   Future<User> getCurrentUser() async {
-    final userId = isDevMode ? mockUserId : _client.auth.currentUser?.id;
-    if (userId == null) {
+    final stored = get<AppStorage>().get<Map<String, dynamic>>('user');
+    if (stored == null) {
       throw Exception('Người dùng chưa đăng nhập');
     }
+    final userId = stored['id'] as String;
     final response = await _client.from('users').select('id, full_name, phone, password, role, employee_code, last_updated, group_id').eq('id', userId).single();
     return User.fromMap(response);
   }
@@ -22,7 +25,7 @@ class AttendanceRepository {
   /// Lấy lịch sử chấm công
   /// Nếu là Manager: Lấy tất cả hoặc theo userId được chọn
   /// Nếu là Sale: Chỉ lấy của chính mình
-  Future<List<Attendance>> getAttendanceHistory({String? userId, String? groupId}) async {
+  Future<List<Attendance>> getAttendanceHistory({String? userId, String? groupId, DateTime? month}) async {
     var query = _client
         .from('attendance')
         .select('*, stores(store_name), routes(route_name), users!inner(group_id)');
@@ -31,6 +34,14 @@ class AttendanceRepository {
       query = query.eq('user_id', userId);
     } else if (groupId != null) {
       query = query.eq('users.group_id', groupId);
+    }
+
+    if (month != null) {
+      final start = DateTime(month.year, month.month, 1);
+      final end = DateTime(month.year, month.month + 1, 1);
+      query = query
+          .gte('checkin_time', start.toIso8601String())
+          .lt('checkin_time', end.toIso8601String());
     }
 
     final response = await query.order('created_at', ascending: false);
