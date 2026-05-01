@@ -10,7 +10,6 @@ import 'root/inventory_root.dart';
 import 'root/order_root.dart';
 import 'root/route_store_root.dart';
 
-
 class AppState {
   final String module;
   AppState(this.module);
@@ -94,6 +93,13 @@ class _MyAppState extends State<MyApp> {
     if (current == output.toModule) return;
 
     setState(() {
+      if (output.toModule == 'USER') {
+        moduleStack
+          ..clear()
+          ..add(AppState(output.toModule));
+        return;
+      }
+
       moduleStack.add(AppState(output.toModule));
     });
   }

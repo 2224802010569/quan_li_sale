@@ -5,12 +5,14 @@ import 'package:user_module/view/common/login/widget/login_header.dart';
 class ProfileCard extends StatelessWidget {
   final User user;
   final VoidCallback? onChangeRole;
+  final VoidCallback? onLogout;
   final bool changingRole;
 
   const ProfileCard({
     super.key,
     required this.user,
     this.onChangeRole,
+    this.onLogout,
     this.changingRole = false,
   });
 
@@ -29,6 +31,7 @@ class ProfileCard extends StatelessWidget {
         ],
       ),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           const LoginHeader(),
           const SizedBox(height: 24),
@@ -61,6 +64,14 @@ class ProfileCard extends StatelessWidget {
               ),
             ),
           ],
+          if (onLogout != null) ...[
+            const SizedBox(height: 12),
+            OutlinedButton.icon(
+              onPressed: onLogout,
+              icon: const Icon(Icons.logout),
+              label: const Text("Đăng xuất"),
+            ),
+          ],
         ],
       ),
     );
@@ -70,9 +81,12 @@ class ProfileCard extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 6),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Expanded(child: Text(label)),
-          Text(value),
+          SizedBox(width: 88, child: Text(label)),
+          Expanded(
+            child: Text(value, textAlign: TextAlign.right, softWrap: true),
+          ),
         ],
       ),
     );

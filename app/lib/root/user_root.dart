@@ -12,18 +12,21 @@ import 'package:user_module/view/manager/manage_user_view.dart';
 class UserRoot {
   Widget build(Function(AppOutput) onNavigate) {
     return UserScreen(
-      onEvent: (UserEvent event) => _handleEvent(event, onNavigate)
-    ); 
+      onEvent: (UserEvent event) => _handleEvent(event, onNavigate),
+    );
   }
 
   Widget buildProfile(Function(AppOutput) onNavigate) {
     final storage = get<AppStorage>();
     final selectedUserId = storage.get<String>('profile_user_id');
     return ProfileView(
-      input: ProfileInput(userId: selectedUserId)
+      input: ProfileInput(userId: selectedUserId),
+      onLogout: () {
+        onNavigate(AppOutput(toModule: 'USER'));
+      },
     );
   }
-  
+
   Widget buildManager(Function(AppOutput) onOutput) {
     return ManagerView(
       input: ManagerInput(),
@@ -37,7 +40,7 @@ class UserRoot {
       },
     );
   }
-  
+
   void _handleEvent(UserEvent event, Function(AppOutput) onNavigate) {
     switch (event.type) {
       case UserEventType.loginSuccess:
@@ -52,5 +55,4 @@ class UserRoot {
   void _goToTestModule(UserEvent event, Function(AppOutput) onNavigate) {
     onNavigate(AppOutput(toModule: 'ROUTE_STORE', data: event.data));
   }
-
 }

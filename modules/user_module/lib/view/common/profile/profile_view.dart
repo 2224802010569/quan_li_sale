@@ -3,14 +3,15 @@ import 'package:user_module/entity/user.dart';
 import 'package:user_module/input/profile_input.dart';
 import 'package:user_module/logic_data/session_manager.dart';
 import 'package:user_module/logic_uc/change_role_uc.dart';
+import 'package:user_module/logic_uc/logout_uc.dart';
 import 'package:user_module/logic_uc/profile_uc.dart';
 import 'package:user_module/view/common/profile/widget/profile_card.dart';
 
-
 class ProfileView extends StatefulWidget {
   final ProfileInput input;
+  final VoidCallback? onLogout;
 
-  const ProfileView({super.key, required this.input});
+  const ProfileView({super.key, required this.input, this.onLogout});
 
   @override
   State<ProfileView> createState() => _ProfileViewState();
@@ -20,6 +21,7 @@ class _ProfileViewState extends State<ProfileView> {
   final _uc = ProfileUC();
   final _changeRoleUC = ChangeRoleUC();
   final _session = SessionManager();
+  final _logoutUC = LogoutUC();
 
   User? user;
   String error = "";
@@ -142,9 +144,9 @@ class _ProfileViewState extends State<ProfileView> {
       );
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(e.toString())),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(e.toString())));
     } finally {
       if (mounted) {
         setState(() => changingRole = false);
@@ -152,25 +154,49 @@ class _ProfileViewState extends State<ProfileView> {
     }
   }
 
+  void handleLogout() {
+    _logoutUC.execute();
+
+    if (widget.onLogout != null) {
+      widget.onLogout!();
+      return;
+    }
+
+    Navigator.of(context).popUntil((route) => route.isFirst);
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF9F9F9),
-      body: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 390),
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: loading
-                ? const Center(child: CircularProgressIndicator())
-                : error.isNotEmpty
-                ? Text(error)
-                : ProfileCard(
-                    user: user!,
-                    onChangeRole: canChangeRole ? handleChangeRole : null,
-                    changingRole: changingRole,
-                  ),
-          ),
+      body: SafeArea(
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final horizontalPadding = constraints.maxWidth < 520 ? 16.0 : 24.0;
+            final maxWidth = constraints.maxWidth >= 900
+                ? 640.0
+                : constraints.maxWidth;
+
+            return Align(
+              alignment: Alignment.topCenter,
+              child: SingleChildScrollView(
+                padding: EdgeInsets.all(horizontalPadding),
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(maxWidth: maxWidth),
+                  child: loading
+                      ? const Center(child: CircularProgressIndicator())
+                      : error.isNotEmpty
+                      ? Text(error)
+                      : ProfileCard(
+                          user: user!,
+                          onChangeRole: canChangeRole ? handleChangeRole : null,
+                          changingRole: changingRole,
+                          onLogout: handleLogout,
+                        ),
+                ),
+              ),
+            );
+          },
         ),
       ),
     );

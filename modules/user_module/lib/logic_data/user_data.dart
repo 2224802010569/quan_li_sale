@@ -5,7 +5,7 @@ import 'user_data_local.dart';
 
 class UserData {
   final String table = 'users';
-  final supabase = get<SupabaseConnect>().client;
+  get supabase => get<SupabaseConnect>().client;
 
   final _local = UserDataLocal();
 
@@ -56,6 +56,32 @@ class UserData {
     }
   }
 
+  Future<void> insertUserRemote(User user) async {
+    final client = supabase;
+    if (client == null) {
+      throw Exception("Supabase chưa được khởi tạo");
+    }
+
+    try {
+      await client
+          .from(table)
+          .insert({
+            'id': user.id,
+            'username': user.username,
+            'email': user.email,
+            'password': user.password,
+            'phone': user.phone,
+            'role': user.role,
+            'full_name': user.fullName,
+            'group_id': user.groupId,
+          })
+          .select('id')
+          .single();
+    } catch (e) {
+      throw Exception("Supabase không cho thêm nhân viên: $e");
+    }
+  }
+
   Future<List<User>> getAllUsers() async {
     try {
       final response = await supabase?.from(table).select();
@@ -94,9 +120,30 @@ class UserData {
     }
   }
 
+  Future<bool> deleteUserRemote(String id) async {
+    final client = supabase;
+    if (client == null) {
+      return false;
+    }
+
+    try {
+      await client.from(table).delete().eq('id', id);
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
   Future<User?> login(String username, String password) async {
     final users = await getAllUsers();
-    return users.where((u) => (u.username == username || u.email == username) && u.password == password).toList().firstOrNull;
+    return users
+        .where(
+          (u) =>
+              (u.username == username || u.email == username) &&
+              u.password == password,
+        )
+        .toList()
+        .firstOrNull;
   }
 
   Future<User?> getByEmail(String email) async {
@@ -149,10 +196,7 @@ class UserData {
     try {
       await supabase
           ?.from(table)
-          .update({
-            'role': role,
-            'group_id': groupId,
-          })
+          .update({'role': role, 'group_id': groupId})
           .eq('id', normalizedUserId);
       return true;
     } catch (_) {

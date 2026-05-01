@@ -65,21 +65,21 @@
             "flutterMode": "release"
         },
         {
-            "name": "order_module",
-            "cwd": "modules\\order_module",
+            "name": "oder_module",
+            "cwd": "modules\\oder_module",
             "request": "launch",
             "type": "dart"
         },
         {
-            "name": "order_module (profile mode)",
-            "cwd": "modules\\order_module",
+            "name": "oder_module (profile mode)",
+            "cwd": "modules\\oder_module",
             "request": "launch",
             "type": "dart",
             "flutterMode": "profile"
         },
         {
-            "name": "order_module (release mode)",
-            "cwd": "modules\\order_module",
+            "name": "oder_module (release mode)",
+            "cwd": "modules\\oder_module",
             "request": "launch",
             "type": "dart",
             "flutterMode": "release"

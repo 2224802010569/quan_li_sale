@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import '../entity/user.dart';
 import '../logic_data/session_manager.dart';
 import '../logic_data/user_data.dart';
@@ -55,21 +57,35 @@ class AddUserUC {
       groupId: groupId,
     );
 
-    final inserted = await _data.insertUser(user);
-    if (!inserted) {
-      throw Exception("Không thể tạo nhân viên mới");
-    }
+    await _data.insertUserRemote(user);
 
     return user;
   }
 
   String _generateUserId() {
-    final stamp = DateTime.now().millisecondsSinceEpoch.toString();
-    return 'Sale${stamp.substring(stamp.length - 6)}';
+    final random = Random.secure();
+    final bytes = List<int>.generate(16, (_) => random.nextInt(256));
+
+    bytes[6] = (bytes[6] & 0x0f) | 0x40;
+    bytes[8] = (bytes[8] & 0x3f) | 0x80;
+
+    String hex(int value) => value.toRadixString(16).padLeft(2, '0');
+    final parts = [
+      bytes.sublist(0, 4).map(hex).join(),
+      bytes.sublist(4, 6).map(hex).join(),
+      bytes.sublist(6, 8).map(hex).join(),
+      bytes.sublist(8, 10).map(hex).join(),
+      bytes.sublist(10, 16).map(hex).join(),
+    ];
+
+    return parts.join('-');
   }
 
   String _generateUsername(String email, String userId) {
-    final prefix = email.split('@').first.replaceAll(RegExp(r'[^a-zA-Z0-9]'), '');
+    final prefix = email
+        .split('@')
+        .first
+        .replaceAll(RegExp(r'[^a-zA-Z0-9]'), '');
     if (prefix.isEmpty) {
       return userId.toLowerCase();
     }

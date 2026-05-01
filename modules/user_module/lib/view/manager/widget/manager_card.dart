@@ -5,19 +5,26 @@ class ManagerCard extends StatelessWidget {
   final List<User> users;
   final TextEditingController onSearch;
   final Function(User) onTapUser;
+  final Function(User) onDeleteUser;
+  final String? deletingUserId;
   final VoidCallback onAdd;
+  final double listHeight;
 
   const ManagerCard({
+    super.key,
     required this.users,
     required this.onSearch,
     required this.onTapUser,
+    required this.onDeleteUser,
+    this.deletingUserId,
     required this.onAdd,
+    required this.listHeight,
   });
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(24),
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: Colors.white,
         boxShadow: const [
@@ -27,7 +34,7 @@ class ManagerCard extends StatelessWidget {
             offset: Offset(0, 8),
           ),
         ],
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(8),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -58,22 +65,21 @@ class ManagerCard extends StatelessWidget {
           const SizedBox(height: 16),
 
           /// LIST
-          SizedBox(
-            height: 320,
+          ConstrainedBox(
+            constraints: BoxConstraints(maxHeight: listHeight),
             child: ListView.separated(
+              shrinkWrap: true,
               itemCount: users.length,
               separatorBuilder: (_, __) => const SizedBox(height: 12),
               itemBuilder: (_, i) {
                 final u = users[i];
+                final deleting = deletingUserId == u.id;
 
-                return GestureDetector(
-                  onTap: () => onTapUser(u),
+                return Material(
+                  color: Colors.grey.shade100,
+                  borderRadius: BorderRadius.circular(8),
                   child: Container(
                     padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: Colors.grey.shade100,
-                      borderRadius: BorderRadius.circular(12),
-                    ),
                     child: Row(
                       children: [
                         const CircleAvatar(
@@ -95,11 +101,30 @@ class ManagerCard extends StatelessWidget {
                               Text(
                                 u.phone,
                                 style: const TextStyle(color: Colors.grey),
+                                overflow: TextOverflow.ellipsis,
                               ),
                             ],
                           ),
                         ),
-                        const Icon(Icons.chevron_right),
+                        IconButton(
+                          tooltip: "Xem hồ sơ",
+                          onPressed: () => onTapUser(u),
+                          icon: const Icon(Icons.chevron_right),
+                        ),
+                        IconButton(
+                          tooltip: "Xóa nhân viên",
+                          onPressed: deleting ? null : () => onDeleteUser(u),
+                          color: Colors.red,
+                          icon: deleting
+                              ? const SizedBox(
+                                  width: 18,
+                                  height: 18,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                  ),
+                                )
+                              : const Icon(Icons.delete_outline),
+                        ),
                       ],
                     ),
                   ),
