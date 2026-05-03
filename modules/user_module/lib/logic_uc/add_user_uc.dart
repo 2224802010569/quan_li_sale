@@ -43,7 +43,7 @@ class AddUserUC {
 
     final generatedId = _generateUserId();
     final generatedUsername = _generateUsername(normalizedEmail, generatedId);
-    const defaultPassword = '123456';
+    const defaultPassword = '123456789';
     final groupId = (current['groupId'] ?? '').toString();
 
     final user = User(

@@ -12,6 +12,8 @@ dependencies:
     sdk: flutter
     
   mailer: ^7.1.0
+  image_picker: ^1.2.1
+  supabase_flutter: ^2.0.0
 
   core:
     path: ../../core

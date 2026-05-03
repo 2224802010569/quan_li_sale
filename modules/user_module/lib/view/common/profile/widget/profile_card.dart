@@ -5,15 +5,19 @@ import 'package:user_module/view/common/login/widget/login_header.dart';
 class ProfileCard extends StatelessWidget {
   final User user;
   final VoidCallback? onChangeRole;
+  final VoidCallback? onEdit;
   final VoidCallback? onLogout;
   final bool changingRole;
+  final bool editingProfile;
 
   const ProfileCard({
     super.key,
     required this.user,
     this.onChangeRole,
+    this.onEdit,
     this.onLogout,
     this.changingRole = false,
+    this.editingProfile = false,
   });
 
   @override
@@ -36,9 +40,13 @@ class ProfileCard extends StatelessWidget {
           const LoginHeader(),
           const SizedBox(height: 24),
 
+          Center(child: _avatar()),
+          const SizedBox(height: 16),
+
           /// NAME
           Text(
             user.fullName,
+            textAlign: TextAlign.center,
             style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
           ),
 
@@ -48,6 +56,23 @@ class ProfileCard extends StatelessWidget {
           _info("Phone", user.phone),
           _info("Role", user.role),
           _info("Group", user.groupId),
+          if (onEdit != null) ...[
+            const SizedBox(height: 24),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: editingProfile ? null : onEdit,
+                icon: editingProfile
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.edit),
+                label: Text(editingProfile ? "Đang lưu..." : "Chỉnh sửa"),
+              ),
+            ),
+          ],
           if (onChangeRole != null) ...[
             const SizedBox(height: 24),
             SizedBox(
@@ -89,6 +114,34 @@ class ProfileCard extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+
+  Widget _avatar() {
+    final avatarUrl = user.avatarUrl.trim();
+    final fallbackText = user.fullName.trim().isNotEmpty
+        ? user.fullName.trim().substring(0, 1).toUpperCase()
+        : user.id.substring(0, 1).toUpperCase();
+
+    if (avatarUrl.isEmpty) {
+      return CircleAvatar(
+        radius: 44,
+        backgroundColor: const Color(0xFFE8EEF8),
+        child: Text(
+          fallbackText,
+          style: const TextStyle(
+            color: Color(0xFF001D4E),
+            fontSize: 28,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+      );
+    }
+
+    return CircleAvatar(
+      radius: 44,
+      backgroundColor: const Color(0xFFE8EEF8),
+      backgroundImage: NetworkImage(avatarUrl),
     );
   }
 }

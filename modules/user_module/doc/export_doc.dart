@@ -2,7 +2,7 @@ import 'dart:io';
 
 void main() async {
   const name = "user";
-  const version = "0.0.5";
+  const version = "0.1.0";
 
   final libDir = Directory(Platform.script.resolve('../lib').toFilePath());
 

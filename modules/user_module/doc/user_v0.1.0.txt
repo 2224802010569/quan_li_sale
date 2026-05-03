@@ -1,0 +1,3172 @@
+
+FILE: d:\1-Now\1_Ung_dung_da_nen_tang\quan_li_sale\modules\user_module\lib\entity\route.dart
+class User {
+  final String id;
+  final String phone;
+  final String role;
+  final String token;
+
+  User({
+    required this.id,
+    required this.phone,
+    required this.role,
+    required this.token,
+  });
+}
+
+
+FILE: d:\1-Now\1_Ung_dung_da_nen_tang\quan_li_sale\modules\user_module\lib\entity\user.dart
+class User {
+  final String id;
+  final String username;
+  final String email;
+  final String password;
+  final String phone;
+  final String role;
+  final String fullName;
+  final String groupId;
+  final String avatarUrl;
+  final String avatarPath;
+
+  User({
+    required this.id,
+    required this.username,
+    required this.email,
+    required this.password,
+    required this.phone,
+    required this.role,
+    required this.fullName,
+    required this.groupId,
+    this.avatarUrl = '',
+    this.avatarPath = '',
+  });
+
+  User copyWith({
+    String? id,
+    String? username,
+    String? email,
+    String? password,
+    String? phone,
+    String? role,
+    String? fullName,
+    String? groupId,
+    String? avatarUrl,
+    String? avatarPath,
+  }) {
+    return User(
+      id: id ?? this.id,
+      username: username ?? this.username,
+      email: email ?? this.email,
+      password: password ?? this.password,
+      phone: phone ?? this.phone,
+      role: role ?? this.role,
+      fullName: fullName ?? this.fullName,
+      groupId: groupId ?? this.groupId,
+      avatarUrl: avatarUrl ?? this.avatarUrl,
+      avatarPath: avatarPath ?? this.avatarPath,
+    );
+  }
+}
+
+
+FILE: d:\1-Now\1_Ung_dung_da_nen_tang\quan_li_sale\modules\user_module\lib\input\login_input.dart
+import 'package:core/di/injector.dart';
+import 'package:core/storage/app_storage.dart';
+import 'package:user_module/logic_data/session_manager.dart';
+
+class LoginInput {
+  final _session = SessionManager();
+
+  bool canOpen() {
+    final user = _session.getUser();
+    return user == null;
+  }
+}
+
+
+FILE: d:\1-Now\1_Ung_dung_da_nen_tang\quan_li_sale\modules\user_module\lib\input\manager_input.dart
+import 'package:core/di/injector.dart';
+import 'package:core/storage/app_storage.dart';
+import 'package:user_module/logic_data/session_manager.dart';
+
+class ManagerInput {
+  final _session = SessionManager();
+
+  bool canOpen() {
+    final user = _session.getUser();
+    return user != null && user['role'] == 'Manager';
+  }
+}
+
+
+FILE: d:\1-Now\1_Ung_dung_da_nen_tang\quan_li_sale\modules\user_module\lib\input\profile_input.dart
+import 'package:core/di/injector.dart';
+import 'package:core/storage/app_storage.dart';
+import 'package:user_module/logic_data/session_manager.dart';
+
+class ProfileInput {
+  final String? userId;
+
+  ProfileInput({this.userId});
+
+  bool canOpen() {
+    final _session = SessionManager();
+    final current = _session.getUser();
+
+    if (current == null) return false;
+
+    final isManager = current['role'] == 'Manager';
+
+    /// nếu xem người khác → phải là manager
+    if (userId != null && userId != current['id'] && !isManager) {
+      return false;
+    }
+
+    return true;
+  }
+}
+
+
+FILE: d:\1-Now\1_Ung_dung_da_nen_tang\quan_li_sale\modules\user_module\lib\logic_data\session_manager.dart
+// modules/user_module/lib/service/session_manager.dart
+
+import 'package:core/di/injector.dart';
+import 'package:core/storage/app_storage.dart';
+import '../entity/user.dart';
+
+class SessionManager {
+  static final SessionManager _instance = SessionManager._internal();
+  factory SessionManager() => _instance;
+  SessionManager._internal();
+
+  final _storage = get<AppStorage>();
+
+  /// Lưu user sau login / đổi mật khẩu
+  Future<void> saveUser(User user) async {
+    await get<AppStorage>().set('user', {
+      'id': user.id,
+      'role': user.role,
+      'groupId': user.groupId,
+      'email': user.email,
+      'phone': user.phone,
+      'fullName': user.fullName,
+      'avatarUrl': user.avatarUrl,
+      'avatarPath': user.avatarPath,
+    });
+  }
+
+  /// Lấy user hiện tại
+  Map<String, dynamic>? getUser() {
+    return _storage.get<Map<String, dynamic>>('user');
+  }
+
+  /// Clear khi logout
+  void clear() {
+    _storage.clear();
+  }
+
+  /// Check login
+  bool isLoggedIn() {
+    return getUser() != null;
+  }
+}
+
+
+FILE: d:\1-Now\1_Ung_dung_da_nen_tang\quan_li_sale\modules\user_module\lib\logic_data\user_data.dart
+import 'dart:typed_data';
+
+import 'package:core/di/injector.dart';
+import 'package:core/di/supabase.dart';
+import 'package:supabase_flutter/supabase_flutter.dart'
+    show FileOptions, StorageException;
+import '../entity/user.dart';
+import 'user_data_local.dart';
+
+class UserData {
+  final String table = 'users';
+  final String avatarBucket = 'user_avatars';
+  get supabase => get<SupabaseConnect>().client;
+
+  final _local = UserDataLocal();
+
+  User convertToUser(Map<String, dynamic> data) {
+    final avatarPath = data['avatar_path'] ?? data['avatarPath'] ?? '';
+
+    return User(
+      id: data['id'],
+      username: data['username'],
+      email: data['email'],
+      password: data['password'],
+      phone: data['phone'],
+      role: data['role'],
+      fullName: data['full_name'] ?? data['fullName'] ?? '',
+      groupId: data['group_id'] ?? data['groupId'] ?? '',
+      avatarUrl: _getAvatarUrl(avatarPath),
+      avatarPath: avatarPath,
+    );
+  }
+
+  Future<bool> insertUser(User user) async {
+    try {
+      final insertData = {
+        'id': user.id,
+        'username': user.username,
+        'email': user.email,
+        'password': user.password,
+        'phone': user.phone,
+        'role': user.role,
+        'full_name': user.fullName,
+        'group_id': user.groupId,
+      };
+      if (user.avatarPath.isNotEmpty) {
+        insertData['avatar_path'] = user.avatarPath;
+      }
+
+      await supabase?.from(table).insert(insertData);
+      return true;
+    } catch (_) {
+      try {
+        _local.insert({
+          'id': user.id,
+          'username': user.username,
+          'email': user.email,
+          'password': user.password,
+          'phone': user.phone,
+          'role': user.role,
+          'fullName': user.fullName,
+          'full_name': user.fullName,
+          'groupId': user.groupId,
+          'group_id': user.groupId,
+          'avatarPath': user.avatarPath,
+          'avatar_path': user.avatarPath,
+        });
+        return true;
+      } catch (_) {
+        return false;
+      }
+    }
+  }
+
+  Future<void> insertUserRemote(User user) async {
+    final client = supabase;
+    if (client == null) {
+      throw Exception("Supabase chưa được khởi tạo");
+    }
+
+    try {
+      final insertData = {
+        'id': user.id,
+        'username': user.username,
+        'email': user.email,
+        'password': user.password,
+        'phone': user.phone,
+        'role': user.role,
+        'full_name': user.fullName,
+        'group_id': user.groupId,
+      };
+      if (user.avatarPath.isNotEmpty) {
+        insertData['avatar_path'] = user.avatarPath;
+      }
+
+      await client.from(table).insert(insertData).select('id').single();
+    } catch (e) {
+      throw Exception("Supabase không cho thêm nhân viên: $e");
+    }
+  }
+
+  Future<List<User>> getAllUsers() async {
+    try {
+      final response = await supabase?.from(table).select();
+
+      return response!.map<User>((item) => convertToUser(item)).toList();
+    } catch (_) {
+      return _local.getAll().map<User>((item) => convertToUser(item)).toList();
+    }
+  }
+
+  Future<bool> updateUser(User user) async {
+    try {
+      await supabase
+          ?.from(table)
+          .update({
+            'password': user.password,
+            'phone': user.phone,
+            'role': user.role,
+            'full_name': user.fullName,
+            'group_id': user.groupId,
+            'avatar_path': user.avatarPath,
+          })
+          .eq('id', user.id);
+
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  Future<bool> updateProfile(User user) async {
+    final updateData = <String, dynamic>{
+      'email': user.email,
+      'phone': user.phone,
+      'full_name': user.fullName,
+      'avatar_path': user.avatarPath,
+    };
+    final client = supabase;
+
+    if (client == null) {
+      return _updateLocalProfile(user);
+    }
+
+    try {
+      await client.from(table).update(updateData).eq('id', user.id);
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  bool _updateLocalProfile(User user) {
+    try {
+      final localUser = _local.getAll().firstWhere(
+        (item) => item['id'] == user.id,
+      );
+      localUser['email'] = user.email;
+      localUser['phone'] = user.phone;
+      localUser['fullName'] = user.fullName;
+      localUser['full_name'] = user.fullName;
+      localUser['avatarPath'] = user.avatarPath;
+      localUser['avatar_path'] = user.avatarPath;
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  Future<bool> deleteUser(String id) async {
+    try {
+      await supabase?.from(table).delete().eq('id', id);
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  Future<bool> deleteUserRemote(String id) async {
+    final client = supabase;
+    if (client == null) {
+      return false;
+    }
+
+    try {
+      await client.from(table).delete().eq('id', id);
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  Future<User?> login(String username, String password) async {
+    final users = await getAllUsers();
+    return users
+        .where(
+          (u) =>
+              (u.username == username || u.email == username) &&
+              u.password == password,
+        )
+        .toList()
+        .firstOrNull;
+  }
+
+  Future<User?> getByEmail(String email) async {
+    final normalizedEmail = email.trim().toLowerCase();
+    final users = await getAllUsers();
+
+    for (final user in users) {
+      if (user.email.trim().toLowerCase() == normalizedEmail) {
+        return user;
+      }
+    }
+
+    return null;
+  }
+
+  Future<bool> updatePasswordByEmail(String email, String newPassword) async {
+    final normalizedEmail = email.trim().toLowerCase();
+
+    try {
+      await supabase
+          ?.from(table)
+          .update({'password': newPassword})
+          .eq('email', normalizedEmail);
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  Future<User?> getById(String userId) async {
+    final normalizedUserId = userId.trim();
+    final users = await getAllUsers();
+
+    for (final user in users) {
+      if (user.id.trim() == normalizedUserId) {
+        return user;
+      }
+    }
+
+    return null;
+  }
+
+  Future<String> uploadAvatar({
+    required String userId,
+    required Uint8List bytes,
+    required String fileName,
+  }) async {
+    final client = supabase;
+    if (client == null) {
+      throw Exception("Supabase chưa được khởi tạo");
+    }
+
+    final extension = _fileExtension(fileName);
+    final contentType = _contentType(extension);
+    final storagePath =
+        'profiles/${userId.trim()}/${DateTime.now().millisecondsSinceEpoch}.$extension';
+
+    try {
+      await client.storage
+          .from(avatarBucket)
+          .uploadBinary(
+            storagePath,
+            bytes,
+            fileOptions: FileOptions(contentType: contentType, upsert: true),
+          );
+    } on StorageException catch (e) {
+      if (e.statusCode == '403') {
+        throw Exception(
+          "Supabase Storage từ chối upload avatar (403). Kiểm tra bucket '$avatarBucket' và policy insert/update cho role anon.",
+        );
+      }
+      throw Exception("Không thể upload avatar: ${e.message}");
+    } catch (e) {
+      throw Exception("Không thể upload avatar: $e");
+    }
+
+    return storagePath;
+  }
+
+  Future<bool> updateRoleAndGroup({
+    required String userId,
+    required String role,
+    required String groupId,
+  }) async {
+    final normalizedUserId = userId.trim();
+
+    try {
+      await supabase
+          ?.from(table)
+          .update({'role': role, 'group_id': groupId})
+          .eq('id', normalizedUserId);
+      return true;
+    } catch (_) {
+      try {
+        final localUser = _local.getAll().firstWhere(
+          (item) => item['id'] == normalizedUserId,
+        );
+        localUser['role'] = role;
+        localUser['groupId'] = groupId;
+        return true;
+      } catch (_) {
+        return false;
+      }
+    }
+  }
+
+  String _getAvatarUrl(String avatarPath) {
+    if (avatarPath.trim().isEmpty) {
+      return '';
+    }
+
+    try {
+      return supabase?.storage.from(avatarBucket).getPublicUrl(avatarPath) ??
+          '';
+    } catch (_) {
+      return '';
+    }
+  }
+
+  String _fileExtension(String fileName) {
+    final normalized = fileName.trim().toLowerCase();
+    final index = normalized.lastIndexOf('.');
+    if (index == -1 || index == normalized.length - 1) {
+      return 'jpg';
+    }
+
+    final extension = normalized.substring(index + 1);
+    if (extension == 'jpeg' ||
+        extension == 'jpg' ||
+        extension == 'png' ||
+        extension == 'webp') {
+      return extension;
+    }
+
+    return 'jpg';
+  }
+
+  String _contentType(String extension) {
+    switch (extension) {
+      case 'png':
+        return 'image/png';
+      case 'webp':
+        return 'image/webp';
+      case 'jpeg':
+      case 'jpg':
+      default:
+        return 'image/jpeg';
+    }
+  }
+}
+
+
+FILE: d:\1-Now\1_Ung_dung_da_nen_tang\quan_li_sale\modules\user_module\lib\logic_data\user_data_local.dart
+class UserDataLocal {
+  final List<Map<String, dynamic>> _data = [
+    {
+      'id': 'Sale01',
+      'username': 'sale01',
+      'email': 'sale01@example.com',
+      'password': '123',
+      'phone': '0123456789',
+      'role': 'Sale',
+      'fullName': 'Nguyen Van A',
+      'full_name': 'Nguyen Van A',
+      'groupId': 'G1',
+      'group_id': 'G1',
+      'avatarPath': '',
+      'avatar_path': '',
+    },
+    {
+      'id': 'Mana01',
+      'username': 'mana01',
+      'email': 'manager01@example.com',
+      'password': '123',
+      'phone': '0123456789',
+      'role': 'Manager',
+      'fullName': 'Nguyen Van B',
+      'full_name': 'Nguyen Van B',
+      'groupId': 'G1',
+      'group_id': 'G1',
+      'avatarPath': '',
+      'avatar_path': '',
+    },
+  ];
+
+  Map<String, dynamic>? findUser(String fullName, String password) {
+    try {
+      return _data.firstWhere(
+        (e) => e['fullName'] == fullName && e['password'] == password,
+      );
+    } catch (_) {
+      return null;
+    }
+  }
+
+  List<Map<String, dynamic>> getAll() => _data;
+
+  void insert(Map<String, dynamic> user) {
+    _data.add(user);
+  }
+}
+
+
+FILE: d:\1-Now\1_Ung_dung_da_nen_tang\quan_li_sale\modules\user_module\lib\logic_uc\add_user_uc.dart
+import 'dart:math';
+
+import '../entity/user.dart';
+import '../logic_data/session_manager.dart';
+import '../logic_data/user_data.dart';
+
+class AddUserUC {
+  final _data = UserData();
+  final _session = SessionManager();
+
+  Future<User> execute({
+    required String fullName,
+    required String email,
+    required String phone,
+  }) async {
+    final current = _session.getUser();
+    if (current == null) {
+      throw Exception("Chưa đăng nhập");
+    }
+
+    if (current['role'] != 'Manager') {
+      throw Exception("Không có quyền thêm nhân viên");
+    }
+
+    final normalizedFullName = fullName.trim();
+    final normalizedEmail = email.trim().toLowerCase();
+    final normalizedPhone = phone.trim();
+
+    if (normalizedFullName.isEmpty ||
+        normalizedEmail.isEmpty ||
+        normalizedPhone.isEmpty) {
+      throw Exception("Vui lòng nhập đầy đủ thông tin");
+    }
+
+    if (!normalizedEmail.contains('@')) {
+      throw Exception("Email không hợp lệ");
+    }
+
+    final existingUser = await _data.getByEmail(normalizedEmail);
+    if (existingUser != null) {
+      throw Exception("Email đã tồn tại");
+    }
+
+    final generatedId = _generateUserId();
+    final generatedUsername = _generateUsername(normalizedEmail, generatedId);
+    const defaultPassword = '123456789';
+    final groupId = (current['groupId'] ?? '').toString();
+
+    final user = User(
+      id: generatedId,
+      username: generatedUsername,
+      email: normalizedEmail,
+      password: defaultPassword,
+      phone: normalizedPhone,
+      role: 'Sale',
+      fullName: normalizedFullName,
+      groupId: groupId,
+    );
+
+    await _data.insertUserRemote(user);
+
+    return user;
+  }
+
+  String _generateUserId() {
+    final random = Random.secure();
+    final bytes = List<int>.generate(16, (_) => random.nextInt(256));
+
+    bytes[6] = (bytes[6] & 0x0f) | 0x40;
+    bytes[8] = (bytes[8] & 0x3f) | 0x80;
+
+    String hex(int value) => value.toRadixString(16).padLeft(2, '0');
+    final parts = [
+      bytes.sublist(0, 4).map(hex).join(),
+      bytes.sublist(4, 6).map(hex).join(),
+      bytes.sublist(6, 8).map(hex).join(),
+      bytes.sublist(8, 10).map(hex).join(),
+      bytes.sublist(10, 16).map(hex).join(),
+    ];
+
+    return parts.join('-');
+  }
+
+  String _generateUsername(String email, String userId) {
+    final prefix = email
+        .split('@')
+        .first
+        .replaceAll(RegExp(r'[^a-zA-Z0-9]'), '');
+    if (prefix.isEmpty) {
+      return userId.toLowerCase();
+    }
+    return '${prefix.toLowerCase()}${userId.substring(userId.length - 3)}';
+  }
+}
+
+
+FILE: d:\1-Now\1_Ung_dung_da_nen_tang\quan_li_sale\modules\user_module\lib\logic_uc\change_password_uc.dart
+import 'package:user_module/logic_data/session_manager.dart';
+import '../logic_data/user_data.dart';
+
+class ChangePasswordUC {
+  final _data = UserData();
+  final _session = SessionManager();
+
+  Future<void> execute({
+    required String email,
+    required String newPassword,
+  }) async {
+    if (newPassword.trim().length < 6) {
+      throw Exception("Mật khẩu phải >= 6 ký tự");
+    }
+
+    final ok = await _data.updatePasswordByEmail(
+      email.trim().toLowerCase(),
+      newPassword.trim(),
+    );
+
+    if (!ok) {
+      throw Exception("Không thể cập nhật mật khẩu");
+    }
+
+    final user = await _data.login(email, newPassword);
+
+    if (user == null) {
+      throw Exception("Tự động đăng nhập thất bại");
+    }
+
+    await _session.saveUser(user);
+  }
+}
+
+
+FILE: d:\1-Now\1_Ung_dung_da_nen_tang\quan_li_sale\modules\user_module\lib\logic_uc\change_role_uc.dart
+import '../entity/user.dart';
+import '../logic_data/session_manager.dart';
+import '../logic_data/user_data.dart';
+
+class ChangeRoleUC {
+  final _data = UserData();
+  final _session = SessionManager();
+
+  Future<User> execute({
+    required String targetUserId,
+    required String newRole,
+  }) async {
+    final current = _session.getUser();
+    if (current == null) {
+      throw Exception("Chưa đăng nhập");
+    }
+
+    final currentRole = (current['role'] ?? '').toString().trim();
+    if (currentRole != 'Manager') {
+      throw Exception("Chỉ manager mới được đổi vai trò");
+    }
+
+    final normalizedTargetUserId = targetUserId.trim();
+    if (normalizedTargetUserId.isEmpty) {
+      throw Exception("Thiếu nhân viên cần đổi vai trò");
+    }
+
+    if (normalizedTargetUserId == current['id']) {
+      throw Exception("Không thể tự đổi vai trò của chính mình");
+    }
+
+    final normalizedRole = newRole.trim();
+    if (normalizedRole != 'Sale' && normalizedRole != 'Manager') {
+      throw Exception("Vai trò không hợp lệ");
+    }
+
+    final targetUser = await _data.getById(normalizedTargetUserId);
+    if (targetUser == null) {
+      throw Exception("Không tìm thấy nhân viên");
+    }
+
+    if (targetUser.role == normalizedRole) {
+      throw Exception("Nhân viên đã có vai trò này");
+    }
+
+    final newGroupId = _generateGroupId();
+    final updated = await _data.updateRoleAndGroup(
+      userId: normalizedTargetUserId,
+      role: normalizedRole,
+      groupId: newGroupId,
+    );
+
+    if (!updated) {
+      throw Exception("Không thể đổi vai trò");
+    }
+
+    final refreshedUser = await _data.getById(normalizedTargetUserId);
+    if (refreshedUser == null) {
+      throw Exception("Không thể tải lại thông tin nhân viên");
+    }
+
+    return refreshedUser;
+  }
+
+  String _generateGroupId() {
+    final millis = DateTime.now().millisecondsSinceEpoch;
+    return 'G$millis';
+  }
+}
+
+
+FILE: d:\1-Now\1_Ung_dung_da_nen_tang\quan_li_sale\modules\user_module\lib\logic_uc\forgot_password_uc.dart
+import 'dart:math';
+import 'package:flutter/foundation.dart';
+import 'package:mailer/mailer.dart';
+import 'package:mailer/smtp_server/gmail.dart';
+import '../logic_data/user_data.dart';
+
+class ForgotPasswordUC {
+  static final ForgotPasswordUC _instance = ForgotPasswordUC._internal();
+  factory ForgotPasswordUC() => _instance;
+  ForgotPasswordUC._internal();
+
+  final _userData = UserData();
+  final Map<String, _OtpSession> _sessions = {};
+
+  String _generateCode() {
+    final rand = Random();
+    return (rand.nextInt(900000) + 100000).toString();
+  }
+
+  String _normalizeEmail(String email) => email.trim().toLowerCase();
+
+  Future<bool> sendCode(String email) async {
+    final normalizedEmail = _normalizeEmail(email);
+
+    if (normalizedEmail.isEmpty || !normalizedEmail.contains("@")) {
+      throw Exception("Email không hợp lệ");
+    }
+
+    final user = await _userData.getByEmail(normalizedEmail);
+    if (user == null) {
+      throw Exception("Email chưa được đăng ký");
+    }
+
+    final code = _generateCode();
+    _sessions[normalizedEmail] = _OtpSession(
+      code: code,
+      expiresAt: DateTime.now().add(const Duration(minutes: 5)),
+    );
+
+    const username = "2224802010569@student.tdmu.edu.vn";
+    const password = "jkpzkigyzjycfayq";
+    final smtpServer = gmail(username, password);
+    final message = Message()
+      ..from = Address(username, "Sale App")
+      ..recipients.add(normalizedEmail)
+      ..subject = "Mã xác thực tài khoản"
+      ..text = "Mã OTP của bạn là: $code\nCó hiệu lực trong 5 phút.";
+
+    try {
+      await send(message, smtpServer);
+      debugPrint("OTP[$normalizedEmail]: $code");
+      return true;
+    } catch (e) {
+      _sessions.remove(normalizedEmail);
+      throw Exception("Gửi email thất bại: $e");
+    }
+  }
+
+  Future<bool> verifyCode({
+    required String email,
+    required String code,
+  }) async {
+    final normalizedEmail = _normalizeEmail(email);
+    final session = _sessions[normalizedEmail];
+
+    if (session == null) {
+      throw Exception("Không tìm thấy phiên xác thực, vui lòng gửi lại mã");
+    }
+
+    if (DateTime.now().isAfter(session.expiresAt)) {
+      _sessions.remove(normalizedEmail);
+      throw Exception("Mã xác thực đã hết hạn");
+    }
+
+    final isValid = code.trim() == session.code;
+    debugPrint("VERIFY[$normalizedEmail]: ${code.trim()} / ${session.code}");
+
+    if (isValid) {
+      session.isVerified = true;
+    }
+
+    return isValid;
+  }
+
+  Future<bool> resetPassword({
+    required String email,
+    required String newPassword,
+  }) async {
+    final normalizedEmail = _normalizeEmail(email);
+    final session = _sessions[normalizedEmail];
+
+    if (session == null || !session.isVerified) {
+      throw Exception("Bạn cần xác thực mã trước khi đổi mật khẩu");
+    }
+
+    if (DateTime.now().isAfter(session.expiresAt)) {
+      _sessions.remove(normalizedEmail);
+      throw Exception("Phiên xác thực đã hết hạn");
+    }
+
+    if (newPassword.trim().length < 6) {
+      throw Exception("Mật khẩu mới phải có ít nhất 6 ký tự");
+    }
+
+    final updated = await _userData.updatePasswordByEmail(
+      normalizedEmail,
+      newPassword.trim(),
+    );
+
+    if (!updated) {
+      throw Exception("Không thể cập nhật mật khẩu");
+    }
+
+    _sessions.remove(normalizedEmail);
+    return true;
+  }
+}
+
+class _OtpSession {
+  final String code;
+  final DateTime expiresAt;
+  bool isVerified = false;
+
+  _OtpSession({
+    required this.code,
+    required this.expiresAt,
+  });
+}
+
+
+FILE: d:\1-Now\1_Ung_dung_da_nen_tang\quan_li_sale\modules\user_module\lib\logic_uc\login_uc.dart
+import 'package:user_module/logic_data/session_manager.dart';
+import '../logic_data/user_data.dart';
+import '../entity/user.dart';
+
+class LoginUC {
+  final _data = UserData();
+  final _session = SessionManager();
+
+  Future<User?> execute(String id, String pass) async {
+    if (id.trim().isEmpty || pass.isEmpty) {
+      throw Exception("Thiếu thông tin");
+    }
+
+    final user = await _data.login(id, pass);
+
+    if (user != null) {
+      await _session.saveUser(user);
+    }
+
+    return user;
+  }
+}
+
+
+FILE: d:\1-Now\1_Ung_dung_da_nen_tang\quan_li_sale\modules\user_module\lib\logic_uc\logout_uc.dart
+import 'package:core/di/injector.dart';
+import 'package:core/storage/app_storage.dart';
+
+class LogoutUC {
+  void execute() {
+    final storage = get<AppStorage>();
+    storage.clear();
+  }
+}
+
+
+FILE: d:\1-Now\1_Ung_dung_da_nen_tang\quan_li_sale\modules\user_module\lib\logic_uc\manage_user_uc.dart
+import '../logic_data/user_data.dart';
+import 'package:core/di/injector.dart';
+import 'package:core/storage/app_storage.dart';
+import '../entity/user.dart';
+
+class ManagerUserUC {
+  final _data = UserData();
+
+  Future<List<User>> getUsers() async {
+    final storage = get<AppStorage>();
+    final current = storage.get<Map<String, dynamic>>('user');
+
+    if (current == null) {
+      throw Exception("Chưa đăng nhập");
+    }
+
+    if (current['role'] != 'Manager') {
+      throw Exception("Không có quyền");
+    }
+
+    final groupId = current['groupId'];
+
+    final users = await _data.getAllUsers();
+
+    return users
+        .where((u) => u.groupId == groupId && u.role == 'Sale')
+        .toList();
+  }
+
+  Future<void> deleteUser(User user) async {
+    final storage = get<AppStorage>();
+    final current = storage.get<Map<String, dynamic>>('user');
+
+    if (current == null) {
+      throw Exception("Chưa đăng nhập");
+    }
+
+    if (current['role'] != 'Manager') {
+      throw Exception("Không có quyền xóa nhân viên");
+    }
+
+    if (user.role != 'Sale' || user.groupId != current['groupId']) {
+      throw Exception("Chỉ được xóa nhân viên Sale trong cùng group");
+    }
+
+    final deleted = await _data.deleteUserRemote(user.id);
+    if (!deleted) {
+      throw Exception("Không thể xóa nhân viên trên Supabase");
+    }
+  }
+}
+
+
+FILE: d:\1-Now\1_Ung_dung_da_nen_tang\quan_li_sale\modules\user_module\lib\logic_uc\profile_uc.dart
+import 'dart:typed_data';
+
+import '../logic_data/user_data.dart';
+import 'package:core/di/injector.dart';
+import 'package:core/storage/app_storage.dart';
+import '../entity/user.dart';
+
+class ProfileUC {
+  final _data = UserData();
+
+  Future<User> execute({String? userId}) async {
+    final storage = get<AppStorage>();
+    final current = storage.get<Map<String, dynamic>>('user');
+
+    if (current == null) {
+      throw Exception("Chưa đăng nhập");
+    }
+
+    final isManager = current['role'] == 'Manager';
+    final targetId = userId ?? current['id'];
+    if (targetId != current['id'] && !isManager) {
+      throw Exception("Không có quyền xem user khác");
+    }
+
+    final users = await _data.getAllUsers();
+
+    return users.firstWhere(
+      (u) => u.id == targetId,
+      orElse: () => throw Exception("Không tìm thấy user"),
+    );
+  }
+
+  Future<User> updateCurrentUser({
+    required String fullName,
+    required String email,
+    required String phone,
+    Uint8List? avatarBytes,
+    String? avatarFileName,
+  }) async {
+    final storage = get<AppStorage>();
+    final current = storage.get<Map<String, dynamic>>('user');
+
+    if (current == null) {
+      throw Exception("Chưa đăng nhập");
+    }
+
+    final normalizedFullName = fullName.trim();
+    final normalizedEmail = email.trim().toLowerCase();
+    final normalizedPhone = phone.trim();
+
+    if (normalizedFullName.isEmpty ||
+        normalizedEmail.isEmpty ||
+        normalizedPhone.isEmpty) {
+      throw Exception("Vui lòng nhập đầy đủ họ tên, email và số điện thoại");
+    }
+
+    if (!normalizedEmail.contains('@')) {
+      throw Exception("Email không hợp lệ");
+    }
+
+    final user = await execute();
+    var avatarPath = user.avatarPath;
+
+    if (avatarBytes != null && avatarBytes.isNotEmpty) {
+      avatarPath = await _data.uploadAvatar(
+        userId: user.id,
+        bytes: avatarBytes,
+        fileName: avatarFileName ?? 'avatar.jpg',
+      );
+    }
+
+    final updatedUser = user.copyWith(
+      fullName: normalizedFullName,
+      email: normalizedEmail,
+      phone: normalizedPhone,
+      avatarPath: avatarPath,
+    );
+
+    final updated = await _data.updateProfile(updatedUser);
+    if (!updated) {
+      throw Exception(
+        "Supabase từ chối cập nhật thông tin cá nhân. Kiểm tra quyền update bảng users cho role anon.",
+      );
+    }
+
+    final refreshedUser = await _data.getById(updatedUser.id) ?? updatedUser;
+
+    await storage.set('user', {
+      'id': refreshedUser.id,
+      'role': refreshedUser.role,
+      'groupId': refreshedUser.groupId,
+      'email': refreshedUser.email,
+      'phone': refreshedUser.phone,
+      'fullName': refreshedUser.fullName,
+      'avatarUrl': refreshedUser.avatarUrl,
+      'avatarPath': refreshedUser.avatarPath,
+    });
+
+    return refreshedUser;
+  }
+}
+
+
+FILE: d:\1-Now\1_Ung_dung_da_nen_tang\quan_li_sale\modules\user_module\lib\output\user_event.dart
+enum UserEventType { loginSuccess }
+
+class UserEvent {
+  final UserEventType type;
+  final Map<String, dynamic>? data;
+
+  UserEvent({required this.type, this.data});
+
+  factory UserEvent.loginSuccess(Map<String, dynamic> data) {
+    return UserEvent(type: UserEventType.loginSuccess, data: data);
+  }
+}
+
+
+FILE: d:\1-Now\1_Ung_dung_da_nen_tang\quan_li_sale\modules\user_module\lib\user_module.dart
+import 'package:flutter/material.dart';
+import 'package:user_module/output/user_event.dart';
+import 'view/common/login/login_view.dart';
+import 'view/home_view.dart';
+
+class UserScreen extends StatelessWidget {
+  final Function(UserEvent) onEvent;
+  final String view;
+
+  const UserScreen({super.key, required this.onEvent, this.view = ''});
+
+  @override
+  Widget build(BuildContext context) {
+    switch (view) {
+      case 'HOME':
+        return HomeView();
+      default:
+        return LoginView(onEvent: onEvent);    
+    }
+  }
+}
+
+
+FILE: d:\1-Now\1_Ung_dung_da_nen_tang\quan_li_sale\modules\user_module\lib\view\common\change_password\change_password_view.dart
+import 'package:flutter/material.dart';
+import 'widget/change_password_card.dart';
+
+class ChangePasswordView extends StatelessWidget {
+  final String email;
+
+  const ChangePasswordView({super.key, required this.email});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xFFF9F9F9),
+      body: Center(
+        child: SingleChildScrollView(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 390),
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: ChangePasswordCard(email: email),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+
+FILE: d:\1-Now\1_Ung_dung_da_nen_tang\quan_li_sale\modules\user_module\lib\view\common\change_password\widget\change_password_card.dart
+import 'package:flutter/material.dart';
+import 'package:user_module/logic_uc/change_password_uc.dart';
+import '../../change_password/widget/input_field.dart';
+
+class ChangePasswordCard extends StatefulWidget {
+  final String email;
+
+  const ChangePasswordCard({super.key, required this.email});
+
+  @override
+  State<ChangePasswordCard> createState() => _ChangePasswordCardState();
+}
+
+class _ChangePasswordCardState extends State<ChangePasswordCard> {
+  final newCtrl = TextEditingController();
+  final confirmCtrl = TextEditingController();
+
+  final _uc = ChangePasswordUC();
+
+  String error = "";
+  bool loading = false;
+
+  Future<void> handle() async {
+    final newPass = newCtrl.text.trim();
+    final confirm = confirmCtrl.text.trim();
+
+    if (newPass.length < 6) {
+      setState(() => error = "Mật khẩu phải >= 6 ký tự");
+      return;
+    }
+
+    if (newPass != confirm) {
+      setState(() => error = "Mật khẩu xác nhận không khớp");
+      return;
+    }
+
+    setState(() {
+      loading = true;
+      error = "";
+    });
+
+    try {
+      await _uc.execute(email: widget.email, newPassword: newPass);
+
+      if (!mounted) return;
+
+      /// 🔥 auto login → về home
+      Navigator.popUntil(context, (route) => route.isFirst);
+    } catch (e) {
+      if (mounted) {
+        setState(() => error = e.toString());
+      }
+    } finally {
+      if (mounted) {
+        setState(() => loading = false);
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    newCtrl.dispose();
+    confirmCtrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x140D47A1),
+            blurRadius: 24,
+            offset: Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            "Đổi mật khẩu",
+            style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold),
+          ),
+
+          const SizedBox(height: 8),
+          Text("Email: ${widget.email}"),
+
+          const SizedBox(height: 24),
+
+          InputField(
+            label: "MẬT KHẨU MỚI",
+            controller: newCtrl,
+            hint: "Nhập mật khẩu mới",
+            obscure: true,
+          ),
+
+          const SizedBox(height: 16),
+
+          InputField(
+            label: "XÁC NHẬN",
+            controller: confirmCtrl,
+            hint: "Nhập lại mật khẩu",
+            obscure: true,
+          ),
+
+          if (error.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: Text(error, style: const TextStyle(color: Colors.red)),
+            ),
+
+          const SizedBox(height: 24),
+
+          GestureDetector(
+            onTap: loading ? null : handle,
+            child: Container(
+              height: 56,
+              width: double.infinity,
+              decoration: BoxDecoration(
+                color: Colors.blue,
+                borderRadius: BorderRadius.circular(999),
+              ),
+              child: Center(
+                child: loading
+                    ? const CircularProgressIndicator(color: Colors.white)
+                    : const Text(
+                        "Xác nhận",
+                        style: TextStyle(color: Colors.white),
+                      ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+
+FILE: d:\1-Now\1_Ung_dung_da_nen_tang\quan_li_sale\modules\user_module\lib\view\common\change_password\widget\input_field.dart
+import 'package:flutter/material.dart';
+
+class InputField extends StatelessWidget {
+  final String label;
+  final String hint;
+  final TextEditingController controller;
+  final bool obscure;
+
+  const InputField({
+    super.key,
+    required this.label,
+    required this.controller,
+    required this.hint,
+    this.obscure = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: const TextStyle(
+            color: Color(0xFF434652),
+            fontSize: 14,
+            letterSpacing: 0.35,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Container(
+          height: 56,
+          padding: const EdgeInsets.symmetric(horizontal: 20),
+          decoration: BoxDecoration(
+            color: const Color(0xFFE8E8E8),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          alignment: Alignment.centerLeft,
+          child: TextField(
+            controller: controller,
+            obscureText: obscure,
+            decoration: InputDecoration(
+              hintText: hint,
+              border: InputBorder.none,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+
+FILE: d:\1-Now\1_Ung_dung_da_nen_tang\quan_li_sale\modules\user_module\lib\view\common\forgot_password\forgot_password_view.dart
+import 'package:flutter/material.dart';
+import '../../../logic_uc/forgot_password_uc.dart';
+import 'widget/forgot_card.dart';
+import 'verify_view.dart';
+
+class ForgotPasswordView extends StatefulWidget {
+  const ForgotPasswordView({super.key});
+
+  @override
+  State<ForgotPasswordView> createState() => _State();
+}
+
+class _State extends State<ForgotPasswordView> {
+  final emailCtrl = TextEditingController();
+  final _uc = ForgotPasswordUC();
+
+  String error = "";
+  bool loading = false;
+
+  Future<void> handleSend() async {
+    final email = emailCtrl.text.trim().toLowerCase();
+
+    setState(() {
+      loading = true;
+      error = "";
+    });
+
+    try {
+      final ok = await _uc.sendCode(email);
+
+      if (ok && mounted) {
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => VerifyView(email: email)),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => error = e.toString());
+      }
+    }
+
+    if (mounted) {
+      setState(() => loading = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xFFF9F9F9),
+      body: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 390),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: ForgotCard(
+              emailCtrl: emailCtrl,
+              onSend: handleSend,
+              error: error,
+              loading: loading,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+
+FILE: d:\1-Now\1_Ung_dung_da_nen_tang\quan_li_sale\modules\user_module\lib\view\common\forgot_password\verify_view.dart
+import 'package:flutter/material.dart';
+import 'package:user_module/view/common/change_password/change_password_view.dart';
+import 'dart:async';
+import '../../../logic_uc/forgot_password_uc.dart';
+import 'widget/verify_card.dart';
+
+class VerifyView extends StatefulWidget {
+  final String email;
+
+  const VerifyView({super.key, required this.email});
+
+  @override
+  State<VerifyView> createState() => _State();
+}
+
+class _State extends State<VerifyView> {
+  final codeCtrl = TextEditingController();
+  final _uc = ForgotPasswordUC();
+
+  String error = "";
+  int seconds = 300;
+  bool loading = false;
+  Timer? _timer;
+
+  @override
+  void initState() {
+    super.initState();
+    startCountdown();
+  }
+
+  void startCountdown() {
+    _timer?.cancel();
+    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (!mounted) {
+        timer.cancel();
+        return;
+      }
+
+      if (seconds <= 0) {
+        timer.cancel();
+        return;
+      }
+
+      setState(() => seconds--);
+    });
+  }
+
+  String formatTime() {
+    final m = (seconds ~/ 60).toString().padLeft(2, '0');
+    final s = (seconds % 60).toString().padLeft(2, '0');
+    return "$m:$s";
+  }
+
+  Future<void> handleVerify() async {
+    setState(() {
+      loading = true;
+      error = "";
+    });
+
+    try {
+      final ok = await _uc.verifyCode(email: widget.email, code: codeCtrl.text);
+
+      if (!mounted) {
+        return;
+      }
+
+      if (ok) {
+        await Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (_) => ChangePasswordView(email: widget.email),
+          ),
+        );
+      } else {
+        setState(() => error = "Mã không đúng");
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => error = e.toString());
+      }
+    } finally {
+      if (mounted) {
+        setState(() => loading = false);
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    codeCtrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xFFF9F9F9),
+      body: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 390),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: VerifyCard(
+              codeCtrl: codeCtrl,
+              onVerify: handleVerify,
+              error: error,
+              time: formatTime(),
+              loading: loading,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+
+FILE: d:\1-Now\1_Ung_dung_da_nen_tang\quan_li_sale\modules\user_module\lib\view\common\forgot_password\widget\forgot_card.dart
+import 'package:flutter/material.dart';
+import 'package:user_module/view/common/forgot_password/widget/input_field.dart';
+
+class ForgotCard extends StatelessWidget {
+  final TextEditingController emailCtrl;
+  final VoidCallback onSend;
+  final String error;
+  final bool loading;
+
+  const ForgotCard({
+    super.key,
+    required this.emailCtrl,
+    required this.onSend,
+    required this.error,
+    required this.loading,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x140D47A1),
+            blurRadius: 24,
+            offset: Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            "Khôi phục tài khoản",
+            style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold),
+          ),
+
+          const SizedBox(height: 8),
+
+          const Text("Nhập email để nhận mã xác thực"),
+
+          const SizedBox(height: 24),
+
+          InputField(
+            label: "EMAIL",
+            controller: emailCtrl,
+            hint: "name@gmail.com",
+          ),
+
+          if (error.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: Text(error, style: const TextStyle(color: Colors.red)),
+            ),
+
+          const SizedBox(height: 24),
+
+          GestureDetector(
+            onTap: loading ? null : onSend,
+            child: Container(
+              height: 56,
+              width: double.infinity,
+              decoration: BoxDecoration(
+                color: Colors.blue,
+                borderRadius: BorderRadius.circular(999),
+              ),
+              child: Center(
+                child: loading
+                    ? const CircularProgressIndicator(color: Colors.white)
+                    : const Text(
+                        "Gửi mã xác thực",
+                        style: TextStyle(color: Colors.white),
+                      ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+
+FILE: d:\1-Now\1_Ung_dung_da_nen_tang\quan_li_sale\modules\user_module\lib\view\common\forgot_password\widget\input_field.dart
+import 'package:flutter/material.dart';
+
+class InputField extends StatelessWidget {
+  final String label;
+  final String hint;
+  final TextEditingController controller;
+  final bool obscure;
+
+  const InputField({
+    super.key,
+    required this.label,
+    required this.controller,
+    required this.hint,
+    this.obscure = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: const TextStyle(
+            color: Color(0xFF434652),
+            fontSize: 14,
+            letterSpacing: 0.35,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Container(
+          height: 56,
+          padding: const EdgeInsets.symmetric(horizontal: 20),
+          decoration: BoxDecoration(
+            color: const Color(0xFFE8E8E8),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          alignment: Alignment.centerLeft,
+          child: TextField(
+            controller: controller,
+            obscureText: obscure,
+            decoration: InputDecoration(
+              hintText: hint,
+              border: InputBorder.none,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+
+FILE: d:\1-Now\1_Ung_dung_da_nen_tang\quan_li_sale\modules\user_module\lib\view\common\forgot_password\widget\verify_card.dart
+import 'package:flutter/material.dart';
+
+class VerifyCard extends StatelessWidget {
+  final TextEditingController codeCtrl;
+  final Future<void> Function() onVerify;
+  final String error;
+  final String time;
+  final bool loading;
+
+  const VerifyCard({
+    super.key,
+    required this.codeCtrl,
+    required this.onVerify,
+    required this.error,
+    required this.time,
+    required this.loading,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x140D47A1),
+            blurRadius: 24,
+            offset: Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          TextField(
+            controller: codeCtrl,
+            keyboardType: TextInputType.number,
+            onSubmitted: (_) => loading ? null : onVerify(),
+            decoration: const InputDecoration(hintText: "Nhập mã 6 số"),
+          ),
+
+          const SizedBox(height: 16),
+
+          if (error.isNotEmpty)
+            Text(error, style: const TextStyle(color: Colors.red)),
+
+          const SizedBox(height: 16),
+
+          ElevatedButton(
+            onPressed: loading ? null : onVerify,
+            child: loading
+                ? const SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Text("Xác thực"),
+          ),
+
+          const SizedBox(height: 12),
+
+          Text("Hết hạn sau: $time"),
+        ],
+      ),
+    );
+  }
+}
+
+
+FILE: d:\1-Now\1_Ung_dung_da_nen_tang\quan_li_sale\modules\user_module\lib\view\common\login\login_view.dart
+import 'package:flutter/material.dart';
+import 'package:user_module/logic_uc/login_uc.dart';
+import 'package:user_module/output/user_event.dart';
+import 'widget/login_header.dart';
+import 'widget/login_card.dart';
+
+class LoginView extends StatefulWidget {
+  final Function(UserEvent) onEvent;
+  const LoginView({super.key, required this.onEvent});
+
+  @override
+  State<LoginView> createState() => _LoginViewState();
+}
+
+class _LoginViewState extends State<LoginView> {
+  final idController = TextEditingController();
+  final passController = TextEditingController();
+
+  final _loginUC = LoginUC();
+
+  String error = '';
+
+  Future<void> handleLogin() async {
+    try {
+      final user = await _loginUC.execute(
+        idController.text,
+        passController.text,
+      );
+
+      if (user != null) {
+        widget.onEvent(
+          UserEvent.loginSuccess({
+            'user': {
+              'id': user.id,
+              'role': user.role,
+              'groupId': user.groupId,
+              'email': user.email,
+              'phone': user.phone,
+              'fullName': user.fullName,
+              'avatarUrl': user.avatarUrl,
+              'avatarPath': user.avatarPath,
+            },
+          }),
+        );
+      } else {
+        setState(() => error = "Sai tài khoản hoặc mật khẩu");
+      }
+    } catch (e) {
+      setState(() => error = e.toString());
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xFFF9F9F9),
+      body: Center(
+        child: SingleChildScrollView(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 390),
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                children: [
+                  const LoginHeader(),
+                  const SizedBox(height: 24),
+                  LoginCard(
+                    idController: idController,
+                    passController: passController,
+                    onLogin: handleLogin,
+                    error: error,
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+
+FILE: d:\1-Now\1_Ung_dung_da_nen_tang\quan_li_sale\modules\user_module\lib\view\common\login\widget\input_field.dart
+import 'package:flutter/material.dart';
+
+class InputField extends StatelessWidget {
+  final String label;
+  final String hint;
+  final TextEditingController controller;
+  final bool obscure;
+
+  const InputField({
+    super.key,
+    required this.label,
+    required this.controller,
+    required this.hint,
+    this.obscure = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: const TextStyle(
+            color: Color(0xFF434652),
+            fontSize: 14,
+            letterSpacing: 0.35,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Container(
+          height: 56,
+          padding: const EdgeInsets.symmetric(horizontal: 20),
+          decoration: BoxDecoration(
+            color: const Color(0xFFE8E8E8),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          alignment: Alignment.centerLeft,
+          child: TextField(
+            controller: controller,
+            obscureText: obscure,
+            decoration: InputDecoration(
+              hintText: hint,
+              border: InputBorder.none,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+
+FILE: d:\1-Now\1_Ung_dung_da_nen_tang\quan_li_sale\modules\user_module\lib\view\common\login\widget\login_card.dart
+import 'package:flutter/material.dart';
+import 'package:user_module/view/common/forgot_password/forgot_password_view.dart';
+import 'input_field.dart';
+
+class LoginCard extends StatelessWidget {
+  final TextEditingController idController;
+  final TextEditingController passController;
+  final VoidCallback onLogin;
+  final String error;
+
+  const LoginCard({
+    super.key,
+    required this.idController,
+    required this.passController,
+    required this.onLogin,
+    required this.error,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x140D47A1),
+            blurRadius: 24,
+            offset: Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Đăng nhập',
+            style: TextStyle(fontSize: 30, color: Color(0xFF001D4E)),
+          ),
+
+          const SizedBox(height: 8),
+
+          const Text(
+            'Chào mừng trở lại',
+            style: TextStyle(fontSize: 18),
+          ),
+
+          const SizedBox(height: 32),
+
+          /// USERNAME / EMAIL
+          InputField(
+            label: 'TÊN ĐĂNG NHẬP',
+            controller: idController,
+            hint: 'Tên đăng nhập hoặc mail',
+          ),
+
+          const SizedBox(height: 24),
+
+          /// PASSWORD
+          InputField(
+            label: 'MẬT KHẨU',
+            controller: passController,
+            hint: 'Nhập mật khẩu',
+            obscure: true,
+          ),
+
+          /// QUÊN MẬT KHẨU
+          Align(
+            alignment: Alignment.centerRight,
+            child: TextButton(
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => const ForgotPasswordView(),
+                  ),
+                );
+              },
+              child: const Text("Quên mật khẩu?"),
+            ),
+          ),
+
+          /// ERROR
+          if (error.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: Text(
+                error,
+                style: const TextStyle(color: Colors.red),
+              ),
+            ),
+
+          const SizedBox(height: 16),
+
+          /// BUTTON LOGIN
+          GestureDetector(
+            onTap: onLogin,
+            child: Container(
+              width: double.infinity,
+              height: 56,
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  colors: [Color(0xFF003178), Color(0xFF0D47A1)],
+                ),
+                borderRadius: BorderRadius.circular(9999),
+              ),
+              child: const Center(
+                child: Text(
+                  'Đăng nhập',
+                  style: TextStyle(color: Colors.white, fontSize: 18),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+
+FILE: d:\1-Now\1_Ung_dung_da_nen_tang\quan_li_sale\modules\user_module\lib\view\common\login\widget\login_header.dart
+import 'package:flutter/material.dart';
+
+class LoginHeader extends StatelessWidget {
+  const LoginHeader({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: const [
+        Text(
+          'SKA MILK',
+          style: TextStyle(
+            color: Color(0xFF001D4E),
+            fontSize: 24,
+            letterSpacing: -1.2,
+          ),
+        ),
+        SizedBox(height: 4),
+        Text(
+          'NHÀ PHÂN PHỐI SỮA VIỆT NAM',
+          style: TextStyle(
+            color: Color(0xFF434652),
+            fontSize: 12,
+            letterSpacing: 2.4,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+
+FILE: d:\1-Now\1_Ung_dung_da_nen_tang\quan_li_sale\modules\user_module\lib\view\common\profile\profile_view.dart
+import 'dart:typed_data';
+
+import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:user_module/entity/user.dart';
+import 'package:user_module/input/profile_input.dart';
+import 'package:user_module/logic_data/session_manager.dart';
+import 'package:user_module/logic_uc/logout_uc.dart';
+import 'package:user_module/logic_uc/profile_uc.dart';
+import 'package:user_module/view/common/profile/widget/profile_card.dart';
+
+class ProfileView extends StatefulWidget {
+  final ProfileInput input;
+  final VoidCallback? onLogout;
+
+  const ProfileView({super.key, required this.input, this.onLogout});
+
+  @override
+  State<ProfileView> createState() => _ProfileViewState();
+}
+
+class _ProfileViewState extends State<ProfileView> {
+  final _uc = ProfileUC();
+  final _session = SessionManager();
+  final _logoutUC = LogoutUC();
+
+  User? user;
+  String error = "";
+  bool loading = true;
+  bool savingProfile = false;
+
+  @override
+  void initState() {
+    super.initState();
+    load();
+  }
+
+  Future<void> load() async {
+    setState(() {
+      loading = true;
+      error = "";
+    });
+
+    if (!widget.input.canOpen()) {
+      setState(() {
+        error = "Không có quyền truy cập";
+        loading = false;
+      });
+      return;
+    }
+
+    try {
+      final result = await _uc.execute(userId: widget.input.userId);
+
+      if (!mounted) return;
+
+      setState(() {
+        user = result;
+      });
+    } catch (e) {
+      setState(() => error = e.toString());
+    } finally {
+      setState(() => loading = false);
+    }
+  }
+
+  bool get isOwnProfile {
+    final current = _session.getUser();
+    final viewedUser = user;
+
+    if (current == null || viewedUser == null) {
+      return false;
+    }
+
+    return current['id'] == viewedUser.id;
+  }
+
+  Future<void> handleEditProfile() async {
+    final viewedUser = user;
+    if (viewedUser == null || !isOwnProfile) {
+      return;
+    }
+
+    final fullNameCtrl = TextEditingController(text: viewedUser.fullName);
+    final emailCtrl = TextEditingController(text: viewedUser.email);
+    final phoneCtrl = TextEditingController(text: viewedUser.phone);
+    Uint8List? selectedAvatarBytes;
+    String? selectedAvatarName;
+
+    final submitted = await showDialog<bool>(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            Future<void> pickAvatar() async {
+              final picked = await ImagePicker().pickImage(
+                source: ImageSource.gallery,
+                imageQuality: 85,
+              );
+              if (picked == null) return;
+
+              final bytes = await picked.readAsBytes();
+              setModalState(() {
+                selectedAvatarBytes = bytes;
+                selectedAvatarName = picked.name;
+              });
+            }
+
+            return AlertDialog(
+              title: const Text("Chỉnh sửa thông tin"),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    CircleAvatar(
+                      radius: 42,
+                      backgroundColor: const Color(0xFFE8EEF8),
+                      backgroundImage: selectedAvatarBytes != null
+                          ? MemoryImage(selectedAvatarBytes!)
+                          : viewedUser.avatarUrl.isNotEmpty
+                          ? NetworkImage(viewedUser.avatarUrl)
+                          : null,
+                      child:
+                          selectedAvatarBytes == null &&
+                              viewedUser.avatarUrl.isEmpty
+                          ? const Icon(
+                              Icons.person,
+                              color: Color(0xFF001D4E),
+                              size: 36,
+                            )
+                          : null,
+                    ),
+                    const SizedBox(height: 12),
+                    OutlinedButton.icon(
+                      onPressed: pickAvatar,
+                      icon: const Icon(Icons.photo_camera),
+                      label: const Text("Chọn ảnh đại diện"),
+                    ),
+                    const SizedBox(height: 16),
+                    TextField(
+                      controller: fullNameCtrl,
+                      decoration: const InputDecoration(
+                        labelText: "Họ tên",
+                        border: OutlineInputBorder(),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: emailCtrl,
+                      keyboardType: TextInputType.emailAddress,
+                      decoration: const InputDecoration(
+                        labelText: "Email",
+                        border: OutlineInputBorder(),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: phoneCtrl,
+                      keyboardType: TextInputType.phone,
+                      decoration: const InputDecoration(
+                        labelText: "Số điện thoại",
+                        border: OutlineInputBorder(),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context, false),
+                  child: const Text("Hủy"),
+                ),
+                ElevatedButton(
+                  onPressed: () => Navigator.pop(context, true),
+                  child: const Text("Lưu"),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+
+    if (submitted != true) {
+      fullNameCtrl.dispose();
+      emailCtrl.dispose();
+      phoneCtrl.dispose();
+      return;
+    }
+
+    setState(() => savingProfile = true);
+
+    try {
+      final updatedUser = await _uc.updateCurrentUser(
+        fullName: fullNameCtrl.text,
+        email: emailCtrl.text,
+        phone: phoneCtrl.text,
+        avatarBytes: selectedAvatarBytes,
+        avatarFileName: selectedAvatarName,
+      );
+
+      if (!mounted) return;
+
+      setState(() => user = updatedUser);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Đã cập nhật thông tin cá nhân")),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(e.toString())));
+    } finally {
+      fullNameCtrl.dispose();
+      emailCtrl.dispose();
+      phoneCtrl.dispose();
+
+      if (mounted) {
+        setState(() => savingProfile = false);
+      }
+    }
+  }
+
+  void handleLogout() {
+    _logoutUC.execute();
+
+    if (widget.onLogout != null) {
+      widget.onLogout!();
+      return;
+    }
+
+    Navigator.of(context).popUntil((route) => route.isFirst);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xFFF9F9F9),
+      body: SafeArea(
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final horizontalPadding = constraints.maxWidth < 520 ? 16.0 : 24.0;
+            final maxWidth = constraints.maxWidth >= 900
+                ? 640.0
+                : constraints.maxWidth;
+
+            return Align(
+              alignment: Alignment.topCenter,
+              child: SingleChildScrollView(
+                padding: EdgeInsets.all(horizontalPadding),
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(maxWidth: maxWidth),
+                  child: loading
+                      ? const Center(child: CircularProgressIndicator())
+                      : error.isNotEmpty
+                      ? Text(error)
+                      : ProfileCard(
+                          user: user!,
+                          onChangeRole: null,
+                          onEdit: isOwnProfile ? handleEditProfile : null,
+                          editingProfile: savingProfile,
+                          onLogout: isOwnProfile ? handleLogout : null,
+                        ),
+                ),
+              ),
+            );
+          },
+        ),
+      ),
+    );
+  }
+}
+
+
+FILE: d:\1-Now\1_Ung_dung_da_nen_tang\quan_li_sale\modules\user_module\lib\view\common\profile\widget\input_field.dart
+import 'package:flutter/material.dart';
+
+class InputField extends StatelessWidget {
+  final String label;
+  final String hint;
+  final TextEditingController controller;
+  final bool obscure;
+
+  const InputField({
+    super.key,
+    required this.label,
+    required this.controller,
+    required this.hint,
+    this.obscure = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: const TextStyle(
+            color: Color(0xFF434652),
+            fontSize: 14,
+            letterSpacing: 0.35,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Container(
+          height: 56,
+          padding: const EdgeInsets.symmetric(horizontal: 20),
+          decoration: BoxDecoration(
+            color: const Color(0xFFE8E8E8),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          alignment: Alignment.centerLeft,
+          child: TextField(
+            controller: controller,
+            obscureText: obscure,
+            decoration: InputDecoration(
+              hintText: hint,
+              border: InputBorder.none,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+
+FILE: d:\1-Now\1_Ung_dung_da_nen_tang\quan_li_sale\modules\user_module\lib\view\common\profile\widget\profile_card.dart
+import 'package:flutter/material.dart';
+import 'package:user_module/entity/user.dart';
+import 'package:user_module/view/common/login/widget/login_header.dart';
+
+class ProfileCard extends StatelessWidget {
+  final User user;
+  final VoidCallback? onChangeRole;
+  final VoidCallback? onEdit;
+  final VoidCallback? onLogout;
+  final bool changingRole;
+  final bool editingProfile;
+
+  const ProfileCard({
+    super.key,
+    required this.user,
+    this.onChangeRole,
+    this.onEdit,
+    this.onLogout,
+    this.changingRole = false,
+    this.editingProfile = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x140D47A1),
+            blurRadius: 24,
+            offset: Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const LoginHeader(),
+          const SizedBox(height: 24),
+
+          Center(child: _avatar()),
+          const SizedBox(height: 16),
+
+          /// NAME
+          Text(
+            user.fullName,
+            textAlign: TextAlign.center,
+            style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+          ),
+
+          const SizedBox(height: 16),
+
+          _info("Email", user.email),
+          _info("Phone", user.phone),
+          _info("Role", user.role),
+          _info("Group", user.groupId),
+          if (onEdit != null) ...[
+            const SizedBox(height: 24),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: editingProfile ? null : onEdit,
+                icon: editingProfile
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.edit),
+                label: Text(editingProfile ? "Đang lưu..." : "Chỉnh sửa"),
+              ),
+            ),
+          ],
+          if (onChangeRole != null) ...[
+            const SizedBox(height: 24),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: changingRole ? null : onChangeRole,
+                child: changingRole
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Text("Đổi vai trò"),
+              ),
+            ),
+          ],
+          if (onLogout != null) ...[
+            const SizedBox(height: 12),
+            OutlinedButton.icon(
+              onPressed: onLogout,
+              icon: const Icon(Icons.logout),
+              label: const Text("Đăng xuất"),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _info(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(width: 88, child: Text(label)),
+          Expanded(
+            child: Text(value, textAlign: TextAlign.right, softWrap: true),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _avatar() {
+    final avatarUrl = user.avatarUrl.trim();
+    final fallbackText = user.fullName.trim().isNotEmpty
+        ? user.fullName.trim().substring(0, 1).toUpperCase()
+        : user.id.substring(0, 1).toUpperCase();
+
+    if (avatarUrl.isEmpty) {
+      return CircleAvatar(
+        radius: 44,
+        backgroundColor: const Color(0xFFE8EEF8),
+        child: Text(
+          fallbackText,
+          style: const TextStyle(
+            color: Color(0xFF001D4E),
+            fontSize: 28,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+      );
+    }
+
+    return CircleAvatar(
+      radius: 44,
+      backgroundColor: const Color(0xFFE8EEF8),
+      backgroundImage: NetworkImage(avatarUrl),
+    );
+  }
+}
+
+
+FILE: d:\1-Now\1_Ung_dung_da_nen_tang\quan_li_sale\modules\user_module\lib\view\home_view.dart
+import 'package:flutter/material.dart';
+import '../logic_uc/logout_uc.dart';
+
+class HomeView extends StatelessWidget {
+  final logoutUC = LogoutUC();
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text("Sale App"),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.logout),
+            onPressed: () {
+              logoutUC.execute();
+              Navigator.pushReplacementNamed(context, "/login");
+            },
+          ),
+        ],
+      ),
+      body: GridView.count(
+        crossAxisCount: 2,
+        children: [
+          _item(Icons.person, "Profile", () {
+            Navigator.pushNamed(context, "/profile");
+          }),
+          _item(Icons.lock, "Change Password", () {
+            Navigator.pushNamed(context, "/change");
+          }),
+          _item(Icons.people, "Manage User", () {
+            Navigator.pushNamed(context, "/manage");
+          }),
+        ],
+      ),
+    );
+  }
+
+  Widget _item(IconData icon, String text, VoidCallback onTap) {
+    return Card(
+      margin: const EdgeInsets.all(10),
+      child: InkWell(
+        onTap: onTap,
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [Icon(icon, size: 40), Text(text)],
+        ),
+      ),
+    );
+  }
+}
+
+
+FILE: d:\1-Now\1_Ung_dung_da_nen_tang\quan_li_sale\modules\user_module\lib\view\manager\add_user_view.dart
+import 'package:flutter/material.dart';
+import 'package:user_module/logic_uc/add_user_uc.dart';
+import 'package:user_module/view/manager/widget/input_field.dart';
+
+class AddUserView extends StatefulWidget {
+  const AddUserView({super.key});
+
+  @override
+  State<AddUserView> createState() => _AddUserViewState();
+}
+
+class _AddUserViewState extends State<AddUserView> {
+  final fullNameCtrl = TextEditingController();
+  final emailCtrl = TextEditingController();
+  final phoneCtrl = TextEditingController();
+  final _uc = AddUserUC();
+
+  String error = '';
+  bool loading = false;
+
+  Future<void> handleAdd() async {
+    setState(() {
+      loading = true;
+      error = '';
+    });
+
+    try {
+      final user = await _uc.execute(
+        fullName: fullNameCtrl.text,
+        email: emailCtrl.text,
+        phone: phoneCtrl.text,
+      );
+
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Đã tạo nhân viên. Username: ${user.username}, mật khẩu mặc định: 123456',
+          ),
+        ),
+      );
+      Navigator.pop(context, true);
+    } catch (e) {
+      if (mounted) {
+        setState(() => error = e.toString());
+      }
+    } finally {
+      if (mounted) {
+        setState(() => loading = false);
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    fullNameCtrl.dispose();
+    emailCtrl.dispose();
+    phoneCtrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xFFF5F6FA),
+      appBar: AppBar(title: const Text('Thêm nhân viên')),
+      body: Center(
+        child: SingleChildScrollView(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 390),
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Container(
+                padding: const EdgeInsets.all(24),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  boxShadow: const [
+                    BoxShadow(
+                      color: Color(0x140D47A1),
+                      blurRadius: 24,
+                      offset: Offset(0, 8),
+                    ),
+                  ],
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Thông tin nhân viên',
+                      style: TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    const Text(
+                      'Mã nhân viên, tài khoản, mật khẩu mặc định, vai trò Sale và group sẽ được tạo tự động.',
+                    ),
+                    const SizedBox(height: 24),
+                    InputField(
+                      label: 'HỌ TÊN',
+                      controller: fullNameCtrl,
+                      hint: 'Nguyen Van C',
+                    ),
+                    const SizedBox(height: 16),
+                    InputField(
+                      label: 'EMAIL',
+                      controller: emailCtrl,
+                      hint: 'nhanvien@example.com',
+                    ),
+                    const SizedBox(height: 16),
+                    InputField(
+                      label: 'SỐ ĐIỆN THOẠI',
+                      controller: phoneCtrl,
+                      hint: '0900000000',
+                    ),
+                    if (error.isNotEmpty) ...[
+                      const SizedBox(height: 16),
+                      Text(error, style: const TextStyle(color: Colors.red)),
+                    ],
+                    const SizedBox(height: 24),
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        onPressed: loading ? null : handleAdd,
+                        child: loading
+                            ? const SizedBox(
+                                width: 18,
+                                height: 18,
+                                child: CircularProgressIndicator(strokeWidth: 2),
+                              )
+                            : const Text('Tạo nhân viên'),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+
+FILE: d:\1-Now\1_Ung_dung_da_nen_tang\quan_li_sale\modules\user_module\lib\view\manager\manage_user_view.dart
+import 'package:flutter/material.dart';
+import 'package:user_module/logic_uc/manage_user_uc.dart';
+import 'package:user_module/view/common/profile/profile_view.dart';
+import 'package:user_module/view/manager/add_user_view.dart';
+import 'package:user_module/view/manager/widget/manager_card.dart';
+import '../../input/manager_input.dart';
+import '../../entity/user.dart';
+import '../../input/profile_input.dart';
+
+class ManagerView extends StatefulWidget {
+  final ManagerInput input;
+  final void Function(String userId)? onOpenProfile;
+
+  const ManagerView({super.key, required this.input, this.onOpenProfile});
+
+  @override
+  State<ManagerView> createState() => _ManagerViewState();
+}
+
+class _ManagerViewState extends State<ManagerView> {
+  final _uc = ManagerUserUC();
+
+  List<User> users = [];
+  List<User> filtered = [];
+
+  String error = "";
+  bool loading = true;
+  String? deletingUserId;
+
+  final searchCtrl = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    load();
+    searchCtrl.addListener(onSearch);
+  }
+
+  Future<void> load() async {
+    if (!widget.input.canOpen()) {
+      setState(() {
+        error = "Không có quyền truy cập";
+        loading = false;
+      });
+      return;
+    }
+
+    try {
+      final result = await _uc.getUsers();
+
+      if (!mounted) return;
+
+      setState(() {
+        users = result;
+        filtered = result;
+      });
+    } catch (e) {
+      setState(() => error = e.toString());
+    } finally {
+      setState(() => loading = false);
+    }
+  }
+
+  void onSearch() {
+    final q = searchCtrl.text.toLowerCase();
+
+    setState(() {
+      filtered = users
+          .where((u) => u.fullName.toLowerCase().contains(q))
+          .toList();
+    });
+  }
+
+  @override
+  void dispose() {
+    searchCtrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xFFF5F6FA),
+      appBar: AppBar(title: const Text("Team")),
+      body: SafeArea(
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final horizontalPadding = constraints.maxWidth < 520 ? 16.0 : 24.0;
+            final maxWidth = constraints.maxWidth >= 900
+                ? 760.0
+                : constraints.maxWidth;
+            final listHeight = (constraints.maxHeight - 260).clamp(
+              220.0,
+              520.0,
+            );
+
+            return Align(
+              alignment: Alignment.topCenter,
+              child: ConstrainedBox(
+                constraints: BoxConstraints(maxWidth: maxWidth),
+                child: Padding(
+                  padding: EdgeInsets.all(horizontalPadding),
+                  child: loading
+                      ? const Center(child: CircularProgressIndicator())
+                      : error.isNotEmpty
+                      ? Center(child: Text(error))
+                      : ManagerCard(
+                          users: filtered,
+                          onSearch: searchCtrl,
+                          onTapUser: openProfile,
+                          onDeleteUser: confirmDeleteUser,
+                          deletingUserId: deletingUserId,
+                          onAdd: openAddUser,
+                          listHeight: listHeight,
+                        ),
+                ),
+              ),
+            );
+          },
+        ),
+      ),
+    );
+  }
+
+  void openProfile(User user) {
+    if (widget.onOpenProfile != null) {
+      widget.onOpenProfile!(user.id);
+      return;
+    }
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => ProfileView(input: ProfileInput(userId: user.id)),
+      ),
+    );
+  }
+
+  void openAddUser() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => const AddUserView()),
+    ).then((created) {
+      if (created == true) {
+        load();
+      }
+    });
+  }
+
+  Future<void> confirmDeleteUser(User user) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text("Xóa nhân viên"),
+          content: Text("Bạn có chắc muốn xóa ${user.fullName} khỏi Supabase?"),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text("Hủy"),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(context, true),
+              style: FilledButton.styleFrom(backgroundColor: Colors.red),
+              child: const Text("Xóa"),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (confirmed != true) {
+      return;
+    }
+
+    setState(() => deletingUserId = user.id);
+
+    try {
+      await _uc.deleteUser(user);
+      if (!mounted) return;
+
+      setState(() {
+        users = users.where((item) => item.id != user.id).toList();
+        filtered = filtered.where((item) => item.id != user.id).toList();
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Đã xóa ${user.fullName} trên Supabase")),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(e.toString())));
+    } finally {
+      if (mounted) {
+        setState(() => deletingUserId = null);
+      }
+    }
+  }
+}
+
+
+FILE: d:\1-Now\1_Ung_dung_da_nen_tang\quan_li_sale\modules\user_module\lib\view\manager\widget\input_field.dart
+import 'package:flutter/material.dart';
+
+class InputField extends StatelessWidget {
+  final String label;
+  final String hint;
+  final TextEditingController controller;
+  final bool obscure;
+
+  const InputField({
+    super.key,
+    required this.label,
+    required this.controller,
+    required this.hint,
+    this.obscure = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: const TextStyle(
+            color: Color(0xFF434652),
+            fontSize: 14,
+            letterSpacing: 0.35,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Container(
+          height: 56,
+          padding: const EdgeInsets.symmetric(horizontal: 20),
+          decoration: BoxDecoration(
+            color: const Color(0xFFE8E8E8),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          alignment: Alignment.centerLeft,
+          child: TextField(
+            controller: controller,
+            obscureText: obscure,
+            decoration: InputDecoration(
+              hintText: hint,
+              border: InputBorder.none,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+
+FILE: d:\1-Now\1_Ung_dung_da_nen_tang\quan_li_sale\modules\user_module\lib\view\manager\widget\manager_card.dart
+import 'package:flutter/material.dart';
+import '../../../entity/user.dart';
+
+class ManagerCard extends StatelessWidget {
+  final List<User> users;
+  final TextEditingController onSearch;
+  final Function(User) onTapUser;
+  final Function(User) onDeleteUser;
+  final String? deletingUserId;
+  final VoidCallback onAdd;
+  final double listHeight;
+
+  const ManagerCard({
+    super.key,
+    required this.users,
+    required this.onSearch,
+    required this.onTapUser,
+    required this.onDeleteUser,
+    this.deletingUserId,
+    required this.onAdd,
+    required this.listHeight,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x140D47A1),
+            blurRadius: 24,
+            offset: Offset(0, 8),
+          ),
+        ],
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          /// HEADER
+          const Text(
+            "Danh sách nhân sự",
+            style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+          ),
+
+          const SizedBox(height: 16),
+
+          /// SEARCH
+          TextField(
+            controller: onSearch,
+            decoration: InputDecoration(
+              hintText: "Tìm kiếm nhân viên...",
+              filled: true,
+              fillColor: Colors.grey.shade200,
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(999),
+                borderSide: BorderSide.none,
+              ),
+              contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+            ),
+          ),
+
+          const SizedBox(height: 16),
+
+          /// LIST
+          ConstrainedBox(
+            constraints: BoxConstraints(maxHeight: listHeight),
+            child: ListView.separated(
+              shrinkWrap: true,
+              itemCount: users.length,
+              separatorBuilder: (_, __) => const SizedBox(height: 12),
+              itemBuilder: (_, i) {
+                final u = users[i];
+                final deleting = deletingUserId == u.id;
+
+                return Material(
+                  color: Colors.grey.shade100,
+                  borderRadius: BorderRadius.circular(8),
+                  child: Container(
+                    padding: const EdgeInsets.all(12),
+                    child: Row(
+                      children: [
+                        const CircleAvatar(
+                          radius: 20,
+                          child: Icon(Icons.person),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                u.fullName,
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                u.phone,
+                                style: const TextStyle(color: Colors.grey),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ],
+                          ),
+                        ),
+                        IconButton(
+                          tooltip: "Xem hồ sơ",
+                          onPressed: () => onTapUser(u),
+                          icon: const Icon(Icons.chevron_right),
+                        ),
+                        IconButton(
+                          tooltip: "Xóa nhân viên",
+                          onPressed: deleting ? null : () => onDeleteUser(u),
+                          color: Colors.red,
+                          icon: deleting
+                              ? const SizedBox(
+                                  width: 18,
+                                  height: 18,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                  ),
+                                )
+                              : const Icon(Icons.delete_outline),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+
+          const SizedBox(height: 20),
+
+          /// BUTTON
+          GestureDetector(
+            onTap: onAdd,
+            child: Container(
+              height: 56,
+              width: double.infinity,
+              decoration: BoxDecoration(
+                color: const Color(0xFF003178),
+                borderRadius: BorderRadius.circular(999),
+              ),
+              child: const Center(
+                child: Text(
+                  "Thêm nhân viên",
+                  style: TextStyle(color: Colors.white),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+

@@ -1,5 +1,3 @@
-import '../entity/user.dart';
-
 class UserDataLocal {
   final List<Map<String, dynamic>> _data = [
     {
@@ -13,6 +11,8 @@ class UserDataLocal {
       'full_name': 'Nguyen Van A',
       'groupId': 'G1',
       'group_id': 'G1',
+      'avatarPath': '',
+      'avatar_path': '',
     },
     {
       'id': 'Mana01',
@@ -25,6 +25,8 @@ class UserDataLocal {
       'full_name': 'Nguyen Van B',
       'groupId': 'G1',
       'group_id': 'G1',
+      'avatarPath': '',
+      'avatar_path': '',
     },
   ];
 
