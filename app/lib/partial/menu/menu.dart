@@ -15,15 +15,18 @@ class Menu extends StatelessWidget {
     MenuConfig(title: 'Đăng nhập', icon: Icons.login, module: 'USER', roles: []),
 
     // Sale
-    MenuConfig(title: 'Danh sách cửa hàng',  icon: Icons.store,               module: 'ROUTE_STORE',    roles: ['Sale']),
-  //  MenuConfig(title: 'Chấm công',            icon: Icons.check_circle_outline, module: 'ATTENDANCE',     roles: ['Sale']),
-    MenuConfig(title: 'Lịch sử đơn hàng',    icon: Icons.history,              module: 'ORDER',          roles: ['Sale']),
-    MenuConfig(title: 'Profile',              icon: Icons.person,               module: 'USER_PROFILE',   roles: ['Sale', 'Manager']),
+    MenuConfig(title: 'Danh sách cửa hàng',  icon: Icons.store,               module: 'ROUTE_STORE',         roles: ['Sale']),
+  //  MenuConfig(title: 'Chấm công',            icon: Icons.check_circle_outline, module: 'ATTENDANCE',          roles: ['Sale']),
+    MenuConfig(title: 'Lịch sử đơn hàng',    icon: Icons.history,              module: 'ORDER',               roles: ['Sale']),
+    MenuConfig(title: 'Đăng ký nghỉ phép',   icon: Icons.event_busy,           module: 'LEAVE',               roles: ['Sale']),
+    MenuConfig(title: 'Profile',              icon: Icons.person,               module: 'USER_PROFILE',        roles: ['Sale', 'Manager']),
 
     // Manager
-    MenuConfig(title: 'Lịch sử chấm công', icon: Icons.access_time,  module: 'ATTENDANCE',        roles: ['Manager']),
-    MenuConfig(title: 'Lịch sử đơn hàng',  icon: Icons.history,      module: 'ORDER',             roles: ['Manager']),
-    MenuConfig(title: 'Quản lý nhân sự',   icon: Icons.group,        module: 'USER_MANAGER_VIEW', roles: ['Manager']),
+    MenuConfig(title: 'Lịch sử chấm công',   icon: Icons.access_time,  module: 'ATTENDANCE',          roles: ['Manager']),
+    MenuConfig(title: 'Lịch sử đơn hàng',    icon: Icons.history,      module: 'ORDER',               roles: ['Manager']),
+    MenuConfig(title: 'Quản lý nhân sự',     icon: Icons.group,        module: 'USER_MANAGER_VIEW',   roles: ['Manager']),
+    MenuConfig(title: 'Duyệt đơn nghỉ phép', icon: Icons.approval,     module: 'LEAVE_MANAGER_PENDING', roles: ['Manager']),
+    MenuConfig(title: 'Lịch sử nghỉ phép',   icon: Icons.history_edu,  module: 'LEAVE_MANAGER_HISTORY', roles: ['Manager']),
   ];
   
   void _navigate(BuildContext context, String module) {

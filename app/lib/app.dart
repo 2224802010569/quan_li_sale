@@ -1,6 +1,7 @@
 import 'package:app/root/app_output.dart';
 import 'package:app/partial/menu/menu.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:core/di/injector.dart';
 import 'package:core/storage/app_storage.dart';
 import 'package:test_module/test_module.dart';
@@ -9,6 +10,7 @@ import 'root/attendance_root.dart';
 import 'root/inventory_root.dart';
 import 'root/order_root.dart';
 import 'root/route_store_root.dart';
+import 'root/leave_root.dart';
 
 class AppState {
   final String module;
@@ -71,6 +73,18 @@ class _MyAppState extends State<MyApp> {
 
       case 'ROUTE_STORE':
         return RouteStoreRoot().build(handleOutput);
+
+      case 'LEAVE':
+        return LeaveRoot().build(handleOutput);
+
+      case 'LEAVE_FORM':
+        return LeaveRoot().buildForm(handleOutput);
+
+      case 'LEAVE_MANAGER_PENDING':
+        return LeaveRoot().buildManagerPending(handleOutput);
+
+      case 'LEAVE_MANAGER_HISTORY':
+        return LeaveRoot().buildManagerHistory(handleOutput);
 
       case 'TEST':
         return const MyHomePage(title: 'Test Module');
@@ -146,6 +160,15 @@ class _MyAppState extends State<MyApp> {
 
     return MaterialApp(
       debugShowCheckedModeBanner: false,
+      localizationsDelegates: const [
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
+      supportedLocales: const [
+        Locale('vi', 'VN'),
+        Locale('en', 'US'),
+      ],
       home: Scaffold(
         drawer: Drawer(
           child: Menu(onOutput: handleOutput, currentModule: current),

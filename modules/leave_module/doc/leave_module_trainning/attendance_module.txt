@@ -1,0 +1,1315 @@
+FILE: C:\Users\Admin\Documents\GitHub\quan_li_sale\modules\attendance_module\lib\view\attendance_history_screen.dart
+import 'package:flutter/material.dart';
+import '../../entity/attendance.dart';
+import '../../entity/user.dart';
+import '../../logic_uc/attendance_uc.dart';
+import 'widgets/employee_info_card.dart';
+import 'widgets/history_card.dart';
+
+class AttendanceHistoryScreen extends StatefulWidget {
+  final VoidCallback onBack;
+  const AttendanceHistoryScreen({Key? key, required this.onBack}) : super(key: key);
+
+  @override
+  State<AttendanceHistoryScreen> createState() => _AttendanceHistoryScreenState();
+}
+
+class _AttendanceHistoryScreenState extends State<AttendanceHistoryScreen> {
+  final AttendanceUseCase _useCase = AttendanceUseCase();
+  User? _currentUser;
+  List<User> _allUsers = [];
+  List<Attendance> _history = [];
+  bool _isLoading = true;
+  User? _loggedInUser;
+  DateTime _selectedMonth = DateTime(DateTime.now().year, DateTime.now().month, 1);
+
+  @override
+  void initState() {
+    super.initState();
+    _loadData();
+  }
+
+  Future<void> _loadData() async {
+    try {
+      final user = await _useCase.getCurrentUser();
+      
+      List<User> users = [];
+      if (user.role == 'Manager' && user.groupId != null) {
+        users = await _useCase.getUsersByGroup(user.groupId!, user.id);
+        // Add a dummy 'All' user at the beginning
+        final allRecord = User(
+          id: 'all',
+          name: 'Tất cả nhân viên',
+          employeeCode: 'N/A',
+          currentRoute: 'N/A',
+          isEnoughWorkingDays: false,
+          lastUpdated: '',
+          role: 'Manager',
+          groupId: user.groupId,
+        );
+        users.insert(0, allRecord);
+      } else {
+        users = [user];
+      }
+
+      final history = await _useCase.getAttendanceHistory(month: _selectedMonth);
+
+      if (mounted) {
+        setState(() {
+          _loggedInUser = user;
+          _allUsers = users;
+          
+          if (_allUsers.isNotEmpty) {
+            _currentUser = _allUsers.first;
+          } else {
+            _currentUser = null;
+          }
+          _history = history;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Lỗi tải dữ liệu: ${e.toString().replaceAll("Exception: ", "")}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  /// Chỉ reload lịch sử theo tháng + nhân viên hiện tại — KHÔNG reset dropdown
+  Future<void> _reloadHistory() async {
+    if (!mounted) return;
+    setState(() => _isLoading = true);
+    try {
+      final selectedUserId =
+          (_currentUser == null || _currentUser!.id == 'all') ? null : _currentUser!.id;
+      final history = await _useCase.getAttendanceHistory(
+        userId: selectedUserId,
+        month: _selectedMonth,
+      );
+      if (mounted) {
+        setState(() {
+          _history = history;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isLoading = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Lỗi tải lịch sử: ${e.toString().replaceAll("Exception: ", "")}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  Widget _buildMonthFilterRow() {
+    final currentMonth = DateTime.now();
+    final months = [
+      DateTime(currentMonth.year, currentMonth.month, 1),
+      DateTime(currentMonth.year, currentMonth.month - 1, 1),
+      DateTime(currentMonth.year, currentMonth.month - 2, 1),
+    ];
+
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Row(
+        children: months.map((m) {
+          final isSelected =
+              _selectedMonth.year == m.year && _selectedMonth.month == m.month;
+          final title = m.year == currentMonth.year && m.month == currentMonth.month
+              ? 'Tháng hiện tại'
+              : 'Tháng ${m.month}/${m.year}';
+
+          return Padding(
+            padding: const EdgeInsets.only(right: 12),
+            child: GestureDetector(
+              onTap: () {
+                setState(() {
+                  _selectedMonth = m;
+                });
+                _reloadHistory(); // Giữ nguyên nhân viên đồ lọc
+              },
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                decoration: BoxDecoration(
+                  color: isSelected ? const Color(0xFF001D4E) : Colors.transparent,
+                  borderRadius: BorderRadius.circular(20),
+                  border: isSelected
+                      ? null
+                      : Border.all(color: const Color(0xFFCBD5E1)),
+                ),
+                child: Text(
+                  title,
+                  style: TextStyle(
+                    color: isSelected ? Colors.white : const Color(0xFF434651),
+                    fontFamily: 'Manrope',
+                    fontWeight:
+                        isSelected ? FontWeight.w700 : FontWeight.w500,
+                  ),
+                ),
+              ),
+            ),
+          );
+        }).toList(),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xFFF4F6FA), // Light greyish blue
+      appBar: AppBar(
+        backgroundColor: Colors.white,
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: Color(0xFF1A1A1A)),
+          onPressed: widget.onBack,
+        ),
+        title: const Text(
+          'Quản lý công việc',
+          style: TextStyle(
+            color: Color(0xFF0F3c8f), // Navy
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+      ),
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : RefreshIndicator(
+              onRefresh: _loadData,
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Filter dropdown (Only hidden if explicitly NOT manager, though allUsers will be empty/single if Sale)
+                    if (_loggedInUser?.role == 'Manager')
+                      Container(
+                        padding: const EdgeInsets.all(16.0),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'LỌC NHÂN VIÊN',
+                              style: TextStyle(fontSize: 10, color: Colors.grey, fontWeight: FontWeight.bold),
+                            ),
+                            const SizedBox(height: 8),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 12),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFF4F6FA),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: _allUsers.isEmpty 
+                                ? const SizedBox()
+                                : DropdownButtonHideUnderline(
+                                    child: DropdownButton<User>(
+                                      isExpanded: true,
+                                      value: _currentUser,
+                                      icon: const Icon(Icons.keyboard_arrow_down, color: Colors.grey),
+                                      items: _allUsers.map((user) {
+                                        return DropdownMenuItem<User>(
+                                          value: user,
+                                          child: Text(user.name, style: const TextStyle(fontWeight: FontWeight.w500)),
+                                        );
+                                      }).toList(),
+                                      onChanged: (User? newValue) async {
+                                        if (newValue != null && newValue.id != _currentUser?.id) {
+                                          setState(() {
+                                            _currentUser = newValue;
+                                            _isLoading = true;
+                                          });
+                                          
+                                          // Reload history based on selected user
+                                          try {
+                                            final updatedHistory = await _useCase.getAttendanceHistory(
+                                              userId: newValue.id == 'all' ? null : newValue.id,
+                                              month: _selectedMonth,
+                                            );
+                                            if (mounted) {
+                                              setState(() {
+                                                _history = updatedHistory;
+                                                _isLoading = false;
+                                              });
+                                            }
+                                          } catch (e) {
+                                            if (mounted) {
+                                              setState(() { _isLoading = false; });
+                                              ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Lỗi tải lịch sử')));
+                                            }
+                                          }
+                                        }
+                                      },
+                                    ),
+                                  ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    if (_loggedInUser?.role == 'Manager')
+                      const SizedBox(height: 16),
+                    _buildMonthFilterRow(),
+                    const SizedBox(height: 8),
+
+                    // Employee Info (only show for a specific employee, not 'All')
+                    if (_currentUser != null && _currentUser!.id != 'all') 
+                      EmployeeInfoCard(user: _currentUser!)
+                    else if (_currentUser != null && _currentUser!.id == 'all')
+                      Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12)),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.group, color: Color(0xFF0F3c8f), size: 40),
+                            const SizedBox(width: 16),
+                            const Text('Đang xem lịch sử toàn đội', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Color(0xFF0F3c8f))),
+                          ],
+                        ),
+                      ),
+                    const SizedBox(height: 24),
+                    
+                    // History List Header
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text(
+                          'Lịch sử',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFF0F3c8f), // Navy
+                          ),
+                        ),
+                        Text(
+                          '${_history.length} bản ghi được tìm thấy',
+                          style: const TextStyle(fontSize: 12, color: Colors.grey),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    
+                    // History Items
+                    if (_history.isEmpty)
+                      const Center(
+                        child: Padding(
+                          padding: EdgeInsets.symmetric(vertical: 32.0),
+                          child: Text(
+                            'Chưa có dữ liệu chấm công hôm nay',
+                            style: TextStyle(color: Colors.grey, fontSize: 14),
+                          ),
+                        ),
+                      )
+                    else
+                      ListView.builder(
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        itemCount: _history.length,
+                        itemBuilder: (context, index) {
+                          return HistoryCard(attendance: _history[index]);
+                        },
+                      ),
+                  ],
+                ),
+              ),
+            ),
+    );
+  }
+}
+
+
+FILE: C:\Users\Admin\Documents\GitHub\quan_li_sale\modules\attendance_module\lib\view\camera_action_screen.dart
+import 'package:flutter/material.dart';
+import 'package:camera/camera.dart';
+import 'package:geolocator/geolocator.dart';
+import 'dart:async';
+import '../../entity/store.dart';
+import '../../logic_uc/attendance_uc.dart';
+import 'widgets/camera_view_finder.dart';
+import 'widgets/store_info_bottom_sheet.dart';
+
+import '../../output/attendance_output.dart';
+
+class CameraActionScreen extends StatefulWidget {
+  final Store store;
+  final Function(AttendanceOutput) onOutput;
+  final VoidCallback onBack;
+
+  const CameraActionScreen({Key? key, required this.store, required this.onOutput, required this.onBack})
+    : super(key: key);
+
+  @override
+  State<CameraActionScreen> createState() => _CameraActionScreenState();
+}
+
+class _CameraActionScreenState extends State<CameraActionScreen> {
+  final AttendanceUseCase _useCase = AttendanceUseCase();
+  late Store _currentStore;
+  bool _isLoading = true;
+
+  CameraController? _cameraController;
+  bool _isCameraInitialized = false;
+  String? _cameraError;
+
+  bool _isCheckIn = true; // default before checking DB
+
+  double? _currentDistance;
+  StreamSubscription<Position>? _positionStream;
+
+  @override
+  void initState() {
+    super.initState();
+    _currentStore = widget.store;
+    _initializeAll();
+  }
+
+  Future<void> _initializeAll() async {
+    await _checkStatus();
+    await _initCamera();
+    if (_currentStore.latitude != null && _currentStore.longitude != null) {
+      _startLocationStream(_currentStore.latitude!, _currentStore.longitude!);
+    } else {
+      if (mounted) {
+        setState(() {
+          _cameraError = 'Cửa hàng không có dữ liệu tọa độ (Latitude/Longitude).';
+        });
+      }
+    }
+  }
+
+  Future<void> _checkStatus() async {
+    try {
+      final ongoing = await _useCase.hasOngoingCheckIn(_currentStore.id);
+      if (mounted) {
+        setState(() {
+          _isCheckIn = !ongoing;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Lỗi tải trạng thái: ${e.toString().replaceAll("Exception: ", "")}')),
+        );
+      }
+    }
+  }
+
+  Future<void> _initCamera() async {
+    try {
+      final cameras = await availableCameras();
+      if (cameras.isEmpty) {
+        setState(() => _cameraError = 'Không tìm thấy camera trên thiết bị.');
+        return;
+      }
+      _cameraController = CameraController(
+        cameras.first,
+        ResolutionPreset.high,
+        enableAudio: false,
+      );
+      await _cameraController!.initialize();
+      if (mounted) {
+        setState(() {
+          _isCameraInitialized = true;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _cameraError =
+              'Tạm thời không thể truy cập camera. Vui lòng cấp quyền hoặc khởi động lại ứng dụng.';
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  void _startLocationStream(double destLat, double destLng) async {
+    bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+    if (!serviceEnabled) return;
+
+    LocationPermission permission = await Geolocator.checkPermission();
+    if (permission == LocationPermission.denied ||
+        permission == LocationPermission.deniedForever)
+      return;
+
+    const LocationSettings locationSettings = LocationSettings(
+      accuracy: LocationAccuracy.high,
+      distanceFilter: 1, // update every 1 meter
+    );
+
+    _positionStream =
+        Geolocator.getPositionStream(locationSettings: locationSettings).listen(
+          (Position position) {
+            if (mounted) {
+              setState(() {
+                _currentDistance = Geolocator.distanceBetween(
+                  position.latitude,
+                  position.longitude,
+                  destLat,
+                  destLng,
+                );
+              });
+            }
+          },
+        );
+  }
+
+  @override
+  void dispose() {
+    _cameraController?.dispose();
+    _positionStream?.cancel();
+    super.dispose();
+  }
+
+  void _handleAction() async {
+    if (_cameraController == null || !_isCameraInitialized) return;
+
+    // Show loading
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const Center(child: CircularProgressIndicator()),
+    );
+
+    try {
+      final imagePath = await _useCase.checkLocationAndCapture(
+        cameraController: _cameraController!,
+        destLat: _currentStore.latitude ?? 0,
+        destLng: _currentStore.longitude ?? 0,
+      );
+
+      bool success;
+      if (_isCheckIn) {
+        success = await _useCase.submitCheckIn(_currentStore.id, imagePath, routeId: _currentStore.routeId);
+      } else {
+        success = await _useCase.submitCheckOut(_currentStore.id, imagePath);
+      }
+
+      Navigator.pop(context); // Close loading
+
+      if (success && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              '${_isCheckIn ? "Check-in" : "Check-out"} thành công!',
+            ),
+          ),
+        );
+        widget.onOutput(AttendanceOutput(
+          success: true,
+          storeId: _currentStore.id,
+          storeName: _currentStore.name,
+          routeId: _currentStore.routeId,
+        ));
+      }
+    } catch (e) {
+      Navigator.pop(context); // Close loading
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(e.toString().replaceAll("Exception: ", "")),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.black,
+      body: Stack(
+        children: [
+          // Camera Preview
+          if (_isCameraInitialized && _cameraController != null)
+            SizedBox.expand(child: CameraPreview(_cameraController!))
+          else
+            Container(
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [Color(0xFF4a554a), Color(0xFFaebcb3)],
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                ),
+              ),
+              child: _cameraError != null
+                  ? Center(
+                      child: Padding(
+                        padding: const EdgeInsets.all(32.0),
+                        child: Text(
+                          _cameraError!,
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 16,
+                          ),
+                        ),
+                      ),
+                    )
+                  : const SizedBox(),
+            ),
+
+          SafeArea(
+            child: Column(
+              children: [
+                // Header
+                Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16.0,
+                    vertical: 8.0,
+                  ),
+                  child: Row(
+                    children: [
+                      IconButton(
+                        icon: const Icon(Icons.close, color: Colors.white),
+                        onPressed: widget.onBack,
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        _isCheckIn ? 'Check-in' : 'Check-out',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 18,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const Spacer(),
+                      IconButton(
+                        icon: const Icon(Icons.flash_off, color: Colors.white),
+                        onPressed: () {},
+                      ),
+                      IconButton(
+                        icon: const Icon(
+                          Icons.help_outline,
+                          color: Colors.white,
+                        ),
+                        onPressed: () {},
+                      ),
+                    ],
+                  ),
+                ),
+
+                // View Finder area
+                const Expanded(child: CameraViewFinderUI()),
+
+                // Bottom Sheet area
+                if (_isLoading)
+                  const Padding(
+                    padding: EdgeInsets.all(32.0),
+                    child: CircularProgressIndicator(color: Colors.white),
+                  )
+                else
+                  StoreInfoBottomSheet(
+                    store: _currentStore,
+                    isCheckIn: _isCheckIn,
+                    onActionPressed: _handleAction,
+                    currentDistance: _currentDistance,
+                  ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+
+FILE: C:\Users\Admin\Documents\GitHub\quan_li_sale\modules\attendance_module\lib\view\sale_attendance_history_screen.dart
+import 'package:flutter/material.dart';
+import '../../entity/attendance.dart';
+import '../../entity/user.dart';
+import '../../logic_uc/attendance_uc.dart';
+import 'widgets/employee_info_card.dart';
+import 'widgets/history_card.dart';
+
+class SaleAttendanceHistoryScreen extends StatefulWidget {
+  const SaleAttendanceHistoryScreen({Key? key}) : super(key: key);
+
+  @override
+  State<SaleAttendanceHistoryScreen> createState() => _SaleAttendanceHistoryScreenState();
+}
+
+class _SaleAttendanceHistoryScreenState extends State<SaleAttendanceHistoryScreen> {
+  final AttendanceUseCase _useCase = AttendanceUseCase();
+  User? _currentUser;
+  List<Attendance> _history = [];
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadData();
+  }
+
+  Future<void> _loadData() async {
+    try {
+      final user = await _useCase.getCurrentUser();
+      // Ensure we explicitly fetch the history for the sale user
+      final history = await _useCase.getAttendanceHistory(userId: user.id);
+
+      if (mounted) {
+        setState(() {
+          _currentUser = user;
+          _history = history;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Lỗi tải dữ liệu: ${e.toString().replaceAll("Exception: ", "")}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xFFF4F6FA), // Light greyish blue
+      appBar: AppBar(
+        backgroundColor: Colors.white,
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: Color(0xFF1A1A1A)),
+          onPressed: () => Navigator.pop(context),
+        ),
+        title: const Text(
+          'Lịch sử chấm công',
+          style: TextStyle(
+            color: Color(0xFF0F3c8f), // Navy
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+      ),
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : RefreshIndicator(
+              onRefresh: _loadData,
+              child: SingleChildScrollView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Employee Info
+                    if (_currentUser != null) EmployeeInfoCard(user: _currentUser!),
+                    const SizedBox(height: 24),
+                    
+                    // History List Header
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text(
+                          'Lịch sử',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFF0F3c8f), // Navy
+                          ),
+                        ),
+                        Text(
+                          '${_history.length} bản ghi hôm nay',
+                          style: const TextStyle(fontSize: 12, color: Colors.grey),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    
+                    // History Items
+                    if (_history.isEmpty)
+                      const Center(
+                        child: Padding(
+                          padding: EdgeInsets.symmetric(vertical: 32.0),
+                          child: Text(
+                            'Chưa có dữ liệu chấm công hôm nay',
+                            style: TextStyle(color: Colors.grey, fontSize: 14),
+                          ),
+                        ),
+                      )
+                    else
+                      ListView.builder(
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        itemCount: _history.length,
+                        itemBuilder: (context, index) {
+                          return HistoryCard(attendance: _history[index]);
+                        },
+                      ),
+                  ],
+                ),
+              ),
+            ),
+    );
+  }
+}
+
+
+FILE: C:\Users\Admin\Documents\GitHub\quan_li_sale\modules\attendance_module\lib\view\widgets\camera_view_finder.dart
+import 'package:flutter/material.dart';
+
+class CameraViewFinderUI extends StatelessWidget {
+  const CameraViewFinderUI({Key? key}) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: CustomPaint(
+        size: const Size(250, 250),
+        painter: ViewFinderPainter(),
+      ),
+    );
+  }
+}
+
+class ViewFinderPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = Colors.white
+      ..strokeWidth = 3.0
+      ..style = PaintingStyle.stroke;
+
+    final double cornerLength = 40.0;
+    
+    // Top Left
+    canvas.drawPath(
+      Path()
+        ..moveTo(0, cornerLength)
+        ..lineTo(0, 0)
+        ..lineTo(cornerLength, 0),
+      paint,
+    );
+
+    // Top Right
+    canvas.drawPath(
+      Path()
+        ..moveTo(size.width - cornerLength, 0)
+        ..lineTo(size.width, 0)
+        ..lineTo(size.width, cornerLength),
+      paint,
+    );
+
+    // Bottom Left
+    canvas.drawPath(
+      Path()
+        ..moveTo(0, size.height - cornerLength)
+        ..lineTo(0, size.height)
+        ..lineTo(cornerLength, size.height),
+      paint,
+    );
+
+    // Bottom Right
+    canvas.drawPath(
+      Path()
+        ..moveTo(size.width - cornerLength, size.height)
+        ..lineTo(size.width, size.height)
+        ..lineTo(size.width, size.height - cornerLength),
+      paint,
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+
+
+FILE: C:\Users\Admin\Documents\GitHub\quan_li_sale\modules\attendance_module\lib\view\widgets\employee_info_card.dart
+import 'package:flutter/material.dart';
+import '../../entity/user.dart';
+
+class EmployeeInfoCard extends StatelessWidget {
+  final User user;
+
+  const EmployeeInfoCard({Key? key, required this.user}) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            offset: const Offset(0, 4),
+            blurRadius: 10,
+          ),
+        ],
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Avatar
+          CircleAvatar(
+            radius: 30,
+            backgroundColor: const Color(0xFF0F3C8F).withOpacity(0.12),
+            child: Text(
+              user.name.isNotEmpty ? user.name[0].toUpperCase() : '?',
+              style: const TextStyle(
+                fontSize: 22,
+                fontWeight: FontWeight.bold,
+                color: Color(0xFF0F3C8F),
+              ),
+            ),
+          ),
+          const SizedBox(width: 16),
+          // Info
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  user.name,
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF0F3c8f), // Navy
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Row(
+                  children: [
+                    Flexible(
+                      child: Text(
+                        'Mã nv: ${user.employeeCode}',
+                        style: const TextStyle(fontSize: 12, color: Colors.grey),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Container(width: 3, height: 3, decoration: const BoxDecoration(color: Colors.grey, shape: BoxShape.circle)),
+                    const SizedBox(width: 8),
+                    Flexible(
+                      child: Text(
+                        user.currentRoute,
+                        style: const TextStyle(fontSize: 12, color: Colors.grey),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: user.isEnoughWorkingDays ? const Color(0xFF0F3c8f) : Colors.orange,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Text(
+                        user.isEnoughWorkingDays ? 'ĐỦ CÔNG' : 'THIẾU CÔNG',
+                        style: const TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Flexible(
+                      child: Text(
+                        'Cập nhật lúc: ${user.lastUpdated}',
+                        style: const TextStyle(fontSize: 10, color: Colors.grey),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+
+FILE: C:\Users\Admin\Documents\GitHub\quan_li_sale\modules\attendance_module\lib\view\widgets\history_card.dart
+import 'package:flutter/material.dart';
+import '../../entity/attendance.dart';
+
+class HistoryCard extends StatelessWidget {
+  final Attendance attendance;
+
+  const HistoryCard({Key? key, required this.attendance}) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    bool isCheckIn = attendance.attendanceType == AttendanceType.checkIn;
+    // Simple format time since we aren't using intl
+    String formatTime(DateTime time) {
+      String hour = time.hour > 12 ? '${time.hour - 12}' : '${time.hour == 0 ? 12 : time.hour}';
+      hour = hour.padLeft(2, '0');
+      String minute = time.minute.toString().padLeft(2, '0');
+      String amPm = time.hour >= 12 ? 'PM' : 'AM';
+      return '$hour:$minute $amPm';
+    }
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            offset: const Offset(0, 4),
+            blurRadius: 10,
+          )
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Image part
+          Row(
+            children: [
+              // Check-in Image
+              Expanded(
+                child: Stack(
+                  children: [
+                    ClipRRect(
+                      borderRadius: const BorderRadius.only(topLeft: Radius.circular(12)),
+                      child: Image.network(
+                        attendance.checkinImage,
+                        height: 150,
+                        width: double.infinity,
+                        fit: BoxFit.cover,
+                        errorBuilder: (context, error, stackTrace) => Container(
+                          height: 150,
+                          width: double.infinity,
+                          color: Colors.grey[300],
+                          child: const Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(Icons.image_not_supported, size: 40, color: Colors.grey),
+                              SizedBox(height: 4),
+                              Text('Lỗi tải ảnh', style: TextStyle(fontSize: 10, color: Colors.grey)),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                    Positioned(
+                      top: 8,
+                      left: 8,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.9), // Keeping single withOpacity for tiny tags
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: const Text(
+                          'CHECK-IN',
+                          style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFF1A1A1A)),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              // Separator
+              Container(width: 2, height: 150, color: Colors.white),
+              // Check-out Image
+              Expanded(
+                child: Stack(
+                  children: [
+                    ClipRRect(
+                      borderRadius: const BorderRadius.only(topRight: Radius.circular(12)),
+                      child: attendance.checkoutImage.isNotEmpty
+                          ? Image.network(
+                              attendance.checkoutImage,
+                              height: 150,
+                              width: double.infinity,
+                              fit: BoxFit.cover,
+                              errorBuilder: (context, error, stackTrace) => Container(
+                                height: 150,
+                                width: double.infinity,
+                                color: Colors.grey[300],
+                                child: const Icon(Icons.image_not_supported, size: 40, color: Colors.grey),
+                              ),
+                            )
+                          : Container(
+                              height: 150,
+                              width: double.infinity,
+                              color: const Color(0xFFF4F6FA),
+                              child: const Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(Icons.pending_actions, size: 40, color: Colors.orange),
+                                  SizedBox(height: 8),
+                                  Text(
+                                    'Waiting for Check-out',
+                                    style: TextStyle(fontSize: 10, color: Colors.orange, fontWeight: FontWeight.bold),
+                                  ),
+                                ],
+                              ),
+                            ),
+                    ),
+                    Positioned(
+                      top: 8,
+                      right: 8,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.9),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: const Text(
+                          'CHECK-OUT',
+                          style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFF1A1A1A)),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          // Info part
+          Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      attendance.storeName,
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF1A1A1A),
+                      ),
+                    ),
+                    Text(
+                      formatTime(attendance.time),
+                      style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF0F3c8f), // Navy
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    const Icon(Icons.location_on_outlined, size: 14, color: Colors.grey),
+                    const SizedBox(width: 4),
+                    Text(
+                      attendance.locationAddress,
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: Colors.grey,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+
+FILE: C:\Users\Admin\Documents\GitHub\quan_li_sale\modules\attendance_module\lib\view\widgets\store_info_bottom_sheet.dart
+import 'package:flutter/material.dart';
+import '../../entity/store.dart';
+
+class StoreInfoBottomSheet extends StatelessWidget {
+  final Store store;
+  final bool isCheckIn;
+  final VoidCallback onActionPressed;
+  final double? currentDistance;
+
+  const StoreInfoBottomSheet({
+    Key? key,
+    required this.store,
+    required this.isCheckIn,
+    required this.onActionPressed,
+    this.currentDistance,
+  }) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    bool inRange = currentDistance != null && currentDistance! <= 20.0;
+    String distanceText = currentDistance != null ? '${currentDistance!.toStringAsFixed(1)}m' : 'Đang tìm...';
+
+    return Container(
+      padding: const EdgeInsets.all(24.0),
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24.0)),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      store.name,
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF1A1A1A),
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Row(
+                      children: [
+                        const Icon(Icons.location_on, size: 14, color: Colors.grey),
+                        const SizedBox(width: 4),
+                        Text(
+                          'Khoảng cách: $distanceText',
+                          style: const TextStyle(fontSize: 12, color: Colors.grey),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: inRange ? const Color(0xFFE3EAFD) : Colors.red.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(
+                  inRange ? 'Đang trong phạm vi' : 'Ngoài phạm vi',
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.bold,
+                    color: inRange ? const Color(0xFF1F4FB6) : Colors.red,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 20),
+          Row(
+            children: [
+              Expanded(
+                child: Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF4f6fa),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'TUYẾN',
+                        style: TextStyle(fontSize: 10, color: Colors.grey, fontWeight: FontWeight.bold),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        store.route,
+                        style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xFF1A1A1A)),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF4f6fa),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'LẦN CUỐI',
+                        style: TextStyle(fontSize: 10, color: Colors.grey, fontWeight: FontWeight.bold),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        store.lastVisited,
+                        style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xFF1A1A1A)),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 24),
+          SizedBox(
+            width: double.infinity,
+            height: 48,
+            child: ElevatedButton.icon(
+              onPressed: onActionPressed,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF0F3c8f), // Navy blue
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              icon: const Icon(Icons.camera_alt, color: Colors.white),
+              label: Text(
+                isCheckIn ? 'Check-in' : 'Check-out',
+                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+          const Center(
+            child: Text(
+              'Please ensure the storefront is clearly visible in the frame.',
+              style: TextStyle(fontSize: 10, color: Colors.grey),
+            ),
+          ),
+          const SizedBox(height: 20), // Bottom padding
+        ],
+      ),
+    );
+  }
+}
+
+
