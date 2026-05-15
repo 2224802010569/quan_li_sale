@@ -5,16 +5,23 @@ import 'package:core/core.dart';
 import 'app.dart';
 
 void main() async {
-  WidgetsFlutterBinding.ensureInitialized();
+  await GlobalErrorReporter.runGuarded(
+    () async {
+      WidgetsFlutterBinding.ensureInitialized();
 
-  final supabase = SupabaseConnect();
-  await supabase.init();
+      final supabase = SupabaseConnect();
+      await supabase.init();
 
-  put<SupabaseConnect>(supabase);
+      put<SupabaseConnect>(supabase);
 
-  final storage = AppStorage();
-  await storage.init();
-  put<AppStorage>(storage);
+      final storage = AppStorage();
+      await storage.init();
+      put<AppStorage>(storage);
 
-  runApp(const MyApp());
+      runApp(MyApp(key: appKey));
+    },
+    config: const GlobalErrorReporterConfig(
+      recoveryCallback: recoverFromGlobalError,
+    ),
+  );
 }

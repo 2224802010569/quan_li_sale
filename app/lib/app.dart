@@ -2,7 +2,9 @@ import 'package:app/root/app_output.dart';
 import 'package:app/partial/menu/menu.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:flutter/services.dart';
 import 'package:core/di/injector.dart';
+import 'package:core/error/global_error_reporter.dart';
 import 'package:core/storage/app_storage.dart';
 import 'package:test_module/test_module.dart';
 import 'root/user_root.dart';
@@ -17,21 +19,37 @@ class AppState {
   AppState(this.module);
 }
 
+final appKey = GlobalKey<MyAppState>();
+
+void recoverFromGlobalError(GlobalErrorInfo info) {
+  appKey.currentState?.recoverFromGlobalError(info);
+}
+
 class MyApp extends StatefulWidget {
   const MyApp({super.key});
 
   @override
-  State<MyApp> createState() => _MyAppState();
+  State<MyApp> createState() => MyAppState();
 }
 
-class _MyAppState extends State<MyApp> {
+class MyAppState extends State<MyApp> {
   final storage = get<AppStorage>();
   final List<AppState> moduleStack = [];
+  final _navigatorKey = GlobalKey<NavigatorState>();
+  final _scaffoldMessengerKey = GlobalKey<ScaffoldMessengerState>();
+  final _globalErrorFocusNode = FocusNode(debugLabel: 'global_error_dismiss');
+  DateTime? _lastGlobalErrorAt;
 
   @override
   void initState() {
     super.initState();
     moduleStack.add(AppState(getInitialModule()));
+  }
+
+  @override
+  void dispose() {
+    _globalErrorFocusNode.dispose();
+    super.dispose();
   }
 
   // =========================
@@ -151,6 +169,90 @@ class _MyAppState extends State<MyApp> {
     }
   }
 
+  void recoverFromGlobalError(GlobalErrorInfo info) {
+    final now = DateTime.now();
+    final lastGlobalErrorAt = _lastGlobalErrorAt;
+    if (lastGlobalErrorAt != null &&
+        now.difference(lastGlobalErrorAt) < const Duration(seconds: 2)) {
+      return;
+    }
+
+    _lastGlobalErrorAt = now;
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+
+      var movedBack = false;
+      final navigator = _navigatorKey.currentState;
+      if (navigator != null && navigator.canPop()) {
+        navigator.pop();
+        movedBack = true;
+      } else if (moduleStack.length > 1) {
+        setState(() {
+          moduleStack.removeLast();
+        });
+        movedBack = true;
+      }
+
+      _showGlobalErrorMessage(info, movedBack: movedBack);
+    });
+  }
+
+  void _showGlobalErrorMessage(
+    GlobalErrorInfo info, {
+    required bool movedBack,
+  }) {
+    final messenger = _scaffoldMessengerKey.currentState;
+    if (messenger == null) return;
+
+    messenger
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          content: Text(_friendlyErrorMessage(info, movedBack: movedBack)),
+          duration: const Duration(seconds: 10),
+          behavior: SnackBarBehavior.floating,
+          action: SnackBarAction(
+            label: 'Đóng',
+            onPressed: messenger.hideCurrentSnackBar,
+          ),
+        ),
+      );
+
+    _globalErrorFocusNode.requestFocus();
+  }
+
+  void _hideGlobalErrorMessageOnKey(KeyEvent event) {
+    if (event is! KeyDownEvent) return;
+    _scaffoldMessengerKey.currentState?.hideCurrentSnackBar();
+  }
+
+  String _friendlyErrorMessage(
+    GlobalErrorInfo info, {
+    required bool movedBack,
+  }) {
+    final raw = info.error.toString().toLowerCase();
+    final prefix = movedBack ? 'Đã quay về màn hình trước. ' : '';
+
+    if (raw.contains('socketexception') ||
+        raw.contains('failed host lookup') ||
+        raw.contains('network') ||
+        raw.contains('connection') ||
+        raw.contains('timeout') ||
+        raw.contains('xmlhttprequest')) {
+      return '${prefix}Có thể wifi hoặc mạng đang yếu, vui lòng thử lại.';
+    }
+
+    if (raw.contains('supabase') ||
+        raw.contains('postgrest') ||
+        raw.contains('database') ||
+        raw.contains('storage')) {
+      return '${prefix}Dữ liệu đang được cập nhật, vui lòng thử lại sau.';
+    }
+
+    return '${prefix}Một phần tính năng đang cập nhật, vui lòng thử lại sau.';
+  }
+
   // =========================
   // UI
   // =========================
@@ -159,22 +261,25 @@ class _MyAppState extends State<MyApp> {
     final current = moduleStack.last.module;
 
     return MaterialApp(
+      navigatorKey: _navigatorKey,
+      scaffoldMessengerKey: _scaffoldMessengerKey,
       debugShowCheckedModeBanner: false,
       localizationsDelegates: const [
         GlobalMaterialLocalizations.delegate,
         GlobalWidgetsLocalizations.delegate,
         GlobalCupertinoLocalizations.delegate,
       ],
-      supportedLocales: const [
-        Locale('vi', 'VN'),
-        Locale('en', 'US'),
-      ],
-      home: Scaffold(
-        drawer: Drawer(
-          child: Menu(onOutput: handleOutput, currentModule: current),
+      supportedLocales: const [Locale('vi', 'VN'), Locale('en', 'US')],
+      home: KeyboardListener(
+        focusNode: _globalErrorFocusNode,
+        onKeyEvent: _hideGlobalErrorMessageOnKey,
+        child: Scaffold(
+          drawer: Drawer(
+            child: Menu(onOutput: handleOutput, currentModule: current),
+          ),
+          appBar: AppBar(title: const Text('App')),
+          body: getScreen(current),
         ),
-        appBar: AppBar(title: const Text('App')),
-        body: getScreen(current),
       ),
     );
   }
