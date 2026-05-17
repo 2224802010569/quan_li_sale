@@ -8,7 +8,6 @@ class HistoryCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    bool isCheckIn = attendance.attendanceType == AttendanceType.checkIn;
     // Simple format time since we aren't using intl
     String formatTime(DateTime time) {
       String hour = time.hour > 12 ? '${time.hour - 12}' : '${time.hour == 0 ? 12 : time.hour}';
@@ -25,7 +24,7 @@ class HistoryCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha: 0.05),
             offset: const Offset(0, 4),
             blurRadius: 10,
           )
@@ -69,7 +68,7 @@ class HistoryCard extends StatelessWidget {
                       child: Container(
                         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                         decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.9), // Keeping single withOpacity for tiny tags
+                          color: Colors.white.withValues(alpha: 0.9), // Keeping single withOpacity for tiny tags
                           borderRadius: BorderRadius.circular(8),
                         ),
                         child: const Text(
@@ -125,7 +124,7 @@ class HistoryCard extends StatelessWidget {
                       child: Container(
                         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                         decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.9),
+                          color: Colors.white.withValues(alpha: 0.9),
                           borderRadius: BorderRadius.circular(8),
                         ),
                         child: const Text(

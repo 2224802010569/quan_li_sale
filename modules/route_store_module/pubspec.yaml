@@ -15,6 +15,7 @@ description: "A new Flutter module project."
 # This version is used _only_ for the Runner app, which is used if you just do
 # a `flutter run` or a `flutter make-host-app-editable`. It has no impact
 # on any other native host app that you embed your Flutter project into.
+publish_to: 'none' # Thêm dòng này để cho phép dùng 'path' dependencies
 version: 1.0.0+1
 
 environment:
@@ -28,6 +29,13 @@ dependencies:
   supabase_flutter: ^2.0.0
   core:
     path: ../../core
+  geolocator: ^14.0.2
+  latlong2: ^0.10.1
+  camera: ^0.10.5
+  path_provider: ^2.1.5
+  cached_network_image: ^3.4.1
+  google_maps_flutter: ^2.17.0
+  flutter_riverpod: ^2.6.1
 
 dev_dependencies:
   flutter_test:

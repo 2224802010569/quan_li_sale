@@ -44,15 +44,13 @@ class UserRoot {
   void _handleEvent(UserEvent event, Function(AppOutput) onNavigate) {
     switch (event.type) {
       case UserEventType.loginSuccess:
-        _goToTestModule(event, onNavigate);
+        final role = event.data?['role']?.toString().toLowerCase() ?? '';
+        if (role == 'manager') {
+          onNavigate(AppOutput(toModule: 'ROUTE_STORE_MANAGER'));
+        } else {
+          onNavigate(AppOutput(toModule: 'ROUTE_STORE'));
+        }
         break;
     }
-  }
-
-  /// =========================
-  /// NAVIGATION FUNCTIONS
-  /// =========================
-  void _goToTestModule(UserEvent event, Function(AppOutput) onNavigate) {
-    onNavigate(AppOutput(toModule: 'ROUTE_STORE', data: event.data));
   }
 }

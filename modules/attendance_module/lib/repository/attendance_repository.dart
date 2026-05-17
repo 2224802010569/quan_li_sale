@@ -3,7 +3,6 @@ import 'package:supabase_flutter/supabase_flutter.dart' hide User;
 import '../entity/attendance.dart';
 import '../entity/store.dart';
 import '../entity/user.dart';
-import '../logic_uc/attendance_uc.dart'; // Just ensuring imports are clean
 import 'package:core/di/injector.dart';
 import 'package:core/di/supabase.dart';
 import 'package:core/storage/app_storage.dart';
@@ -70,7 +69,7 @@ class AttendanceRepository {
 
     List<Store> assignedStores = [];
 
-    if (response != null && (response as List).isNotEmpty) {
+    if ((response as List).isNotEmpty) {
       for (var assignment in response) {
         final route = assignment['routes'];
         if (route != null && route['route_details'] != null) {
@@ -110,10 +109,7 @@ class AttendanceRepository {
         .gte('created_at', startOfDay)
         .not('checkout_time', 'is', null);
 
-    if (response != null) {
-      return (response as List).map((e) => e['store_id'] as int).toList();
-    }
-    return [];
+    return (response as List).map((e) => e['store_id'] as int).toList();
   }
 
   /// Kiểm tra xem Sale đã check-in tại cửa hàng này trong ngày chưa mà chưa check-out

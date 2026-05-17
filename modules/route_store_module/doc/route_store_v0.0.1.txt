@@ -1,115 +1,323 @@
 
-FILE: c:\Users\Admin\Documents\GitHub\quan_li_sale\modules\route_store_module\lib\entity\user.dart
-class User {
-  final String id;
-  final String phone;
-  final String role;
-  final String token;
+FILE: C:\Users\HP\Desktop\Save\PTUDDDDNT\quan_li_sale\modules\route_store_module\lib\entity\store_entity.dart
+class StoreEntity {
+  final int? id;
+  final String storeName;
+  final String address;
+  final double latitude;
+  final double longitude;
+  final int managerId;
 
-  User({
+  StoreEntity({
+    this.id,
+    required this.storeName,
+    required this.address,
+    required this.latitude,
+    required this.longitude,
+    required this.managerId,
+  });
+
+  factory StoreEntity.fromMap(Map<String, dynamic> map) {
+    return StoreEntity(
+      id: map['id'],
+      storeName: map['store_name'] ?? '',
+      address: map['address'] ?? '',
+      latitude: (map['latitude'] ?? 0).toDouble(),
+      longitude: (map['longitude'] ?? 0).toDouble(),
+      managerId: map['manager_id'] ?? 0,
+    );
+  }
+
+  Map<String, dynamic> toMap() {
+    return {
+      'store_name': storeName,
+      'address': address,
+      'latitude': latitude,
+      'longitude': longitude,
+      'manager_id': managerId,
+    };
+  }
+}
+
+
+FILE: C:\Users\HP\Desktop\Save\PTUDDDDNT\quan_li_sale\modules\route_store_module\lib\entity\store_item.dart
+class StoreItem {
+  final int id;
+  final String name;
+  final int routeId;
+  final String routeName;
+  final int sequence;
+  final double? latitude;
+  final double? longitude;
+  final bool isCompleted;
+
+  const StoreItem({
     required this.id,
-    required this.phone,
-    required this.role,
-    required this.token,
-  });
-}
-
-
-FILE: c:\Users\Admin\Documents\GitHub\quan_li_sale\modules\route_store_module\lib\input\route_store_input.dart
-class RouteStoreInput {
-  final bool requireLogin;
-
-  RouteStoreInput({required this.requireLogin});
-
-  factory RouteStoreInput.requireLogin() {
-    return RouteStoreInput(requireLogin: true);
-  }
-
-  bool isValid({String? userId, String? role}) {
-    if (requireLogin && userId == null) return false;
-    return true;
-  }
-
-  String defaultView(String role) {
-    if (role == 'Manager') return 'HOME_MANAGER';
-    return 'HOME_SALE';
-  }
-}
-
-
-FILE: c:\Users\Admin\Documents\GitHub\quan_li_sale\modules\route_store_module\lib\logic_data\user_data.dart
-import '../entity/user.dart';
-
-class UserData {
-  final List<Map<String, dynamic>> _fakeDb = [
-    {'id': '1', 'phone': '1', 'password': '123', 'role': 'Sale'},
-    {'id': '2', 'phone': '2', 'password': '123', 'role': 'Manager'},
-  ];
-
-  User? login(String phone, String password) {
-    try {
-      final data = _fakeDb.firstWhere(
-        (e) => e['phone'] == phone && e['password'] == password,
-      );
-
-      return User(
-        id: data['id'],
-        phone: data['phone'],
-        role: data['role'],
-        token: "fake_token_${data['id']}",
-      );
-    } catch (_) {
-      return null;
-    }
-  }
-}
-
-
-FILE: c:\Users\Admin\Documents\GitHub\quan_li_sale\modules\route_store_module\lib\logic_uc\login_uc.dart
-import '../logic_data/user_data.dart';
-import '../entity/user.dart';
-
-class LoginUC {
-  final _data = UserData();
-
-  User? execute(String phone, String password) {
-    if (phone.isEmpty || password.isEmpty) {
-      throw Exception("Thiếu thông tin");
-    }
-
-    return _data.login(phone, password);
-  }
-}
-
-
-FILE: c:\Users\Admin\Documents\GitHub\quan_li_sale\modules\route_store_module\lib\output\user_output.dart
-import '../entity/user.dart';
-
-class LoginOutput {
-  final String from;
-  final String to;
-  final String view;
-  final Map<String, dynamic>? data;
-
-  LoginOutput({
-    required this.from,
-    required this.to,
-    required this.view,
-    this.data,
+    required this.name,
+    required this.routeId,
+    required this.routeName,
+    required this.sequence,
+    this.latitude,
+    this.longitude,
+    this.isCompleted = false,
   });
 
-  factory LoginOutput.loginSuccess(User user) {
-    return LoginOutput(
-      from: 'USER',
-      to: 'ROUTE_STORE',
-      view: 'HOME',
-      data: {'userId': user.id, 'role': user.role, 'token': user.token},
+  factory StoreItem.fromMap(Map<String, dynamic> map) {
+    return StoreItem(
+      id: map['id'] ?? 0,
+      name: map['store_name'] ?? '',
+      routeId: map['route_id'] ?? 0,
+      routeName: map['route_name'] ?? '',
+      sequence: map['sequence'] ?? 0,
+      latitude: map['latitude'] != null
+          ? double.tryParse(map['latitude'].toString())
+          : null,
+      longitude: map['longitude'] != null
+          ? double.tryParse(map['longitude'].toString())
+          : null,
+      isCompleted: map['is_completed'] ?? false,
     );
   }
 }
 
 
-FILE: c:\Users\Admin\Documents\GitHub\quan_li_sale\modules\route_store_module\lib\view\components\route_list.dart
+FILE: C:\Users\HP\Desktop\Save\PTUDDDDNT\quan_li_sale\modules\route_store_module\lib\input\route_store_input.dart
+class RouteStoreInput {
+  final String role;
+  final String userId;
+  final String? groupId;
+
+  const RouteStoreInput({
+    required this.role,
+    required this.userId,
+    this.groupId,
+  });
+
+  bool isSale() => role == 'Sale';
+  bool isManager() => role == 'Manager';
+}
+
+
+FILE: C:\Users\HP\Desktop\Save\PTUDDDDNT\quan_li_sale\modules\route_store_module\lib\logic_data\store_data.dart
+import 'package:supabase_flutter/supabase_flutter.dart';
+
+class StoreData {
+  final SupabaseClient _client;
+  StoreData(this._client);
+
+  /// Bước 1: Lấy route_id được assign cho sale hôm nay
+  Future<List<int>> getAssignedRouteIds(String userId) async {
+    final today = DateTime.now();
+    final dateStr =
+        '${today.year}-${today.month.toString().padLeft(2, '0')}-${today.day.toString().padLeft(2, '0')}';
+
+    final response = await _client
+        .from('assignments')
+        .select('route_id')
+        .eq('user_id', userId)
+        .eq('assigned_date', dateStr);
+
+    return (response as List)
+        .map((e) => e['route_id'] as int)
+        .where((id) => id != null)
+        .toList();
+  }
+
+  /// Bước 2: Lấy stores thuộc các route đó qua route_details
+  Future<List<Map<String, dynamic>>> getStoresByRouteIds(
+    List<int> routeIds,
+  ) async {
+    if (routeIds.isEmpty) return [];
+
+    final response = await _client
+        .from('route_details')
+        .select(
+          'route_id, sequence, stores(id, store_name, latitude, longitude), routes(id, route_name)',
+        )
+        .inFilter('route_id', routeIds)
+        .order('sequence', ascending: true);
+
+    return List<Map<String, dynamic>>.from(response);
+  }
+
+  /// Lấy store_id đã Completed hôm nay
+  Future<List<int>> getCompletedStoreIds(String userId) async {
+    final now = DateTime.now();
+    final startOfDay = DateTime(now.year, now.month, now.day).toIso8601String();
+
+    final response = await _client
+        .from('attendance')
+        .select('store_id')
+        .eq('user_id', userId)
+        .eq('status', 'Completed')
+        .gte('created_at', startOfDay);
+
+    return (response as List).map((e) => e['store_id'] as int).toList();
+  }
+}
+
+
+FILE: C:\Users\HP\Desktop\Save\PTUDDDDNT\quan_li_sale\modules\route_store_module\lib\logic_data\store_manager_data.dart
+import 'package:core/di/injector.dart';
+import 'package:core/di/supabase.dart';
+import 'package:route_store_module/entity/store_entity.dart';
+
+class StoreManagerData {
+  final supabase = get<SupabaseConnect>().client!;
+
+  Future<List<StoreEntity>> getStores() async {
+    final response = await supabase
+        .from('stores')
+        .select()
+        .order('id', ascending: true);
+
+    return (response as List).map((e) => StoreEntity.fromMap(e)).toList();
+  }
+
+  Future<void> createStore(StoreEntity store) async {
+    await supabase.from('stores').insert(store.toMap());
+  }
+
+  Future<void> updateStore(StoreEntity store) async {
+    await supabase.from('stores').update(store.toMap()).eq('id', store.id!);
+  }
+
+  Future<void> deleteStore(int storeId) async {
+    await supabase.from('stores').delete().eq('id', storeId);
+  }
+}
+
+
+FILE: C:\Users\HP\Desktop\Save\PTUDDDDNT\quan_li_sale\modules\route_store_module\lib\logic_uc\store_list_uc.dart
+import 'package:core/di/injector.dart';
+import 'package:core/di/supabase.dart';
+
+import '../entity/store_item.dart';
+import '../logic_data/store_data.dart';
+
+class StoreListUC {
+  StoreData get _data => StoreData(get<SupabaseConnect>().client!);
+
+  Future<List<StoreItem>> getStoresForToday(String userId) async {
+    final routeIds = await _data.getAssignedRouteIds(userId);
+
+    if (routeIds.isEmpty) return [];
+
+    final details = await _data.getStoresByRouteIds(routeIds);
+
+    final completedIds = await _data.getCompletedStoreIds(userId);
+
+    final items = <StoreItem>[];
+
+    for (final detail in details) {
+      final storeMap = detail['stores'];
+
+      if (storeMap == null) continue;
+
+      final routeMap = detail['routes'];
+
+      final storeId = storeMap['id'] as int;
+
+      items.add(
+        StoreItem(
+          id: storeId,
+          name: storeMap['store_name'] ?? 'Store #$storeId',
+          routeId: detail['route_id'],
+          routeName: routeMap?['route_name'] ?? '',
+          sequence: detail['sequence'] ?? 0,
+          latitude: storeMap['latitude'] != null
+              ? double.tryParse(storeMap['latitude'].toString())
+              : null,
+          longitude: storeMap['longitude'] != null
+              ? double.tryParse(storeMap['longitude'].toString())
+              : null,
+          isCompleted: completedIds.contains(storeId),
+        ),
+      );
+    }
+
+    items.sort((a, b) {
+      if (a.isCompleted != b.isCompleted) {
+        return a.isCompleted ? 1 : -1;
+      }
+
+      return a.sequence.compareTo(b.sequence);
+    });
+
+    return items;
+  }
+}
+
+
+FILE: C:\Users\HP\Desktop\Save\PTUDDDDNT\quan_li_sale\modules\route_store_module\lib\logic_uc\store_uc.dart
+import 'package:route_store_module/entity/store_entity.dart';
+import 'package:route_store_module/logic_data/store_manager_data.dart';
+
+class StoreUC {
+  final StoreManagerData _data = StoreManagerData();
+
+  Future<List<StoreEntity>> getStores() {
+    return _data.getStores();
+  }
+
+  Future<void> createStore(StoreEntity store) {
+    return _data.createStore(store);
+  }
+
+  Future<void> updateStore(StoreEntity store) {
+    return _data.updateStore(store);
+  }
+
+  Future<void> deleteStore(int storeId) {
+    return _data.deleteStore(storeId);
+  }
+}
+
+
+FILE: C:\Users\HP\Desktop\Save\PTUDDDDNT\quan_li_sale\modules\route_store_module\lib\output\route_store_output.dart
+class RouteStoreOutput {
+  final String action; // 'ATTENDANCE' | 'ORDER' | 'BACK'
+  final int? storeId;
+  final String? storeName;
+  final int? routeId;
+  final String? routeName;
+  final double? latitude;
+  final double? longitude;
+
+  RouteStoreOutput({
+    required this.action,
+    this.storeId,
+    this.storeName,
+    this.routeId,
+    this.routeName,
+    this.latitude,
+    this.longitude,
+  });
+}
+
+
+FILE: C:\Users\HP\Desktop\Save\PTUDDDDNT\quan_li_sale\modules\route_store_module\lib\route_store_module.dart
+library route_store_module;
+
+export 'entity/store_entity.dart';
+export 'entity/store_item.dart';
+
+export 'input/route_store_input.dart';
+
+export 'output/route_store_output.dart';
+
+export 'logic_uc/store_list_uc.dart';
+export 'logic_uc/store_uc.dart';
+
+export 'view/screens/sale/store_list_sale_view.dart';
+export 'view/screens/sale/store_home_sale_view.dart';
+
+export 'view/screens/manager/store_manager_view.dart';
+//export 'view/screens/manager/route_home_manager_view.dart';
+export 'view/screens/manager/route_create_view.dart';
+
+
+FILE: C:\Users\HP\Desktop\Save\PTUDDDDNT\quan_li_sale\modules\route_store_module\lib\view\components\route_list.dart
 import 'package:flutter/material.dart';
 
 class RouteList extends StatelessWidget {
@@ -139,7 +347,7 @@ class RouteList extends StatelessWidget {
 }
 
 
-FILE: c:\Users\Admin\Documents\GitHub\quan_li_sale\modules\route_store_module\lib\view\screens\manager\route_create_view.dart
+FILE: C:\Users\HP\Desktop\Save\PTUDDDDNT\quan_li_sale\modules\route_store_module\lib\view\screens\manager\route_create_view.dart
 import 'package:flutter/material.dart';
 
 class RouteCreateView extends StatefulWidget {
@@ -150,10 +358,10 @@ class RouteCreateView extends StatefulWidget {
 }
 
 class _RouteCreateViewState extends State<RouteCreateView> {
-  final nameController = TextEditingController();
+  final TextEditingController nameController = TextEditingController();
 
   void handleCreate() {
-    final name = nameController.text;
+    final name = nameController.text.trim();
 
     if (name.isEmpty) {
       ScaffoldMessenger.of(
@@ -162,24 +370,91 @@ class _RouteCreateViewState extends State<RouteCreateView> {
       return;
     }
 
-    // demo: chỉ quay lại
     Navigator.pop(context);
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Tạo tuyến')),
+      backgroundColor: const Color(0xFFF7F8FC),
+
+      appBar: AppBar(
+        elevation: 0,
+        backgroundColor: Colors.transparent,
+        foregroundColor: Colors.black,
+        title: const Text(
+          'Tạo tuyến',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
+      ),
+
       body: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(24),
         child: Column(
           children: [
-            TextField(
-              controller: nameController,
-              decoration: const InputDecoration(labelText: 'Tên tuyến'),
+            Container(
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(24),
+              ),
+              child: Column(
+                children: [
+                  Container(
+                    width: 72,
+                    height: 72,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFE8EEF9),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: const Icon(
+                      Icons.route,
+                      color: Color(0xFF0D47A1),
+                      size: 36,
+                    ),
+                  ),
+
+                  const SizedBox(height: 20),
+
+                  TextField(
+                    controller: nameController,
+                    decoration: InputDecoration(
+                      hintText: 'Tên tuyến',
+                      filled: true,
+                      fillColor: const Color(0xFFF7F8FC),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(16),
+                        borderSide: BorderSide.none,
+                      ),
+                    ),
+                  ),
+
+                  const SizedBox(height: 24),
+
+                  SizedBox(
+                    width: double.infinity,
+                    height: 56,
+                    child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF0D47A1),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(18),
+                        ),
+                      ),
+                      onPressed: handleCreate,
+                      child: const Text(
+                        'Tạo tuyến',
+                        style: TextStyle(
+                          fontSize: 16,
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
-            const SizedBox(height: 16),
-            ElevatedButton(onPressed: handleCreate, child: const Text('Lưu')),
           ],
         ),
       ),
@@ -188,7 +463,7 @@ class _RouteCreateViewState extends State<RouteCreateView> {
 }
 
 
-FILE: c:\Users\Admin\Documents\GitHub\quan_li_sale\modules\route_store_module\lib\view\screens\manager\route_home_manager_view.dart
+FILE: C:\Users\HP\Desktop\Save\PTUDDDDNT\quan_li_sale\modules\route_store_module\lib\view\screens\manager\route_home_manager_view.dart
 import 'package:flutter/material.dart';
 import '../../components/route_list.dart';
 import 'route_create_view.dart';
@@ -240,7 +515,312 @@ class RouteHomeManagerView extends StatelessWidget {
 }
 
 
-FILE: c:\Users\Admin\Documents\GitHub\quan_li_sale\modules\route_store_module\lib\view\screens\sale\route_home_sale_view.dart
+FILE: C:\Users\HP\Desktop\Save\PTUDDDDNT\quan_li_sale\modules\route_store_module\lib\view\screens\manager\store_manager_view.dart
+import 'package:flutter/material.dart';
+import 'package:route_store_module/entity/store_entity.dart';
+import 'package:route_store_module/logic_uc/store_uc.dart';
+
+class StoreManagerView extends StatefulWidget {
+  const StoreManagerView({super.key});
+
+  @override
+  State<StoreManagerView> createState() => _StoreManagerViewState();
+}
+
+class _StoreManagerViewState extends State<StoreManagerView> {
+  final StoreUC _storeUC = StoreUC();
+
+  final TextEditingController _searchController = TextEditingController();
+
+  List<StoreEntity> stores = [];
+  List<StoreEntity> filteredStores = [];
+
+  bool isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    loadStores();
+  }
+
+  Future<void> loadStores() async {
+    setState(() {
+      isLoading = true;
+    });
+
+    final data = await _storeUC.getStores();
+
+    setState(() {
+      stores = data;
+      filteredStores = data;
+      isLoading = false;
+    });
+  }
+
+  void searchStore(String keyword) {
+    final result = stores.where((store) {
+      return store.storeName.toLowerCase().contains(keyword.toLowerCase()) ||
+          store.address.toLowerCase().contains(keyword.toLowerCase());
+    }).toList();
+
+    setState(() {
+      filteredStores = result;
+    });
+  }
+
+  Future<void> deleteStore(int storeId) async {
+    await _storeUC.deleteStore(storeId);
+    await loadStores();
+  }
+
+  Future<void> showStoreDialog({StoreEntity? store}) async {
+    final nameController = TextEditingController(text: store?.storeName ?? '');
+
+    final addressController = TextEditingController(text: store?.address ?? '');
+
+    final latController = TextEditingController(
+      text: store?.latitude.toString() ?? '',
+    );
+
+    final lngController = TextEditingController(
+      text: store?.longitude.toString() ?? '',
+    );
+
+    final managerController = TextEditingController(
+      text: store?.managerId.toString() ?? '',
+    );
+
+    await showDialog(
+      context: context,
+      builder: (_) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(24),
+          ),
+          title: Text(store == null ? 'Thêm cửa hàng' : 'Chỉnh sửa cửa hàng'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                buildInput(controller: nameController, hint: 'Tên cửa hàng'),
+                const SizedBox(height: 12),
+                buildInput(controller: addressController, hint: 'Địa chỉ'),
+                const SizedBox(height: 12),
+                buildInput(
+                  controller: latController,
+                  hint: 'Latitude',
+                  type: TextInputType.number,
+                ),
+                const SizedBox(height: 12),
+                buildInput(
+                  controller: lngController,
+                  hint: 'Longitude',
+                  type: TextInputType.number,
+                ),
+                const SizedBox(height: 12),
+                buildInput(
+                  controller: managerController,
+                  hint: 'Manager ID',
+                  type: TextInputType.number,
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.pop(context);
+              },
+              child: const Text('Huỷ'),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF0D47A1),
+              ),
+              onPressed: () async {
+                final entity = StoreEntity(
+                  id: store?.id,
+                  storeName: nameController.text,
+                  address: addressController.text,
+                  latitude: double.tryParse(latController.text) ?? 0,
+                  longitude: double.tryParse(lngController.text) ?? 0,
+                  managerId: int.tryParse(managerController.text) ?? 0,
+                );
+
+                if (store == null) {
+                  await _storeUC.createStore(entity);
+                } else {
+                  await _storeUC.updateStore(entity);
+                }
+
+                if (mounted) {
+                  Navigator.pop(context);
+                }
+
+                await loadStores();
+              },
+              child: const Text('Lưu', style: TextStyle(color: Colors.white)),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget buildInput({
+    required TextEditingController controller,
+    required String hint,
+    TextInputType? type,
+  }) {
+    return TextField(
+      controller: controller,
+      keyboardType: type,
+      decoration: InputDecoration(
+        hintText: hint,
+        filled: true,
+        fillColor: Colors.grey.shade100,
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(16),
+          borderSide: BorderSide.none,
+        ),
+      ),
+    );
+  }
+
+  Widget buildStoreCard(StoreEntity store) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 20),
+      padding: const EdgeInsets.all(20),
+      decoration: ShapeDecoration(
+        color: Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        shadows: const [
+          BoxShadow(
+            color: Color(0x0A1A1B21),
+            blurRadius: 32,
+            offset: Offset(0, 12),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  store.storeName,
+                  style: const TextStyle(
+                    color: Color(0xFF0D47A1),
+                    fontSize: 18,
+                    fontFamily: 'Manrope',
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+              PopupMenuButton(
+                itemBuilder: (_) => [
+                  const PopupMenuItem(value: 'edit', child: Text('Chỉnh sửa')),
+                  const PopupMenuItem(value: 'delete', child: Text('Xoá')),
+                ],
+                onSelected: (value) async {
+                  if (value == 'edit') {
+                    showStoreDialog(store: store);
+                  }
+
+                  if (value == 'delete') {
+                    deleteStore(store.id!);
+                  }
+                },
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Text(
+            store.address,
+            style: const TextStyle(
+              fontSize: 14,
+              fontFamily: 'Inter',
+              color: Color(0xFF434652),
+            ),
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  'Lat: ${store.latitude}',
+                  style: const TextStyle(fontSize: 12, fontFamily: 'Inter'),
+                ),
+              ),
+              Expanded(
+                child: Text(
+                  'Lng: ${store.longitude}',
+                  style: const TextStyle(fontSize: 12, fontFamily: 'Inter'),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xFFF7F8FC),
+
+      floatingActionButton: FloatingActionButton(
+        backgroundColor: const Color(0xFF0D47A1),
+        onPressed: () {
+          showStoreDialog();
+        },
+        child: const Icon(Icons.add, color: Colors.white),
+      ),
+
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            children: [
+              TextField(
+                controller: _searchController,
+                onChanged: searchStore,
+                decoration: InputDecoration(
+                  hintText: 'Tìm kiếm cửa hàng...',
+                  filled: true,
+                  fillColor: Colors.white,
+                  prefixIcon: const Icon(Icons.search),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(16),
+                    borderSide: BorderSide.none,
+                  ),
+                ),
+              ),
+
+              const SizedBox(height: 24),
+
+              Expanded(
+                child: isLoading
+                    ? const Center(child: CircularProgressIndicator())
+                    : ListView.builder(
+                        itemCount: filteredStores.length,
+                        itemBuilder: (_, index) {
+                          return buildStoreCard(filteredStores[index]);
+                        },
+                      ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+
+FILE: C:\Users\HP\Desktop\Save\PTUDDDDNT\quan_li_sale\modules\route_store_module\lib\view\screens\sale\route_home_sale_view.dart
 import 'package:flutter/material.dart';
 import '../../components/route_list.dart';
 
@@ -267,6 +847,467 @@ class RouteHomeSaleView extends StatelessWidget {
           ),
         ),
         body: RouteList(routes: routes),
+      ),
+    );
+  }
+}
+
+
+FILE: C:\Users\HP\Desktop\Save\PTUDDDDNT\quan_li_sale\modules\route_store_module\lib\view\screens\sale\store_home_sale_view.dart
+import 'package:flutter/material.dart';
+import '../../../entity/store_item.dart';
+import '../../../output/route_store_output.dart';
+
+class StoreHomeSaleView extends StatelessWidget {
+  final StoreItem store;
+  final Function(RouteStoreOutput) onOutput;
+
+  const StoreHomeSaleView({
+    super.key,
+    required this.store,
+    required this.onOutput,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xFFF4F6FA),
+      appBar: AppBar(
+        backgroundColor: Colors.white,
+        elevation: 0,
+        title: Text(
+          store.name,
+          style: const TextStyle(
+            color: Color(0xFF0F3C8F),
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: Color(0xFF1A1A1A)),
+          onPressed: () => onOutput(RouteStoreOutput(action: 'BACK')),
+        ),
+      ),
+      body: Column(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Expanded(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Card thông tin
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(16),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.05),
+                          blurRadius: 8,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          store.name,
+                          style: const TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFF1A1A1A),
+                            fontFamily: 'Manrope',
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Row(
+                          children: [
+                            const Icon(Icons.route, size: 14, color: Colors.grey),
+                            const SizedBox(width: 4),
+                            Text(
+                              store.routeName,
+                              style: const TextStyle(
+                                fontSize: 13,
+                                color: Colors.grey,
+                                fontFamily: 'Manrope',
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        const Row(
+                          children: [
+                            Icon(Icons.check_circle, size: 14, color: Colors.green),
+                            SizedBox(width: 4),
+                            Text(
+                              'Đã check-in',
+                              style: TextStyle(
+                                fontSize: 13,
+                                color: Colors.green,
+                                fontFamily: 'Manrope',
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  const SizedBox(height: 24),
+
+                  const Text(
+                    'CHỨC NĂNG',
+                    style: TextStyle(
+                      fontSize: 10,
+                      color: Colors.grey,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 1.4,
+                      fontFamily: 'Manrope',
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+
+                  _buildActionButton(
+                    icon: Icons.receipt_long_outlined,
+                    label: 'Lên đơn hàng',
+                    color: const Color(0xFF001D4E),
+                    onTap: () => onOutput(RouteStoreOutput(
+                      action: 'ORDER',
+                      storeId: store.id,
+                      storeName: store.name,
+                    )),
+                  ),
+
+                  const SizedBox(height: 12),
+
+                  _buildActionButton(
+                    icon: Icons.inventory_2_outlined,
+                    label: 'Kiểm tồn kho',
+                    color: const Color(0xFF0F3C8F),
+                    onTap: () => onOutput(RouteStoreOutput(
+                      action: 'INVENTORY',
+                      storeId: store.id,
+                      storeName: store.name,
+                    )),
+                  ),
+                ],
+              ),
+            ),
+          ),
+
+          // Phần dưới cùng (Check-out)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(24, 0, 24, 32),
+            child: _buildActionButton(
+              icon: Icons.logout,
+              label: 'Check-out',
+              color: Colors.red.shade700,
+              onTap: () => onOutput(RouteStoreOutput(
+                action: 'CHECKOUT',
+                storeId: store.id,
+                storeName: store.name,
+              )),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildActionButton({
+    required IconData icon,
+    required String label,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: double.infinity,
+        height: 56,
+        decoration: BoxDecoration(
+          color: color,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, color: Colors.white, size: 22),
+            const SizedBox(width: 12),
+            Text(
+              label,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                fontFamily: 'Manrope',
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+
+FILE: C:\Users\HP\Desktop\Save\PTUDDDDNT\quan_li_sale\modules\route_store_module\lib\view\screens\sale\store_list_sale_view.dart
+import 'package:flutter/material.dart';
+import '../../../entity/store_item.dart';
+import '../../../logic_uc/store_list_uc.dart';
+import '../../../output/route_store_output.dart';
+
+class StoreListSaleView extends StatefulWidget {
+  final String userId;
+  final Function(RouteStoreOutput) onOutput;
+
+  const StoreListSaleView({
+    super.key,
+    required this.userId,
+    required this.onOutput,
+  });
+
+  @override
+  State<StoreListSaleView> createState() => _StoreListSaleViewState();
+}
+
+class _StoreListSaleViewState extends State<StoreListSaleView> {
+  final _uc = StoreListUC();
+
+  List<StoreItem> _stores = [];
+  bool _isLoading = true;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadStores();
+  }
+
+  Future<void> _loadStores() async {
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
+    try {
+      final stores = await _uc.getStoresForToday(widget.userId);
+      if (mounted) {
+        setState(() {
+          _stores = stores;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _error = e.toString().replaceAll('Exception: ', '');
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xFFF4F6FA),
+      appBar: AppBar(
+        backgroundColor: Colors.white,
+        elevation: 0,
+        title: const Text(
+          'Cửa hàng hôm nay',
+          style: TextStyle(
+            color: Color(0xFF0F3C8F),
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+      ),
+      body: _buildBody(),
+    );
+  }
+
+  Widget _buildBody() {
+    if (_isLoading) {
+      return const Center(
+        child: CircularProgressIndicator(color: Color(0xFF0F3C8F)),
+      );
+    }
+
+    if (_error != null) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(
+                Icons.error_outline,
+                size: 48,
+                color: Color(0xFF94A3B8),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                _error!,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  color: Color(0xFF434651),
+                  fontSize: 14,
+                  fontFamily: 'Manrope',
+                ),
+              ),
+              const SizedBox(height: 20),
+              ElevatedButton(
+                onPressed: _loadStores,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF0F3C8F),
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 32,
+                    vertical: 12,
+                  ),
+                ),
+                child: const Text(
+                  'Thử lại',
+                  style: TextStyle(fontWeight: FontWeight.w600),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    if (_stores.isEmpty) {
+      return const Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.store_outlined, size: 56, color: Color(0xFF94A3B8)),
+            SizedBox(height: 16),
+            Text(
+              'Không có cửa hàng được\nphân công hôm nay',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: Color(0xFF94A3B8),
+                fontSize: 15,
+                fontFamily: 'Manrope',
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return RefreshIndicator(
+      color: const Color(0xFF0F3C8F),
+      onRefresh: _loadStores,
+      child: ListView.separated(
+        padding: const EdgeInsets.all(16),
+        itemCount: _stores.length,
+        separatorBuilder: (_, __) => const SizedBox(height: 10),
+        itemBuilder: (context, index) => _buildStoreCard(_stores[index]),
+      ),
+    );
+  }
+
+  Widget _buildStoreCard(StoreItem store) {
+    return GestureDetector(
+      onTap: () {
+        widget.onOutput(
+          RouteStoreOutput(
+            action: 'ATTENDANCE',
+            storeId: store.id,
+            storeName: store.name,
+            routeId: store.routeId,
+            routeName: store.routeName,
+            latitude: store.latitude,
+            longitude: store.longitude,
+          ),
+        );
+      },
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 16),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.04),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 56,
+              height: 56,
+              decoration: BoxDecoration(
+                color: store.isCompleted
+                    ? Colors.green.shade100
+                    : const Color(0xFFE8EEF9),
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Icon(
+                store.isCompleted ? Icons.check_circle : Icons.store,
+                color: store.isCompleted
+                    ? Colors.green
+                    : const Color(0xFF0F3C8F),
+              ),
+            ),
+
+            const SizedBox(width: 16),
+
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    store.name,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    store.routeName,
+                    style: const TextStyle(
+                      color: Color(0xFF64748B),
+                      fontSize: 13,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            Column(
+              children: [
+                Text(
+                  '#${store.sequence}',
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF0F3C8F),
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Icon(Icons.chevron_right, color: Colors.grey.shade400),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }

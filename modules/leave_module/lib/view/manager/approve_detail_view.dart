@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../entity/leave_request_entity.dart';
 import '../../entity/leave_status.dart';
-import '../../logic_data/leave_data.dart';
 import '../../logic_uc/approve_leave_uc.dart';
 
 // ---------------------------------------------------------------------------
@@ -175,7 +174,7 @@ class ApproveDetailView extends ConsumerWidget {
                     width: double.infinity,
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
-                      color: const Color(0xFFEF4444).withOpacity(0.1),
+                      color: const Color(0xFFEF4444).withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(16),
                     ),
                     child: Text(
@@ -238,7 +237,7 @@ class ApproveDetailView extends ConsumerWidget {
         ),
         shadows: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -447,7 +446,7 @@ class ApproveDetailView extends ConsumerWidget {
               ? null
               : () async {
                   final ok = await notifier.decide(
-                    leaveId: leave.id!,
+                    leaveId: leave.id,
                     decision: 'Approved',
                   );
                   if (!ok && context.mounted) {
@@ -484,7 +483,7 @@ class ApproveDetailView extends ConsumerWidget {
               ),
               shadows: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.05),
+                  color: Colors.black.withValues(alpha: 0.05),
                   blurRadius: 10,
                   offset: const Offset(0, 4),
                 ),
@@ -533,7 +532,7 @@ class ApproveDetailView extends ConsumerWidget {
                   final confirmed = await _showRejectConfirm(context);
                   if (!confirmed) return;
                   await notifier.decide(
-                    leaveId: leave.id!,
+                    leaveId: leave.id,
                     decision: 'Rejected',
                   );
                 },
@@ -545,7 +544,7 @@ class ApproveDetailView extends ConsumerWidget {
               shape: RoundedRectangleBorder(
                 side: BorderSide(
                   color: busy
-                      ? const Color(0xFFEF4444).withOpacity(0.4)
+                      ? const Color(0xFFEF4444).withValues(alpha: 0.4)
                       : const Color(0xFFEF4444),
                   width: 2,
                 ),
@@ -568,7 +567,7 @@ class ApproveDetailView extends ConsumerWidget {
                         Icon(
                           Icons.cancel_outlined,
                           color: busy
-                              ? const Color(0xFFEF4444).withOpacity(0.4)
+                              ? const Color(0xFFEF4444).withValues(alpha: 0.4)
                               : const Color(0xFFEF4444),
                           size: 20,
                         ),
@@ -577,7 +576,7 @@ class ApproveDetailView extends ConsumerWidget {
                           'Từ chối',
                           style: TextStyle(
                             color: busy
-                                ? const Color(0xFFEF4444).withOpacity(0.4)
+                                ? const Color(0xFFEF4444).withValues(alpha: 0.4)
                                 : const Color(0xFFEF4444),
                             fontSize: 16,
                             fontFamily: 'Manrope',
@@ -655,9 +654,9 @@ class ApproveDetailView extends ConsumerWidget {
       width: double.infinity,
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.08),
+        color: color.withValues(alpha: 0.08),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: color.withOpacity(0.3)),
+        border: Border.all(color: color.withValues(alpha: 0.3)),
       ),
       child: Row(
         children: [

@@ -1,0 +1,3410 @@
+FILE: C:\Users\Admin\Documents\GitHub\quan_li_sale\modules\leave_module\lib\view\manager\approve_detail_view.dart
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import '../../entity/leave_request_entity.dart';
+import '../../entity/leave_status.dart';
+import '../../logic_data/leave_data.dart';
+import '../../logic_uc/approve_leave_uc.dart';
+
+// ---------------------------------------------------------------------------
+// State
+// ---------------------------------------------------------------------------
+
+enum ApproveAction { none, approving, rejecting }
+
+class ApproveDetailState {
+  final bool isLoading;
+  final ApproveAction action;
+  final String? errorMessage;
+  final bool isDone; // true sau khi duyệt/từ chối xong
+
+  const ApproveDetailState({
+    this.isLoading = false,
+    this.action = ApproveAction.none,
+    this.errorMessage,
+    this.isDone = false,
+  });
+
+  ApproveDetailState copyWith({
+    bool? isLoading,
+    ApproveAction? action,
+    String? errorMessage,
+    bool? isDone,
+    bool clearError = false,
+  }) {
+    return ApproveDetailState(
+      isLoading: isLoading ?? this.isLoading,
+      action: action ?? this.action,
+      errorMessage: clearError ? null : errorMessage ?? this.errorMessage,
+      isDone: isDone ?? this.isDone,
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Notifier
+// ---------------------------------------------------------------------------
+
+class ApproveDetailNotifier extends StateNotifier<ApproveDetailState> {
+  final ApproveLeaveUc _approveUc;
+  final String approverId;
+  final String groupId;
+
+  ApproveDetailNotifier({
+    required ApproveLeaveUc approveUc,
+    required this.approverId,
+    required this.groupId,
+  })  : _approveUc = approveUc,
+        super(const ApproveDetailState());
+
+  Future<bool> decide({
+    required int leaveId,
+    required String decision, // 'Approved' | 'Rejected'
+  }) async {
+    final action =
+        decision == 'Approved' ? ApproveAction.approving : ApproveAction.rejecting;
+
+    state = state.copyWith(isLoading: true, action: action, clearError: true);
+    try {
+      await _approveUc(
+        leaveId: leaveId,
+        decision: decision,
+        approverId: approverId,
+        groupId: groupId,
+      );
+      state = state.copyWith(isLoading: false, isDone: true,
+          action: ApproveAction.none);
+      return true;
+    } on Exception catch (e) {
+      final msg = e.toString().replaceFirst('Exception: ', '');
+      state = state.copyWith(
+          isLoading: false, action: ApproveAction.none, errorMessage: msg);
+      return false;
+    }
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Provider
+// ---------------------------------------------------------------------------
+
+final approveDetailNotifierProvider = StateNotifierProvider.autoDispose<
+    ApproveDetailNotifier, ApproveDetailState>(
+  (ref) => throw UnimplementedError(
+    'approveDetailNotifierProvider phải được override trong Leave_Module.',
+  ),
+);
+
+// ---------------------------------------------------------------------------
+// View
+// ---------------------------------------------------------------------------
+
+/// Màn hình chi tiết đơn nghỉ + nút Duyệt / Từ chối dành cho Manager.
+/// Layout theo design system: dark scaffold + white card + action buttons.
+class ApproveDetailView extends ConsumerWidget {
+  final LeaveRequestEntity leave;
+
+  /// Callback sau khi Manager duyệt hoặc từ chối thành công.
+  final VoidCallback? onDecisionSuccess;
+  final VoidCallback? onBack;
+
+  const ApproveDetailView({
+    super.key,
+    required this.leave,
+    this.onDecisionSuccess,
+    this.onBack,
+  });
+
+  // ── helpers ──────────────────────────────────────────────────────────────────
+
+  String _formatDate(DateTime dt) =>
+      '${dt.day.toString().padLeft(2, '0')}/'
+      '${dt.month.toString().padLeft(2, '0')}/'
+      '${dt.year}';
+
+  String _monthLabel(DateTime dt) =>
+      'TH${dt.month.toString().padLeft(2, '0')}';
+
+  String _dayRange() {
+    final start = _formatDate(leave.startDate);
+    final end = _formatDate(leave.endDate);
+    if (leave.totalDays == 1) return '1 ngày ($start)';
+    return '${leave.totalDays} ngày ($start – $end)';
+  }
+
+  // ── build ─────────────────────────────────────────────────────────────────────
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final state = ref.watch(approveDetailNotifierProvider);
+    final notifier = ref.read(approveDetailNotifierProvider.notifier);
+
+    // Auto-pop khi done
+    ref.listen<ApproveDetailState>(approveDetailNotifierProvider, (_, next) {
+      if (next.isDone) {
+        onDecisionSuccess?.call();
+      }
+    });
+
+    return Scaffold(
+      backgroundColor: Colors.white,
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.only(
+              top: 96, left: 24, right: 24, bottom: 40),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // ── Back + Header ────────────────────────────────────────
+              _buildHeader(),
+              const SizedBox(height: 32),
+
+              // ── Leave detail card ────────────────────────────────────
+              _buildDetailCard(),
+              const SizedBox(height: 24),
+
+              // ── Reason card ──────────────────────────────────────────
+              _buildReasonCard(),
+              const SizedBox(height: 32),
+
+              // ── Error message ────────────────────────────────────────
+              if (state.errorMessage != null)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 16),
+                  child: Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFEF4444).withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: Text(
+                      state.errorMessage!,
+                      style: const TextStyle(
+                        color: Color(0xFFEF4444),
+                        fontSize: 14,
+                        fontFamily: 'Manrope',
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                ),
+
+              // ── Action buttons ───────────────────────────────────────
+              if (leave.status == LeaveStatus.pending)
+                _buildActionButtons(state, notifier, context)
+              else
+                _buildAlreadyProcessed(),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ── Header ────────────────────────────────────────────────────────────────────
+
+  Widget _buildHeader() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'ROLE: MANAGER',
+          style: TextStyle(
+            color: Color(0xFF434651),
+            fontSize: 11,
+            fontFamily: 'Manrope',
+            fontWeight: FontWeight.w700,
+            letterSpacing: 1.10,
+            height: 1.50,
+          ),
+        ),
+        const SizedBox(height: 4),
+        const Text(
+          'Chi tiết đơn\nnghỉ phép',
+          style: TextStyle(
+            color: Color(0xFF001D4E),
+            fontSize: 30,
+            fontFamily: 'Manrope',
+            fontWeight: FontWeight.w800,
+            letterSpacing: -0.75,
+            height: 1.20,
+          ),
+        ),
+      ],
+    );
+  }
+
+  // ── Detail card ──────────────────────────────────────────────────────────────
+
+  Widget _buildDetailCard() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(32),
+      decoration: ShapeDecoration(
+        color: Colors.white,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(32),
+        ),
+        shadows: const [
+          BoxShadow(
+            color: Color(0x140D47A1),
+            blurRadius: 24,
+            offset: Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Date box + title row
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Container(
+                width: 72,
+                height: 72,
+                decoration: ShapeDecoration(
+                  color: const Color(0xFFF3F3F3),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(36),
+                  ),
+                ),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      '${leave.startDate.day}',
+                      style: const TextStyle(
+                        color: Color(0xFF001D4E),
+                        fontSize: 22,
+                        fontFamily: 'Manrope',
+                        fontWeight: FontWeight.w800,
+                        height: 1.20,
+                      ),
+                    ),
+                    Text(
+                      _monthLabel(leave.startDate),
+                      style: const TextStyle(
+                        color: Color(0xFF001D4E),
+                        fontSize: 10,
+                        fontFamily: 'Manrope',
+                        fontWeight: FontWeight.w700,
+                        height: 1.50,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 24),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      leave.reason.length > 32
+                          ? '${leave.reason.substring(0, 32)}…'
+                          : leave.reason,
+                      style: const TextStyle(
+                        color: Color(0xFF001D4E),
+                        fontSize: 20,
+                        fontFamily: 'Manrope',
+                        fontWeight: FontWeight.w700,
+                        height: 1.40,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      _dayRange(),
+                      style: const TextStyle(
+                        color: Color(0xFF434651),
+                        fontSize: 14,
+                        fontFamily: 'Manrope',
+                        fontWeight: FontWeight.w400,
+                        height: 1.43,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 24),
+          const Divider(color: Color(0xFFF3F3F3), thickness: 1),
+          const SizedBox(height: 20),
+
+          // Info rows
+          _buildInfoRow('NGÀY BẮT ĐẦU', _formatDate(leave.startDate)),
+          const SizedBox(height: 12),
+          _buildInfoRow('NGÀY KẾT THÚC', _formatDate(leave.endDate)),
+          const SizedBox(height: 12),
+          _buildInfoRow('SỐ NGÀY NGHỈ', '${leave.totalDays} ngày'),
+          const SizedBox(height: 12),
+          _buildInfoRow(
+            'TRẠNG THÁI',
+            leave.status.label,
+            valueColor: _statusColor(leave.status),
+          ),
+          if (leave.approvedBy != null) ...[
+            const SizedBox(height: 12),
+            _buildInfoRow('DUYỆT BỞI',
+                leave.approvedBy!.substring(0, 8).toUpperCase()),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildInfoRow(String label, String value, {Color? valueColor}) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(
+          label,
+          style: const TextStyle(
+            color: Color(0x99434651),
+            fontSize: 11,
+            fontFamily: 'Manrope',
+            fontWeight: FontWeight.w700,
+            letterSpacing: 1.10,
+            height: 1.50,
+          ),
+        ),
+        Text(
+          value,
+          style: TextStyle(
+            color: valueColor ?? const Color(0xFF001D4E),
+            fontSize: 14,
+            fontFamily: 'Manrope',
+            fontWeight: FontWeight.w700,
+            height: 1.43,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Color _statusColor(LeaveStatus status) {
+    switch (status) {
+      case LeaveStatus.approved:
+        return const Color(0xFF22C55E);
+      case LeaveStatus.rejected:
+        return const Color(0xFFEF4444);
+      case LeaveStatus.pending:
+        return const Color(0xFFF59E0B);
+    }
+  }
+
+  // ── Reason card ───────────────────────────────────────────────────────────────
+
+  Widget _buildReasonCard() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(24),
+      decoration: ShapeDecoration(
+        color: const Color(0xFFF3F3F3),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(24),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'LÝ DO CHI TIẾT',
+            style: TextStyle(
+              color: Color(0x99434651),
+              fontSize: 11,
+              fontFamily: 'Manrope',
+              fontWeight: FontWeight.w700,
+              letterSpacing: 1.20,
+              height: 1.50,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            leave.reason,
+            style: const TextStyle(
+              color: Color(0xFF1A1C1C),
+              fontSize: 16,
+              fontFamily: 'Manrope',
+              fontWeight: FontWeight.w400,
+              height: 1.63,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ── Action buttons ────────────────────────────────────────────────────────────
+
+  Widget _buildActionButtons(
+    ApproveDetailState state,
+    ApproveDetailNotifier notifier,
+    BuildContext context,
+  ) {
+    final isApproving = state.action == ApproveAction.approving;
+    final isRejecting = state.action == ApproveAction.rejecting;
+    final busy = state.isLoading;
+
+    return Column(
+      children: [
+        // DUYỆT button (navy gradient)
+        GestureDetector(
+          key: const Key('approve_button'),
+          onTap: busy
+              ? null
+              : () async {
+                  final ok = await notifier.decide(
+                    leaveId: leave.id!,
+                    decision: 'Approved',
+                  );
+                  if (!ok && context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(
+                          state.errorMessage ?? 'Đã xảy ra lỗi.',
+                          style: const TextStyle(
+                            fontFamily: 'Manrope',
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        backgroundColor: const Color(0xFFEF4444),
+                        behavior: SnackBarBehavior.floating,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        margin: const EdgeInsets.all(16),
+                      ),
+                    );
+                  }
+                },
+          child: Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(vertical: 18),
+            decoration: ShapeDecoration(
+              gradient: const LinearGradient(
+                begin: Alignment(0.20, -0.99),
+                end: Alignment(0.80, 1.99),
+                colors: [Color(0xFF001D4E), Color(0xFF003178)],
+              ),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(9999),
+              ),
+              shadows: const [
+                BoxShadow(
+                  color: Color(0x140D47A1),
+                  blurRadius: 24,
+                  offset: Offset(0, 8),
+                ),
+              ],
+            ),
+            child: Center(
+              child: isApproving
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                        color: Colors.white,
+                        strokeWidth: 2.5,
+                      ),
+                    )
+                  : Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: const [
+                        Icon(Icons.check_circle_outline,
+                            color: Colors.white, size: 20),
+                        SizedBox(width: 8),
+                        Text(
+                          'Duyệt đơn',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 16,
+                            fontFamily: 'Manrope',
+                            fontWeight: FontWeight.w700,
+                            height: 1.50,
+                          ),
+                        ),
+                      ],
+                    ),
+            ),
+          ),
+        ),
+        const SizedBox(height: 12),
+
+        // TỪ CHỐI button (outlined red)
+        GestureDetector(
+          key: const Key('reject_button'),
+          onTap: busy
+              ? null
+              : () async {
+                  // Hiển thị confirm dialog trước khi từ chối
+                  final confirmed = await _showRejectConfirm(context);
+                  if (!confirmed) return;
+                  await notifier.decide(
+                    leaveId: leave.id!,
+                    decision: 'Rejected',
+                  );
+                },
+          child: Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(vertical: 18),
+            decoration: ShapeDecoration(
+              color: Colors.transparent,
+              shape: RoundedRectangleBorder(
+                side: BorderSide(
+                  color: busy
+                      ? const Color(0xFFEF4444).withOpacity(0.4)
+                      : const Color(0xFFEF4444),
+                  width: 2,
+                ),
+                borderRadius: BorderRadius.circular(9999),
+              ),
+            ),
+            child: Center(
+              child: isRejecting
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                        color: Color(0xFFEF4444),
+                        strokeWidth: 2.5,
+                      ),
+                    )
+                  : Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.cancel_outlined,
+                          color: busy
+                              ? const Color(0xFFEF4444).withOpacity(0.4)
+                              : const Color(0xFFEF4444),
+                          size: 20,
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          'Từ chối',
+                          style: TextStyle(
+                            color: busy
+                                ? const Color(0xFFEF4444).withOpacity(0.4)
+                                : const Color(0xFFEF4444),
+                            fontSize: 16,
+                            fontFamily: 'Manrope',
+                            fontWeight: FontWeight.w700,
+                            height: 1.50,
+                          ),
+                        ),
+                      ],
+                    ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// Confirm dialog trước khi từ chối.
+  Future<bool> _showRejectConfirm(BuildContext context) async {
+    return await showDialog<bool>(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(24),
+            ),
+            title: const Text(
+              'Xác nhận từ chối',
+              style: TextStyle(
+                fontFamily: 'Manrope',
+                fontWeight: FontWeight.w700,
+                color: Color(0xFF001D4E),
+              ),
+            ),
+            content: const Text(
+              'Bạn có chắc muốn từ chối đơn nghỉ này không?',
+              style: TextStyle(
+                fontFamily: 'Manrope',
+                color: Color(0xFF434651),
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(ctx).pop(false),
+                child: const Text(
+                  'Huỷ',
+                  style: TextStyle(
+                    fontFamily: 'Manrope',
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xFF434651),
+                  ),
+                ),
+              ),
+              TextButton(
+                key: const Key('confirm_reject_button'),
+                onPressed: () => Navigator.of(ctx).pop(true),
+                child: const Text(
+                  'Từ chối',
+                  style: TextStyle(
+                    fontFamily: 'Manrope',
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFFEF4444),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ) ??
+        false;
+  }
+
+  // ── Already processed banner ──────────────────────────────────────────────────
+
+  Widget _buildAlreadyProcessed() {
+    final color = _statusColor(leave.status);
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.08),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: color.withOpacity(0.3)),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 8,
+            height: 8,
+            decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+          ),
+          const SizedBox(width: 12),
+          Text(
+            'Đơn này đã được xử lý: ${leave.status.label}',
+            style: TextStyle(
+              color: color,
+              fontSize: 14,
+              fontFamily: 'Manrope',
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+
+FILE: C:\Users\Admin\Documents\GitHub\quan_li_sale\modules\leave_module\lib\view\manager\leave_history_view.dart
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import '../../logic_data/leave_data.dart';
+import '../../logic_uc/leave_history_uc.dart';
+
+// ---------------------------------------------------------------------------
+// State
+// ---------------------------------------------------------------------------
+
+class LeaveHistoryViewState {
+  final List<Map<String, dynamic>> employees; // [{id, name}]
+  final String? selectedEmployeeId;
+  final int selectedYear;
+  final bool isLoading;
+  final LeaveHistoryResult? result;
+  final String? errorMessage;
+
+  const LeaveHistoryViewState({
+    this.employees = const [],
+    this.selectedEmployeeId,
+    required this.selectedYear,
+    this.isLoading = false,
+    this.result,
+    this.errorMessage,
+  });
+
+  LeaveHistoryViewState copyWith({
+    List<Map<String, dynamic>>? employees,
+    String? selectedEmployeeId,
+    int? selectedYear,
+    bool? isLoading,
+    LeaveHistoryResult? result,
+    String? errorMessage,
+    bool clearResult = false,
+    bool clearError = false,
+  }) {
+    return LeaveHistoryViewState(
+      employees: employees ?? this.employees,
+      selectedEmployeeId: selectedEmployeeId ?? this.selectedEmployeeId,
+      selectedYear: selectedYear ?? this.selectedYear,
+      isLoading: isLoading ?? this.isLoading,
+      result: clearResult ? null : result ?? this.result,
+      errorMessage: clearError ? null : errorMessage ?? this.errorMessage,
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Notifier
+// ---------------------------------------------------------------------------
+
+class LeaveHistoryViewNotifier extends StateNotifier<LeaveHistoryViewState> {
+  final LeaveHistoryUc _historyUc;
+  final LeaveData _leaveData;
+  final String groupId;
+
+  LeaveHistoryViewNotifier({
+    required LeaveHistoryUc historyUc,
+    required LeaveData leaveData,
+    required this.groupId,
+  })  : _historyUc = historyUc,
+        _leaveData = leaveData,
+        super(LeaveHistoryViewState(selectedYear: DateTime.now().year)) {
+    _loadEmployees();
+  }
+
+  /// Load danh sách nhân viên trong nhóm để populate dropdown.
+  Future<void> _loadEmployees() async {
+    try {
+      final list = await _leaveData.getUsersInGroup(groupId);
+      state = state.copyWith(employees: list);
+    } catch (_) {
+      // Không block UI nếu load employee list fail
+    }
+  }
+
+  void selectEmployee(String employeeId) {
+    state = state.copyWith(
+      selectedEmployeeId: employeeId,
+      clearResult: true,
+      clearError: true,
+    );
+    _fetch();
+  }
+
+  void selectYear(int year) {
+    state = state.copyWith(
+      selectedYear: year,
+      clearResult: true,
+      clearError: true,
+    );
+    if (state.selectedEmployeeId != null) _fetch();
+  }
+
+  Future<void> _fetch() async {
+    if (state.selectedEmployeeId == null) return;
+    state = state.copyWith(isLoading: true, clearError: true);
+    try {
+      final result = await _historyUc(
+        employeeId: state.selectedEmployeeId!,
+        year: state.selectedYear,
+      );
+      state = state.copyWith(isLoading: false, result: result);
+    } on Exception catch (e) {
+      final msg = e.toString().replaceFirst('Exception: ', '');
+      state = state.copyWith(isLoading: false, errorMessage: msg);
+    }
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Provider
+// ---------------------------------------------------------------------------
+
+final leaveHistoryViewNotifierProvider = StateNotifierProvider.autoDispose<
+    LeaveHistoryViewNotifier, LeaveHistoryViewState>(
+  (ref) => throw UnimplementedError(
+    'leaveHistoryViewNotifierProvider phải được override trong Leave_Module.',
+  ),
+);
+
+// ---------------------------------------------------------------------------
+// View
+// ---------------------------------------------------------------------------
+
+/// Màn hình thống kê lịch sử nghỉ phép của nhân viên — dành cho Manager.
+/// Layout: header + selectors (nhân viên + năm) + stats cards + leave list.
+class LeaveHistoryView extends ConsumerWidget {
+  final VoidCallback? onBack;
+
+  const LeaveHistoryView({super.key, this.onBack});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final state = ref.watch(leaveHistoryViewNotifierProvider);
+    final notifier = ref.read(leaveHistoryViewNotifierProvider.notifier);
+    final currentYear = DateTime.now().year;
+
+    return Scaffold(
+      backgroundColor: Colors.white,
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.only(
+              top: 96, left: 24, right: 24, bottom: 40),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // ── Header ──────────────────────────────────────────────
+              _buildHeader(),
+              const SizedBox(height: 32),
+
+              // ── Selectors ───────────────────────────────────────────
+              _buildSelectors(state, notifier, currentYear),
+              const SizedBox(height: 32),
+
+              // ── Body ────────────────────────────────────────────────
+              _buildBody(state),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ── Header ────────────────────────────────────────────────────────────────────
+
+  Widget _buildHeader() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: const [
+        Text(
+          'ROLE: MANAGER',
+          style: TextStyle(
+            color: Color(0xFF434651),
+            fontSize: 11,
+            fontFamily: 'Manrope',
+            fontWeight: FontWeight.w700,
+            letterSpacing: 1.10,
+            height: 1.50,
+          ),
+        ),
+        SizedBox(height: 4),
+        Text(
+          'Báo cáo nghỉ phép\nnhân viên',
+          style: TextStyle(
+            color: Color(0xFF001D4E),
+            fontSize: 30,
+            fontFamily: 'Manrope',
+            fontWeight: FontWeight.w800,
+            letterSpacing: -0.75,
+            height: 1.20,
+          ),
+        ),
+        SizedBox(height: 4),
+        Opacity(
+          opacity: 0.80,
+          child: Text(
+            'Chọn nhân viên và năm để xem thống kê',
+            style: TextStyle(
+              color: Color(0xFF434651),
+              fontSize: 14,
+              fontFamily: 'Manrope',
+              fontWeight: FontWeight.w500,
+              height: 1.50,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  // ── Selectors ─────────────────────────────────────────────────────────────────
+
+  Widget _buildSelectors(
+    LeaveHistoryViewState state,
+    LeaveHistoryViewNotifier notifier,
+    int currentYear,
+  ) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Employee dropdown
+        const Text(
+          'NHÂN VIÊN',
+          style: TextStyle(
+            color: Color(0xFF434651),
+            fontSize: 12,
+            fontFamily: 'Manrope',
+            fontWeight: FontWeight.w700,
+            letterSpacing: 1.20,
+          ),
+        ),
+        const SizedBox(height: 8),
+        _buildDropdownField(
+          key: const Key('employee_dropdown'),
+          hint: 'Chọn nhân viên...',
+          value: state.selectedEmployeeId,
+          items: state.employees.map((e) {
+            final id = e['id'] as String;
+            final name = e['name'] as String? ?? id.substring(0, 8);
+            return DropdownMenuItem<String>(
+              value: id,
+              child: Text(
+                name,
+                style: const TextStyle(
+                  color: Color(0xFF1A1C1C),
+                  fontSize: 16,
+                  fontFamily: 'Manrope',
+                  fontWeight: FontWeight.w400,
+                ),
+              ),
+            );
+          }).toList(),
+          onChanged: (v) {
+            if (v != null) notifier.selectEmployee(v);
+          },
+        ),
+        const SizedBox(height: 16),
+
+        // Year tabs
+        const Text(
+          'NĂM',
+          style: TextStyle(
+            color: Color(0xFF434651),
+            fontSize: 12,
+            fontFamily: 'Manrope',
+            fontWeight: FontWeight.w700,
+            letterSpacing: 1.20,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Row(
+          children: [currentYear, currentYear - 1, currentYear - 2]
+              .map((year) {
+            final isSelected = state.selectedYear == year;
+            return Padding(
+              padding: const EdgeInsets.only(right: 8),
+              child: GestureDetector(
+                key: Key('year_tab_$year'),
+                onTap: () => notifier.selectYear(year),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 20, vertical: 10),
+                  decoration: ShapeDecoration(
+                    color: isSelected
+                        ? const Color(0xFF001D4E)
+                        : const Color(0xFFE8E8E8),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(9999),
+                    ),
+                  ),
+                  child: Text(
+                    '$year',
+                    style: TextStyle(
+                      color: isSelected
+                          ? Colors.white
+                          : const Color(0xFF434651),
+                      fontSize: 14,
+                      fontFamily: 'Manrope',
+                      fontWeight: FontWeight.w700,
+                      height: 1.43,
+                    ),
+                  ),
+                ),
+              ),
+            );
+          }).toList(),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildDropdownField({
+    required Key key,
+    required String hint,
+    required String? value,
+    required List<DropdownMenuItem<String>> items,
+    required ValueChanged<String?> onChanged,
+  }) {
+    return Container(
+      key: key,
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      decoration: const BoxDecoration(
+        color: Color(0xFFE8E8E8),
+        borderRadius: BorderRadius.all(Radius.circular(12)),
+      ),
+      child: DropdownButtonHideUnderline(
+        child: DropdownButton<String>(
+          value: value,
+          hint: Text(
+            hint,
+            style: const TextStyle(
+              color: Color(0x7F747782),
+              fontSize: 16,
+              fontFamily: 'Manrope',
+            ),
+          ),
+          items: items,
+          onChanged: onChanged,
+          isExpanded: true,
+          dropdownColor: Colors.white,
+          style: const TextStyle(
+            color: Color(0xFF1A1C1C),
+            fontSize: 16,
+            fontFamily: 'Manrope',
+          ),
+          icon: const Icon(Icons.keyboard_arrow_down,
+              color: Color(0xFF434651)),
+        ),
+      ),
+    );
+  }
+
+  // ── Body ──────────────────────────────────────────────────────────────────────
+
+  Widget _buildBody(LeaveHistoryViewState state) {
+    if (state.selectedEmployeeId == null) {
+      return _buildEmptyPrompt();
+    }
+
+    if (state.isLoading) {
+      return const Padding(
+        padding: EdgeInsets.only(top: 48),
+        child: Center(
+          child: CircularProgressIndicator(color: Color(0xFF001D4E)),
+        ),
+      );
+    }
+
+    if (state.errorMessage != null) {
+      return Padding(
+        padding: const EdgeInsets.only(top: 16),
+        child: Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: const Color(0xFFEF4444).withOpacity(0.1),
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Text(
+            state.errorMessage!,
+            style: const TextStyle(
+              color: Color(0xFFEF4444),
+              fontSize: 14,
+              fontFamily: 'Manrope',
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ),
+      );
+    }
+
+    if (state.result == null) return const SizedBox();
+
+    return _buildResults(state.result!);
+  }
+
+  Widget _buildEmptyPrompt() {
+    return Padding(
+      padding: const EdgeInsets.only(top: 48),
+      child: Center(
+        child: Column(
+          children: const [
+            Icon(Icons.person_search_outlined,
+                size: 56, color: Color(0xFF434651)),
+            SizedBox(height: 12),
+            Text(
+              'Chọn nhân viên để xem\nthống kê nghỉ phép.',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: Color(0xFF434651),
+                fontSize: 16,
+                fontFamily: 'Manrope',
+                fontWeight: FontWeight.w500,
+                height: 1.63,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ── Results ───────────────────────────────────────────────────────────────────
+
+  Widget _buildResults(LeaveHistoryResult result) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // ── Stats cards row ──
+        Row(
+          children: [
+            Expanded(
+              child: _buildStatCard(
+                label: 'NGÀY ĐÃ NGHỈ',
+                value: '${result.totalApprovedDays}',
+                unit: 'ngày',
+                color: const Color(0xFF001D4E),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: _buildStatCard(
+                label: 'ĐANG CHỜ',
+                value: '${result.pendingCount}',
+                unit: 'đơn',
+                color: const Color(0xFFF59E0B),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: _buildStatCard(
+                label: 'TỪ CHỐI',
+                value: '${result.rejectedCount}',
+                unit: 'đơn',
+                color: const Color(0xFFEF4444),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 16),
+
+        // ── Approved count card ──
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.only(top: 31, left: 32, right: 32, bottom: 32),
+          decoration: ShapeDecoration(
+            color: Colors.white,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(32),
+            ),
+            shadows: const [
+              BoxShadow(
+                color: Color(0x140D47A1),
+                blurRadius: 24,
+                offset: Offset(0, 8),
+              ),
+            ],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'TỔNG NGÀY NGHỈ ĐƯỢC DUYỆT',
+                style: TextStyle(
+                  color: Color(0x99434651),
+                  fontSize: 11,
+                  fontFamily: 'Manrope',
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 1.10,
+                  height: 1.50,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.baseline,
+                textBaseline: TextBaseline.alphabetic,
+                children: [
+                  Text(
+                    '${result.totalApprovedDays} ',
+                    style: const TextStyle(
+                      color: Color(0xFF001D4E),
+                      fontSize: 48,
+                      fontFamily: 'Manrope',
+                      fontWeight: FontWeight.w800,
+                      height: 1,
+                    ),
+                  ),
+                  const Text(
+                    'Ngày',
+                    style: TextStyle(
+                      color: Color(0xFF434651),
+                      fontSize: 20,
+                      fontFamily: 'Manrope',
+                      fontWeight: FontWeight.w500,
+                      height: 1.40,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'Năm ${result.year} • ${result.approvedCount} đơn đã duyệt',
+                style: const TextStyle(
+                  color: Color(0xFF434651),
+                  fontSize: 14,
+                  fontFamily: 'Manrope',
+                  fontWeight: FontWeight.w400,
+                  height: 1.50,
+                ),
+              ),
+              // Progress bar (tỷ lệ so với 12 ngày phép/năm)
+              if (result.totalApprovedDays > 0) ...[
+                const SizedBox(height: 16),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(9999),
+                  child: LinearProgressIndicator(
+                    value: (result.totalApprovedDays / 12).clamp(0.0, 1.0),
+                    minHeight: 6,
+                    backgroundColor: const Color(0xFFE8E8E8),
+                    valueColor: const AlwaysStoppedAnimation<Color>(
+                      Color(0xFF001D4E),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  '${result.totalApprovedDays}/12 ngày phép năm đã sử dụng',
+                  style: const TextStyle(
+                    color: Color(0x99434651),
+                    fontSize: 12,
+                    fontFamily: 'Manrope',
+                    fontWeight: FontWeight.w400,
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+        const SizedBox(height: 24),
+
+        // ── Approved leave list ──
+        if (result.approvedLeaves.isNotEmpty) ...[
+          const Text(
+            'Chi tiết đơn đã duyệt',
+            style: TextStyle(
+              color: Color(0xFF001D4E),
+              fontSize: 24,
+              fontFamily: 'Manrope',
+              fontWeight: FontWeight.w700,
+              letterSpacing: -0.60,
+              height: 1.33,
+            ),
+          ),
+          const SizedBox(height: 16),
+          ...result.approvedLeaves.map((leave) {
+            final start =
+                '${leave.startDate.day.toString().padLeft(2, '0')}/${leave.startDate.month.toString().padLeft(2, '0')}';
+            final end =
+                '${leave.endDate.day.toString().padLeft(2, '0')}/${leave.endDate.month.toString().padLeft(2, '0')}';
+
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 4),
+              child: Container(
+                key: Key('history_card_${leave.id}'),
+                padding: const EdgeInsets.all(24),
+                decoration: ShapeDecoration(
+                  color: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(32),
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    // Date box
+                    Container(
+                      width: 64,
+                      height: 64,
+                      decoration: ShapeDecoration(
+                        color: const Color(0xFFF3F3F3),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(32),
+                        ),
+                      ),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text(
+                            '${leave.startDate.day}',
+                            style: const TextStyle(
+                              color: Color(0xFF001D4E),
+                              fontSize: 18,
+                              fontFamily: 'Manrope',
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                          Text(
+                            'TH${leave.startDate.month.toString().padLeft(2, '0')}',
+                            style: const TextStyle(
+                              color: Color(0xFF001D4E),
+                              fontSize: 10,
+                              fontFamily: 'Manrope',
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            leave.reason.length > 30
+                                ? '${leave.reason.substring(0, 30)}…'
+                                : leave.reason,
+                            style: const TextStyle(
+                              color: Color(0xFF001D4E),
+                              fontSize: 16,
+                              fontFamily: 'Manrope',
+                              fontWeight: FontWeight.w700,
+                              height: 1.40,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            '${leave.totalDays} ngày ($start – $end)',
+                            style: const TextStyle(
+                              color: Color(0xFF434651),
+                              fontSize: 14,
+                              fontFamily: 'Manrope',
+                              fontWeight: FontWeight.w400,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(
+                          width: 6,
+                          height: 6,
+                          decoration: const BoxDecoration(
+                            color: Color(0xFF22C55E),
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                        const SizedBox(width: 4),
+                        const Text(
+                          'Đã duyệt',
+                          style: TextStyle(
+                            color: Color(0xFF22C55E),
+                            fontSize: 12,
+                            fontFamily: 'Manrope',
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            );
+          }).toList(),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildStatCard({
+    required String label,
+    required String value,
+    required String unit,
+    required Color color,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: ShapeDecoration(
+        color: const Color(0xFFF3F3F3),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(24),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: const TextStyle(
+              color: Color(0x99434651),
+              fontSize: 9,
+              fontFamily: 'Manrope',
+              fontWeight: FontWeight.w700,
+              letterSpacing: 0.80,
+              height: 1.50,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.baseline,
+            textBaseline: TextBaseline.alphabetic,
+            children: [
+              Text(
+                value,
+                style: TextStyle(
+                  color: color,
+                  fontSize: 28,
+                  fontFamily: 'Manrope',
+                  fontWeight: FontWeight.w800,
+                  height: 1,
+                ),
+              ),
+              const SizedBox(width: 3),
+              Text(
+                unit,
+                style: const TextStyle(
+                  color: Color(0xFF434651),
+                  fontSize: 12,
+                  fontFamily: 'Manrope',
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+
+FILE: C:\Users\Admin\Documents\GitHub\quan_li_sale\modules\leave_module\lib\view\manager\pending_list_view.dart
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import '../../entity/leave_request_entity.dart';
+import '../../entity/leave_status.dart';
+import '../../logic_data/leave_data.dart';
+import '../../logic_uc/fetch_leave_list_uc.dart';
+
+// ---------------------------------------------------------------------------
+// State
+// ---------------------------------------------------------------------------
+
+class PendingListState {
+  final List<LeaveRequestEntity> leaves;
+  final bool isLoading;
+  final String? errorMessage;
+
+  const PendingListState({
+    this.leaves = const [],
+    this.isLoading = false,
+    this.errorMessage,
+  });
+
+  PendingListState copyWith({
+    List<LeaveRequestEntity>? leaves,
+    bool? isLoading,
+    String? errorMessage,
+    bool clearError = false,
+  }) {
+    return PendingListState(
+      leaves: leaves ?? this.leaves,
+      isLoading: isLoading ?? this.isLoading,
+      errorMessage: clearError ? null : errorMessage ?? this.errorMessage,
+    );
+  }
+
+  int get pendingCount => leaves.length;
+}
+
+// ---------------------------------------------------------------------------
+// Notifier
+// ---------------------------------------------------------------------------
+
+class PendingListNotifier extends StateNotifier<PendingListState> {
+  final FetchLeaveListUc _fetchUc;
+  final String managerId;
+  final String groupId;
+
+  PendingListNotifier({
+    required FetchLeaveListUc fetchUc,
+    required this.managerId,
+    required this.groupId,
+  })  : _fetchUc = fetchUc,
+        super(const PendingListState()) {
+    _load();
+  }
+
+  Future<void> _load() async {
+    state = state.copyWith(isLoading: true, clearError: true);
+    try {
+      final list = await _fetchUc(
+        userId: managerId,
+        role: 'Manager',
+        groupId: groupId,
+        filterStatus: LeaveStatus.pending,
+      );
+      state = state.copyWith(leaves: list, isLoading: false);
+    } on Exception catch (e) {
+      final msg = e.toString().replaceFirst('Exception: ', '');
+      state = state.copyWith(isLoading: false, errorMessage: msg);
+    }
+  }
+
+  Future<void> refresh() => _load();
+
+  /// Xoá 1 đơn khỏi list local sau khi Manager duyệt/từ chối
+  void removeLeave(int leaveId) {
+    state = state.copyWith(
+      leaves: state.leaves.where((l) => l.id != leaveId).toList(),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Provider
+// ---------------------------------------------------------------------------
+
+final pendingListNotifierProvider =
+    StateNotifierProvider.autoDispose<PendingListNotifier, PendingListState>(
+  (ref) => throw UnimplementedError(
+    'pendingListNotifierProvider phải được override trong Leave_Module.',
+  ),
+);
+
+// ---------------------------------------------------------------------------
+// View
+// ---------------------------------------------------------------------------
+
+/// Màn hình danh sách đơn nghỉ phép đang chờ duyệt (Manager).
+/// Layout theo Figma: header + badge count + list card.
+class PendingListView extends ConsumerWidget {
+  /// Callback khi Manager tap vào một đơn để xem chi tiết/duyệt.
+  final void Function(LeaveRequestEntity leave)? onTapLeave;
+  final VoidCallback? onBack;
+
+  const PendingListView({
+    super.key,
+    this.onTapLeave,
+    this.onBack,
+  });
+
+  // ── helpers ─────────────────────────────────────────────────────────────────
+
+  String _formatDate(DateTime dt) =>
+      '${dt.day.toString().padLeft(2, '0')}/'
+      '${dt.month.toString().padLeft(2, '0')}';
+
+  String _monthLabel(DateTime dt) =>
+      'TH${dt.month.toString().padLeft(2, '0')}';
+
+  String _dayRange(LeaveRequestEntity leave) {
+    final start = _formatDate(leave.startDate);
+    final end = _formatDate(leave.endDate);
+    if (leave.totalDays == 1) return '1 ngày ($start)';
+    return '${leave.totalDays} ngày ($start - $end)';
+  }
+
+  // ── build ────────────────────────────────────────────────────────────────────
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final state = ref.watch(pendingListNotifierProvider);
+    final notifier = ref.read(pendingListNotifierProvider.notifier);
+
+    return Scaffold(
+      backgroundColor: Colors.white,
+      body: SafeArea(
+        child: RefreshIndicator(
+          color: const Color(0xFF001D4E),
+          onRefresh: notifier.refresh,
+          child: CustomScrollView(
+            slivers: [
+              SliverPadding(
+                padding: const EdgeInsets.only(
+                    top: 96, left: 24, right: 24, bottom: 40),
+                sliver: SliverList(
+                  delegate: SliverChildListDelegate([
+                    _buildHeader(state),
+                    const SizedBox(height: 48),
+                    _buildBody(state),
+                  ]),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ── Header ───────────────────────────────────────────────────────────────────
+
+  Widget _buildHeader(PendingListState state) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Role label
+        const Text(
+          'ROLE: MANAGER',
+          style: TextStyle(
+            color: Color(0xFF434651),
+            fontSize: 11,
+            fontFamily: 'Manrope',
+            fontWeight: FontWeight.w700,
+            letterSpacing: 1.10,
+            height: 1.50,
+          ),
+        ),
+        const SizedBox(height: 4),
+        // Title row: heading + pending badge
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Expanded(
+              child: const Text(
+                'Duyệt đơn\nnghỉ phép',
+                style: TextStyle(
+                  color: Color(0xFF001D4E),
+                  fontSize: 30,
+                  fontFamily: 'Manrope',
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: -0.75,
+                  height: 1.20,
+                ),
+              ),
+            ),
+            // Pending count badge
+            if (!state.isLoading)
+              Container(
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 16, vertical: 8),
+                decoration: ShapeDecoration(
+                  color: const Color(0xFFE8E8E8),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(9999),
+                  ),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      width: 8,
+                      height: 8,
+                      decoration: const BoxDecoration(
+                        color: Color(0xFFF59E0B),
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      '${state.pendingCount} đơn\nchờ duyệt',
+                      style: const TextStyle(
+                        color: Color(0xFF434651),
+                        fontSize: 12,
+                        fontFamily: 'Manrope',
+                        fontWeight: FontWeight.w600,
+                        height: 1.33,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  // ── Body ─────────────────────────────────────────────────────────────────────
+
+  Widget _buildBody(PendingListState state) {
+    if (state.isLoading) {
+      return const Padding(
+        padding: EdgeInsets.only(top: 48),
+        child: Center(
+          child: CircularProgressIndicator(color: Color(0xFF001D4E)),
+        ),
+      );
+    }
+
+    if (state.errorMessage != null) {
+      return Padding(
+        padding: const EdgeInsets.only(top: 48),
+        child: Center(
+          child: Text(
+            state.errorMessage!,
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              color: Color(0xFFEF4444),
+              fontSize: 14,
+              fontFamily: 'Manrope',
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ),
+      );
+    }
+
+    if (state.leaves.isEmpty) {
+      return Padding(
+        padding: const EdgeInsets.only(top: 48),
+        child: Center(
+          child: Column(
+            children: const [
+              Icon(Icons.check_circle_outline,
+                  size: 48, color: Color(0xFF22C55E)),
+              SizedBox(height: 12),
+              Text(
+                'Không có đơn nào cần duyệt.',
+                style: TextStyle(
+                  color: Color(0xFF434651),
+                  fontSize: 16,
+                  fontFamily: 'Manrope',
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Section label + count
+        Padding(
+          padding: const EdgeInsets.only(bottom: 16),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text(
+                'Đang chờ duyệt',
+                style: TextStyle(
+                  color: Color(0xFF001D4E),
+                  fontSize: 24,
+                  fontFamily: 'Manrope',
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: -0.60,
+                  height: 1.33,
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 12, vertical: 4),
+                decoration: ShapeDecoration(
+                  color: const Color(0xFFF59E0B).withOpacity(0.15),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(9999),
+                  ),
+                ),
+                child: Text(
+                  '${state.pendingCount}',
+                  style: const TextStyle(
+                    color: Color(0xFFF59E0B),
+                    fontSize: 14,
+                    fontFamily: 'Manrope',
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        ...state.leaves.map((leave) => _buildPendingCard(leave)).toList(),
+      ],
+    );
+  }
+
+  // ── Pending card ──────────────────────────────────────────────────────────────
+
+  Widget _buildPendingCard(LeaveRequestEntity leave) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 4),
+      child: GestureDetector(
+        key: Key('pending_card_${leave.id}'),
+        onTap: () => onTapLeave?.call(leave),
+        child: Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(24),
+          decoration: ShapeDecoration(
+            color: Colors.white,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(32),
+            ),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Top row: date box + info
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  // Date box
+                  Container(
+                    width: 64,
+                    height: 64,
+                    decoration: ShapeDecoration(
+                      color: const Color(0xFFF3F3F3),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(32),
+                      ),
+                    ),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(
+                          '${leave.startDate.day}',
+                          style: const TextStyle(
+                            color: Color(0xFF001D4E),
+                            fontSize: 18,
+                            fontFamily: 'Manrope',
+                            fontWeight: FontWeight.w800,
+                            height: 1.56,
+                          ),
+                        ),
+                        Text(
+                          _monthLabel(leave.startDate),
+                          style: const TextStyle(
+                            color: Color(0xFF001D4E),
+                            fontSize: 10,
+                            fontFamily: 'Manrope',
+                            fontWeight: FontWeight.w700,
+                            height: 1.50,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 24),
+                  // Info block
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Reason title
+                        Text(
+                          leave.reason.length > 28
+                              ? '${leave.reason.substring(0, 28)}…'
+                              : leave.reason,
+                          style: const TextStyle(
+                            color: Color(0xFF001D4E),
+                            fontSize: 18,
+                            fontFamily: 'Manrope',
+                            fontWeight: FontWeight.w700,
+                            height: 1.56,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        // Date range
+                        Text(
+                          _dayRange(leave),
+                          style: const TextStyle(
+                            color: Color(0xFF434651),
+                            fontSize: 14,
+                            fontFamily: 'Manrope',
+                            fontWeight: FontWeight.w400,
+                            height: 1.43,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+
+              // Bottom row: status badge + employee id chip + chevron
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // TRẠNG THÁI label
+                      const Text(
+                        'TRẠNG THÁI',
+                        style: TextStyle(
+                          color: Color(0x99434651),
+                          fontSize: 10,
+                          fontFamily: 'Manrope',
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: -0.50,
+                          height: 1.50,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      // Pending badge
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Container(
+                            width: 6,
+                            height: 6,
+                            decoration: const BoxDecoration(
+                              color: Color(0xFFF59E0B),
+                              shape: BoxShape.circle,
+                            ),
+                          ),
+                          const SizedBox(width: 4),
+                          const Text(
+                            'Đang chờ',
+                            style: TextStyle(
+                              color: Color(0xFFF59E0B),
+                              fontSize: 14,
+                              fontFamily: 'Manrope',
+                              fontWeight: FontWeight.w700,
+                              height: 1.43,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                  Row(
+                    children: [
+                      // Employee ID chip
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 6),
+                        decoration: ShapeDecoration(
+                          color: const Color(0xFFF3F3F3),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(9999),
+                          ),
+                        ),
+                        child: Text(
+                          // Hiển thị 8 ký tự đầu của userId
+                          leave.userId.length > 8
+                              ? '#${leave.userId.substring(0, 8)}'
+                              : '#${leave.userId}',
+                          style: const TextStyle(
+                            color: Color(0xFF434651),
+                            fontSize: 12,
+                            fontFamily: 'Manrope',
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      // Chevron
+                      Container(
+                        width: 40,
+                        height: 40,
+                        decoration: ShapeDecoration(
+                          color: const Color(0xFFF3F3F3),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(9999),
+                          ),
+                        ),
+                        child: const Icon(
+                          Icons.chevron_right,
+                          color: Color(0xFF434651),
+                          size: 20,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+
+FILE: C:\Users\Admin\Documents\GitHub\quan_li_sale\modules\leave_module\lib\view\sale\leave_form_view.dart
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import '../../logic_data/leave_data.dart';
+import '../../logic_uc/submit_leave_uc.dart';
+
+// ---------------------------------------------------------------------------
+// State
+// ---------------------------------------------------------------------------
+
+/// State của form đăng ký nghỉ phép.
+class LeaveFormState {
+  final DateTime? startDate;
+  final DateTime? endDate;
+  final bool isLoading;
+  final String? errorMessage;
+
+  const LeaveFormState({
+    this.startDate,
+    this.endDate,
+    this.isLoading = false,
+    this.errorMessage,
+  });
+
+  LeaveFormState copyWith({
+    DateTime? startDate,
+    DateTime? endDate,
+    bool? isLoading,
+    String? errorMessage,
+    bool clearError = false,
+  }) {
+    return LeaveFormState(
+      startDate: startDate ?? this.startDate,
+      endDate: endDate ?? this.endDate,
+      isLoading: isLoading ?? this.isLoading,
+      errorMessage: clearError ? null : errorMessage ?? this.errorMessage,
+    );
+  }
+}
+
+/// Notifier quản lý state của LeaveFormView.
+class LeaveFormNotifier extends StateNotifier<LeaveFormState> {
+  final SubmitLeaveUc _submitLeaveUc;
+  final String userId;
+
+  LeaveFormNotifier({
+    required SubmitLeaveUc submitLeaveUc,
+    required this.userId,
+  })  : _submitLeaveUc = submitLeaveUc,
+        super(const LeaveFormState());
+
+  void setStartDate(DateTime date) =>
+      state = state.copyWith(startDate: date, clearError: true);
+
+  void setEndDate(DateTime date) =>
+      state = state.copyWith(endDate: date, clearError: true);
+
+  /// Gọi use-case submit, trả về `true` nếu thành công.
+  Future<bool> submit(String reason) async {
+    state = state.copyWith(isLoading: true, clearError: true);
+    try {
+      await _submitLeaveUc(
+        userId: userId,
+        startDate: state.startDate!,
+        endDate: state.endDate!,
+        reason: reason,
+      );
+      state = state.copyWith(isLoading: false);
+      return true;
+    } on Exception catch (e) {
+      final msg = e.toString().replaceFirst('Exception: ', '');
+      state = state.copyWith(isLoading: false, errorMessage: msg);
+      return false;
+    }
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Providers
+// ---------------------------------------------------------------------------
+
+/// Cần truyền userId + SupabaseClient từ ngoài vào trước khi dùng.
+/// Trong Leave_Module.dart sẽ override provider này với đúng instance.
+final leaveFormNotifierProvider =
+    StateNotifierProvider.autoDispose<LeaveFormNotifier, LeaveFormState>(
+  (ref) => throw UnimplementedError(
+    'leaveFormNotifierProvider phải được override trong Leave_Module.',
+  ),
+);
+
+// ---------------------------------------------------------------------------
+// View
+// ---------------------------------------------------------------------------
+
+/// Màn hình đăng ký nghỉ phép dành cho Sale.
+/// Layout 1-1 theo Figma (UI.txt): header + white form card + info card.
+class LeaveFormView extends ConsumerStatefulWidget {
+  final VoidCallback? onSubmitSuccess;
+  final VoidCallback? onBack;
+
+  const LeaveFormView({
+    super.key,
+    this.onSubmitSuccess,
+    this.onBack,
+  });
+
+  @override
+  ConsumerState<LeaveFormView> createState() => _LeaveFormViewState();
+}
+
+class _LeaveFormViewState extends ConsumerState<LeaveFormView> {
+  final _reasonController = TextEditingController();
+  final _reasonFocusNode = FocusNode();
+
+  @override
+  void dispose() {
+    _reasonController.dispose();
+    _reasonFocusNode.dispose();
+    super.dispose();
+  }
+
+  // ---- helpers ---------------------------------------------------------------
+
+  String _formatDate(DateTime? dt) {
+    if (dt == null) return 'mm/dd/yyyy';
+    return '${dt.day.toString().padLeft(2, '0')}/'
+        '${dt.month.toString().padLeft(2, '0')}/'
+        '${dt.year}';
+  }
+
+  Future<void> _pickDateRange() async {
+    final formState = ref.read(leaveFormNotifierProvider);
+    final now = DateTime.now();
+    final initial = DateTimeRange(
+      start: formState.startDate ?? now,
+      end: formState.endDate ?? now.add(const Duration(days: 1)),
+    );
+
+    final picked = await showDateRangePicker(
+      context: context,
+      firstDate: now,
+      lastDate: DateTime(now.year + 2),
+      initialDateRange: initial,
+      locale: const Locale('vi', 'VN'),
+      builder: (context, child) => Theme(
+        data: Theme.of(context).copyWith(
+          colorScheme: const ColorScheme.light(
+            primary: Color(0xFF001D4E),
+            onPrimary: Colors.white,
+            surface: Colors.white,
+            onSurface: Color(0xFF1A1C1C),
+          ),
+        ),
+        child: child!,
+      ),
+    );
+
+    if (picked != null) {
+      ref.read(leaveFormNotifierProvider.notifier).setStartDate(picked.start);
+      ref.read(leaveFormNotifierProvider.notifier).setEndDate(picked.end);
+    }
+  }
+
+  Future<void> _handleSubmit() async {
+    _reasonFocusNode.unfocus();
+
+    final reason = _reasonController.text;
+    final formState = ref.read(leaveFormNotifierProvider);
+
+    // Basic UI-level guard trước khi gọi UC
+    if (formState.startDate == null || formState.endDate == null) {
+      _showSnackbar('Vui lòng chọn ngày bắt đầu và kết thúc.', isError: true);
+      return;
+    }
+
+    final success =
+        await ref.read(leaveFormNotifierProvider.notifier).submit(reason);
+
+    if (!mounted) return;
+
+    if (success) {
+      _reasonController.clear();
+      _showSnackbar('Đơn nghỉ phép đã được gửi thành công! 🎉');
+      widget.onSubmitSuccess?.call();
+    } else {
+      final msg = ref.read(leaveFormNotifierProvider).errorMessage ??
+          'Đã xảy ra lỗi. Vui lòng thử lại.';
+      _showSnackbar(msg, isError: true);
+    }
+  }
+
+  void _showSnackbar(String message, {bool isError = false}) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          message,
+          style: const TextStyle(
+            fontFamily: 'Manrope',
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        backgroundColor: isError ? const Color(0xFFEF4444) : const Color(0xFF22C55E),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        margin: const EdgeInsets.all(16),
+      ),
+    );
+  }
+
+  // ---- build -----------------------------------------------------------------
+
+  @override
+  Widget build(BuildContext context) {
+    final formState = ref.watch(leaveFormNotifierProvider);
+
+    return Scaffold(
+      backgroundColor: Colors.white,
+      body: SafeArea(
+        child: GestureDetector(
+          onTap: () => FocusScope.of(context).unfocus(),
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.only(top: 96, left: 24, right: 24, bottom: 40),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // ── Header ────────────────────────────────────────────────
+                _buildHeader(formState),
+                const SizedBox(height: 32),
+
+                // ── Form Card ─────────────────────────────────────────────
+                _buildFormCard(formState),
+                const SizedBox(height: 32),
+
+                // ── Info + Days Remaining row ─────────────────────────────
+                _buildBottomRow(),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ── Header ──────────────────────────────────────────────────────────────────
+
+  Widget _buildHeader(LeaveFormState state) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        // Title block
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'ROLE: SALE',
+              style: TextStyle(
+                color: Color(0xFF434651),
+                fontSize: 11,
+                fontFamily: 'Manrope',
+                fontWeight: FontWeight.w700,
+                letterSpacing: 1.10,
+                height: 1.50,
+              ),
+            ),
+            const SizedBox(height: 4),
+            const Text(
+              'Đăng ký\nnghỉ phép',
+              style: TextStyle(
+                color: Color(0xFF001D4E),
+                fontSize: 30,
+                fontFamily: 'Manrope',
+                fontWeight: FontWeight.w800,
+                letterSpacing: -0.75,
+                height: 1.20,
+              ),
+            ),
+          ],
+        ),
+
+        // Status badge (pending)
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          decoration: ShapeDecoration(
+            color: const Color(0xFFE8E8E8),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(9999),
+            ),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Container(
+                width: 8,
+                height: 8,
+                decoration: ShapeDecoration(
+                  color: const Color(0xFFF59E0B),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(9999),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              const Text(
+                'Đang\nchờ',
+                style: TextStyle(
+                  color: Color(0xFF434651),
+                  fontSize: 12,
+                  fontFamily: 'Manrope',
+                  fontWeight: FontWeight.w600,
+                  height: 1.33,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  // ── Form Card ────────────────────────────────────────────────────────────────
+
+  Widget _buildFormCard(LeaveFormState state) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.only(top: 32, left: 32, right: 32, bottom: 48),
+      decoration: ShapeDecoration(
+        color: Colors.white,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(32),
+        ),
+        shadows: const [
+          BoxShadow(
+            color: Color(0x140D47A1),
+            blurRadius: 24,
+            offset: Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // LÝ DO NGHỈ
+          _buildSectionLabel('LÝ DO NGHỈ'),
+          const SizedBox(height: 8),
+          _buildReasonField(),
+          const SizedBox(height: 32),
+
+          // NGÀY BẮT ĐẦU
+          _buildSectionLabel('NGÀY BẮT ĐẦU'),
+          const SizedBox(height: 8),
+          _buildDateField(
+            id: 'start_date_field',
+            value: _formatDate(state.startDate),
+            onTap: _pickDateRange,
+          ),
+          const SizedBox(height: 16),
+
+          // NGÀY KẾT THÚC
+          _buildSectionLabel('NGÀY KẾT THÚC'),
+          const SizedBox(height: 8),
+          _buildDateField(
+            id: 'end_date_field',
+            value: _formatDate(state.endDate),
+            onTap: _pickDateRange,
+          ),
+          const SizedBox(height: 32),
+
+          // Submit button
+          _buildSubmitButton(state),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSectionLabel(String text) {
+    return Text(
+      text,
+      style: const TextStyle(
+        color: Color(0xFF434651),
+        fontSize: 12,
+        fontFamily: 'Manrope',
+        fontWeight: FontWeight.w700,
+        letterSpacing: 1.20,
+        height: 1.33,
+      ),
+    );
+  }
+
+  Widget _buildReasonField() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: const BoxDecoration(
+        color: Color(0xFFE8E8E8),
+        borderRadius: BorderRadius.all(Radius.circular(12)),
+      ),
+      child: TextField(
+        key: const Key('reason_text_field'),
+        controller: _reasonController,
+        focusNode: _reasonFocusNode,
+        maxLines: 4,
+        style: const TextStyle(
+          color: Color(0xFF1A1C1C),
+          fontSize: 16,
+          fontFamily: 'Manrope',
+          fontWeight: FontWeight.w400,
+          height: 1.50,
+        ),
+        decoration: const InputDecoration(
+          hintText: 'Nhập lý do chi tiết...',
+          hintStyle: TextStyle(
+            color: Color(0x7F747782),
+            fontSize: 16,
+            fontFamily: 'Manrope',
+            fontWeight: FontWeight.w400,
+          ),
+          border: InputBorder.none,
+          isDense: true,
+          contentPadding: EdgeInsets.zero,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDateField({
+    required String id,
+    required String value,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        key: Key(id),
+        width: double.infinity,
+        padding: const EdgeInsets.only(top: 16, left: 16, right: 16, bottom: 16),
+        decoration: const BoxDecoration(
+          color: Color(0xFFE8E8E8),
+          borderRadius: BorderRadius.all(Radius.circular(12)),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              value,
+              style: const TextStyle(
+                color: Color(0xFF1A1C1C),
+                fontSize: 16,
+                fontFamily: 'Manrope',
+                fontWeight: FontWeight.w400,
+                height: 1.50,
+              ),
+            ),
+            const Icon(
+              Icons.calendar_today_outlined,
+              size: 20,
+              color: Color(0xFF434651),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSubmitButton(LeaveFormState state) {
+    return GestureDetector(
+      onTap: state.isLoading ? null : _handleSubmit,
+      child: Container(
+        key: const Key('submit_leave_button'),
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(vertical: 16),
+        decoration: ShapeDecoration(
+          gradient: const LinearGradient(
+            begin: Alignment(0.20, -0.99),
+            end: Alignment(0.80, 1.99),
+            colors: [Color(0xFF001D4E), Color(0xFF003178)],
+          ),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(9999),
+          ),
+          shadows: const [
+            BoxShadow(
+              color: Color(0x140D47A1),
+              blurRadius: 24,
+              offset: Offset(0, 8),
+            ),
+          ],
+        ),
+        child: Center(
+          child: state.isLoading
+              ? const SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(
+                    color: Colors.white,
+                    strokeWidth: 2.5,
+                  ),
+                )
+              : const Text(
+                  'Gửi đơn',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 16,
+                    fontFamily: 'Manrope',
+                    fontWeight: FontWeight.w700,
+                    height: 1.50,
+                  ),
+                ),
+        ),
+      ),
+    );
+  }
+
+  // ── Bottom Row (info card + days remaining) ──────────────────────────────────
+
+  Widget _buildBottomRow() {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Info card
+        Expanded(
+          flex: 2,
+          child: Container(
+            padding: const EdgeInsets.all(24),
+            decoration: ShapeDecoration(
+              color: const Color(0xFF003178),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(32),
+              ),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Quy định nghỉ phép',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 18,
+                    fontFamily: 'Manrope',
+                    fontWeight: FontWeight.w700,
+                    height: 1.56,
+                  ),
+                ),
+                const SizedBox(height: 7),
+                const Text(
+                  'Bộ phận Kinh doanh (Sale) cần đăng ký trước ít nhất 48h để sắp xếp bàn giao khách hàng.',
+                  style: TextStyle(
+                    color: Color(0xFF7C9CE9),
+                    fontSize: 14,
+                    fontFamily: 'Manrope',
+                    fontWeight: FontWeight.w400,
+                    height: 1.63,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Opacity(
+                  opacity: 0.80,
+                  child: Row(
+                    children: const [
+                      Icon(Icons.open_in_new, color: Colors.white, size: 14),
+                      SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'Chi tiết chính sách nhân sự 2024',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 12,
+                            fontFamily: 'Manrope',
+                            fontWeight: FontWeight.w600,
+                            height: 1.33,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(width: 16),
+        // Days remaining card
+        Container(
+          padding: const EdgeInsets.all(24),
+          decoration: ShapeDecoration(
+            color: const Color(0xFFF3F3F3),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(32),
+            ),
+          ),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: const [
+              Text(
+                '12',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: Color(0xFF001D4E),
+                  fontSize: 36,
+                  fontFamily: 'Manrope',
+                  fontWeight: FontWeight.w900,
+                  height: 1.11,
+                ),
+              ),
+              SizedBox(height: 4),
+              Text(
+                'NGÀY PHÉP\nCÒN LẠI',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: Color(0xFF434651),
+                  fontSize: 10,
+                  fontFamily: 'Manrope',
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 1,
+                  height: 1.50,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+
+FILE: C:\Users\Admin\Documents\GitHub\quan_li_sale\modules\leave_module\lib\view\sale\my_leave_list_view.dart
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import '../../entity/leave_request_entity.dart';
+import '../../entity/leave_status.dart';
+import '../../logic_data/leave_data.dart';
+import '../../logic_uc/fetch_leave_list_uc.dart';
+
+// ---------------------------------------------------------------------------
+// State
+// ---------------------------------------------------------------------------
+
+class MyLeaveListState {
+  final List<LeaveRequestEntity> leaves;
+  final bool isLoading;
+  final String? errorMessage;
+  final LeaveStatus? filterStatus;
+  final int filterYear;
+
+  const MyLeaveListState({
+    this.leaves = const [],
+    this.isLoading = false,
+    this.errorMessage,
+    this.filterStatus,
+    required this.filterYear,
+  });
+
+  MyLeaveListState copyWith({
+    List<LeaveRequestEntity>? leaves,
+    bool? isLoading,
+    String? errorMessage,
+    LeaveStatus? filterStatus,
+    bool clearFilter = false,
+    bool clearError = false,
+    int? filterYear,
+  }) {
+    return MyLeaveListState(
+      leaves: leaves ?? this.leaves,
+      isLoading: isLoading ?? this.isLoading,
+      errorMessage: clearError ? null : errorMessage ?? this.errorMessage,
+      filterStatus: clearFilter ? null : filterStatus ?? this.filterStatus,
+      filterYear: filterYear ?? this.filterYear,
+    );
+  }
+
+  /// Danh sách sau khi lọc theo trạng thái (nếu có)
+  List<LeaveRequestEntity> get filtered {
+    if (filterStatus == null) return leaves;
+    return leaves.where((l) => l.status == filterStatus).toList();
+  }
+
+  int get approvedCount =>
+      leaves.where((l) => l.status == LeaveStatus.approved).length;
+  int get pendingCount =>
+      leaves.where((l) => l.status == LeaveStatus.pending).length;
+  int get totalApprovedDays => leaves
+      .where((l) => l.status == LeaveStatus.approved)
+      .fold(0, (sum, l) => sum + l.totalDays);
+}
+
+// ---------------------------------------------------------------------------
+// Notifier
+// ---------------------------------------------------------------------------
+
+class MyLeaveListNotifier extends StateNotifier<MyLeaveListState> {
+  final FetchLeaveListUc _fetchUc;
+  final String userId;
+
+  MyLeaveListNotifier({
+    required FetchLeaveListUc fetchUc,
+    required this.userId,
+  })  : _fetchUc = fetchUc,
+        super(MyLeaveListState(filterYear: DateTime.now().year)) {
+    _load();
+  }
+
+  Future<void> _load() async {
+    state = state.copyWith(isLoading: true, clearError: true);
+    try {
+      final list = await _fetchUc(
+        userId: userId,
+        role: 'Sale',
+        filterYear: state.filterYear,
+      );
+      state = state.copyWith(leaves: list, isLoading: false);
+    } on Exception catch (e) {
+      final msg = e.toString().replaceFirst('Exception: ', '');
+      state = state.copyWith(isLoading: false, errorMessage: msg);
+    }
+  }
+
+  void setYear(int year) {
+    state = state.copyWith(filterYear: year);
+    _load();
+  }
+
+  void setFilterStatus(LeaveStatus? status) {
+    state = state.copyWith(
+      filterStatus: status,
+      clearFilter: status == null,
+    );
+  }
+
+  Future<void> refresh() => _load();
+}
+
+// ---------------------------------------------------------------------------
+// Provider
+// ---------------------------------------------------------------------------
+
+final myLeaveListNotifierProvider =
+    StateNotifierProvider.autoDispose<MyLeaveListNotifier, MyLeaveListState>(
+  (ref) => throw UnimplementedError(
+    'myLeaveListNotifierProvider phải được override trong Leave_Module.',
+  ),
+);
+
+// ---------------------------------------------------------------------------
+// View
+// ---------------------------------------------------------------------------
+
+/// Màn hình lịch sử đơn nghỉ phép của Sale.
+/// Layout theo Figma: header + stats row + filter year tabs + leave list.
+class MyLeaveListView extends ConsumerWidget {
+  final VoidCallback? onAddLeave;
+  final VoidCallback? onBack;
+
+  const MyLeaveListView({
+    super.key,
+    this.onAddLeave,
+    this.onBack,
+  });
+
+  // ── helpers ─────────────────────────────────────────────────────────────────
+
+  String _formatDateLabel(DateTime dt) =>
+      '${dt.day.toString().padLeft(2, '0')}/${dt.month.toString().padLeft(2, '0')}';
+
+  String _monthLabel(DateTime dt) =>
+      'TH${dt.month.toString().padLeft(2, '0')}';
+
+  String _dayRange(LeaveRequestEntity leave) {
+    final start = _formatDateLabel(leave.startDate);
+    final end = _formatDateLabel(leave.endDate);
+    return '${leave.totalDays} ngày ($start - $end)';
+  }
+
+  // ── build ────────────────────────────────────────────────────────────────────
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final state = ref.watch(myLeaveListNotifierProvider);
+    final notifier = ref.read(myLeaveListNotifierProvider.notifier);
+    final currentYear = DateTime.now().year;
+
+    return Scaffold(
+      backgroundColor: Colors.white,
+      body: SafeArea(
+        child: RefreshIndicator(
+          color: const Color(0xFF001D4E),
+          onRefresh: notifier.refresh,
+          child: CustomScrollView(
+            slivers: [
+              SliverPadding(
+                padding: const EdgeInsets.only(
+                    top: 96, left: 24, right: 24, bottom: 40),
+                sliver: SliverList(
+                  delegate: SliverChildListDelegate([
+                    // ── Header ─────────────────────────────────────────────
+                    _buildHeader(context, state, notifier),
+                    const SizedBox(height: 48),
+
+                    // ── Stats cards ────────────────────────────────────────
+                    _buildStatsRow(state),
+                    const SizedBox(height: 32),
+
+                    // ── Section header + year filter ───────────────────────
+                    _buildSectionHeader(state, notifier, currentYear),
+                    const SizedBox(height: 16),
+
+                    // ── Status filter pills ────────────────────────────────
+                    _buildStatusFilter(state, notifier),
+                    const SizedBox(height: 16),
+
+                    // ── List ───────────────────────────────────────────────
+                    _buildBody(state),
+                  ]),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ── Header ───────────────────────────────────────────────────────────────────
+
+  Widget _buildHeader(
+    BuildContext context,
+    MyLeaveListState state,
+    MyLeaveListNotifier notifier,
+  ) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Lịch sử nghỉ phép',
+                style: TextStyle(
+                  color: Color(0xFF001D4E),
+                  fontSize: 36,
+                  fontFamily: 'Manrope',
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: -1.08,
+                  height: 1.11,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Opacity(
+                opacity: 0.80,
+                child: Text(
+                  'Tất cả đơn nghỉ phép của bạn',
+                  style: const TextStyle(
+                    color: Color(0xFF434651),
+                    fontSize: 16,
+                    fontFamily: 'Manrope',
+                    fontWeight: FontWeight.w500,
+                    height: 1.50,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        // CTA: Đăng ký nghỉ
+        GestureDetector(
+          onTap: onAddLeave,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            decoration: ShapeDecoration(
+              gradient: const LinearGradient(
+                begin: Alignment(0.10, -0.10),
+                end: Alignment(0.90, 1.10),
+                colors: [Color(0xFF001D4E), Color(0xFF003178)],
+              ),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(9999),
+              ),
+            ),
+            child: const Text(
+              'Đăng\nký\nnghỉ',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 14,
+                fontFamily: 'Manrope',
+                fontWeight: FontWeight.w700,
+                height: 1.50,
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  // ── Stats row ─────────────────────────────────────────────────────────────────
+
+  Widget _buildStatsRow(MyLeaveListState state) {
+    return Column(
+      children: [
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.only(top: 31, left: 32, right: 32, bottom: 32),
+          decoration: ShapeDecoration(
+            color: Colors.white,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(32),
+            ),
+            shadows: const [
+              BoxShadow(
+                color: Color(0x140D47A1),
+                blurRadius: 24,
+                offset: Offset(0, 8),
+              ),
+            ],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // SỐ DƯ HIỆN TẠI
+              const Text(
+                'SỐ DƯ HIỆN TẠI',
+                style: TextStyle(
+                  color: Color(0x99434651),
+                  fontSize: 11,
+                  fontFamily: 'Manrope',
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 1.10,
+                  height: 1.50,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.baseline,
+                textBaseline: TextBaseline.alphabetic,
+                children: const [
+                  Text(
+                    '12 ',
+                    style: TextStyle(
+                      color: Color(0xFF001D4E),
+                      fontSize: 48,
+                      fontFamily: 'Manrope',
+                      fontWeight: FontWeight.w800,
+                      height: 1,
+                    ),
+                  ),
+                  Text(
+                    'Ngày',
+                    style: TextStyle(
+                      color: Color(0xFF434651),
+                      fontSize: 20,
+                      fontFamily: 'Manrope',
+                      fontWeight: FontWeight.w500,
+                      height: 1.40,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Số ngày còn lại trong năm ${DateTime.now().year} của bạn.',
+                style: const TextStyle(
+                  color: Color(0xFF434651),
+                  fontSize: 16,
+                  fontFamily: 'Manrope',
+                  fontWeight: FontWeight.w400,
+                  height: 1.63,
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 8),
+
+        // TỔNG NGÀY ĐÃ NGHỈ + ĐANG CHỜ DUYỆT
+        Row(
+          children: [
+            Expanded(
+              child: _buildStatCard(
+                label: 'TỔNG NGÀY ĐÃ NGHỈ',
+                value: state.totalApprovedDays.toString().padLeft(2, '0'),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: _buildStatCard(
+                label: 'ĐANG CHỜ DUYỆT',
+                value: state.pendingCount.toString().padLeft(2, '0'),
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildStatCard({required String label, required String value}) {
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: ShapeDecoration(
+        color: const Color(0xFFF3F3F3),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(32),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: const TextStyle(
+              color: Color(0x99434651),
+              fontSize: 11,
+              fontFamily: 'Manrope',
+              fontWeight: FontWeight.w700,
+              letterSpacing: 1.10,
+              height: 1.50,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            value,
+            style: const TextStyle(
+              color: Color(0xFF001D4E),
+              fontSize: 30,
+              fontFamily: 'Manrope',
+              fontWeight: FontWeight.w700,
+              height: 1.20,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ── Section header + year filter ─────────────────────────────────────────────
+
+  Widget _buildSectionHeader(
+    MyLeaveListState state,
+    MyLeaveListNotifier notifier,
+    int currentYear,
+  ) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        const Text(
+          'Chi tiết lịch sử',
+          style: TextStyle(
+            color: Color(0xFF001D4E),
+            fontSize: 24,
+            fontFamily: 'Manrope',
+            fontWeight: FontWeight.w700,
+            letterSpacing: -0.60,
+            height: 1.33,
+          ),
+        ),
+        Row(
+          children: [currentYear, currentYear - 1].map((year) {
+            final isSelected = state.filterYear == year;
+            return Padding(
+              padding: const EdgeInsets.only(left: 8),
+              child: GestureDetector(
+                key: Key('year_filter_$year'),
+                onTap: () => notifier.setYear(year),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 16, vertical: 8),
+                  decoration: ShapeDecoration(
+                    color: isSelected
+                        ? const Color(0xFFE8E8E8)
+                        : Colors.transparent,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(9999),
+                    ),
+                  ),
+                  child: Text(
+                    '$year',
+                    style: TextStyle(
+                      color: isSelected
+                          ? const Color(0xFF001D4E)
+                          : const Color(0xFF434651),
+                      fontSize: 14,
+                      fontFamily: 'Manrope',
+                      fontWeight: FontWeight.w700,
+                      height: 1.43,
+                    ),
+                  ),
+                ),
+              ),
+            );
+          }).toList(),
+        ),
+      ],
+    );
+  }
+
+  // ── Status filter pills ───────────────────────────────────────────────────────
+
+  Widget _buildStatusFilter(
+    MyLeaveListState state,
+    MyLeaveListNotifier notifier,
+  ) {
+    final filters = <LeaveStatus?>[null, ...LeaveStatus.values];
+    final labels = {
+      null: 'Tất cả',
+      LeaveStatus.pending: 'Đang chờ',
+      LeaveStatus.approved: 'Đã duyệt',
+      LeaveStatus.rejected: 'Từ chối',
+    };
+
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: Row(
+        children: filters.map((status) {
+          final isSelected = state.filterStatus == status;
+          Color dotColor = const Color(0xFF434651);
+          if (status == LeaveStatus.pending) dotColor = const Color(0xFFF59E0B);
+          if (status == LeaveStatus.approved) dotColor = const Color(0xFF22C55E);
+          if (status == LeaveStatus.rejected) dotColor = const Color(0xFFEF4444);
+
+          return Padding(
+            padding: const EdgeInsets.only(right: 8),
+            child: GestureDetector(
+              key: Key('status_filter_${status?.name ?? 'all'}'),
+              onTap: () => notifier.setFilterStatus(status),
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 16, vertical: 8),
+                decoration: ShapeDecoration(
+                  color: isSelected
+                      ? const Color(0xFFE8E8E8)
+                      : Colors.transparent,
+                  shape: RoundedRectangleBorder(
+                    side: BorderSide(
+                      color: isSelected
+                          ? Colors.transparent
+                          : const Color(0xFF434651).withOpacity(0.2),
+                    ),
+                    borderRadius: BorderRadius.circular(9999),
+                  ),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (status != null) ...[
+                      Container(
+                        width: 6,
+                        height: 6,
+                        decoration: BoxDecoration(
+                          color: dotColor,
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                    ],
+                    Text(
+                      labels[status]!,
+                      style: TextStyle(
+                        color: isSelected
+                            ? const Color(0xFF001D4E)
+                            : const Color(0xFF434651),
+                        fontSize: 14,
+                        fontFamily: 'Manrope',
+                        fontWeight: isSelected
+                            ? FontWeight.w700
+                            : FontWeight.w500,
+                        height: 1.43,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          );
+        }).toList(),
+      ),
+    );
+  }
+
+  // ── Body (loading / error / list) ─────────────────────────────────────────────
+
+  Widget _buildBody(MyLeaveListState state) {
+    if (state.isLoading) {
+      return const Padding(
+        padding: EdgeInsets.only(top: 48),
+        child: Center(
+          child: CircularProgressIndicator(color: Color(0xFF001D4E)),
+        ),
+      );
+    }
+
+    if (state.errorMessage != null) {
+      return Padding(
+        padding: const EdgeInsets.only(top: 48),
+        child: Center(
+          child: Text(
+            state.errorMessage!,
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              color: Color(0xFFEF4444),
+              fontSize: 14,
+              fontFamily: 'Manrope',
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ),
+      );
+    }
+
+    final list = state.filtered;
+
+    if (list.isEmpty) {
+      return Padding(
+        padding: const EdgeInsets.only(top: 48),
+        child: Center(
+          child: Column(
+            children: const [
+              Icon(Icons.inbox_outlined, size: 48, color: Color(0xFF434651)),
+              SizedBox(height: 12),
+              Text(
+                'Không có đơn nghỉ phép nào.',
+                style: TextStyle(
+                  color: Color(0xFF434651),
+                  fontSize: 16,
+                  fontFamily: 'Manrope',
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    return Column(
+      children: list.map((leave) => _buildLeaveCard(leave)).toList(),
+    );
+  }
+
+  // ── Leave card ────────────────────────────────────────────────────────────────
+
+  Widget _buildLeaveCard(LeaveRequestEntity leave) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 4),
+      child: Container(
+        key: Key('leave_card_${leave.id}'),
+        width: double.infinity,
+        padding: const EdgeInsets.all(24),
+        decoration: ShapeDecoration(
+          color: Colors.white,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(32),
+          ),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Top row: date box + title
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                // Date box
+                Container(
+                  width: 64,
+                  height: 64,
+                  decoration: ShapeDecoration(
+                    color: const Color(0xFFF3F3F3),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(32),
+                    ),
+                  ),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        '${leave.startDate.day}',
+                        style: const TextStyle(
+                          color: Color(0xFF001D4E),
+                          fontSize: 18,
+                          fontFamily: 'Manrope',
+                          fontWeight: FontWeight.w800,
+                          height: 1.56,
+                        ),
+                      ),
+                      Text(
+                        _monthLabel(leave.startDate),
+                        style: const TextStyle(
+                          color: Color(0xFF001D4E),
+                          fontSize: 10,
+                          fontFamily: 'Manrope',
+                          fontWeight: FontWeight.w700,
+                          height: 1.50,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 24),
+                // Title + date range
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        leave.reason.length > 30
+                            ? '${leave.reason.substring(0, 30)}…'
+                            : leave.reason,
+                        style: const TextStyle(
+                          color: Color(0xFF001D4E),
+                          fontSize: 18,
+                          fontFamily: 'Manrope',
+                          fontWeight: FontWeight.w700,
+                          height: 1.56,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        _dayRange(leave),
+                        style: const TextStyle(
+                          color: Color(0xFF434651),
+                          fontSize: 14,
+                          fontFamily: 'Manrope',
+                          fontWeight: FontWeight.w400,
+                          height: 1.43,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+
+            // Bottom row: status badge + chevron
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'TRẠNG THÁI',
+                      style: const TextStyle(
+                        color: Color(0x99434651),
+                        fontSize: 10,
+                        fontFamily: 'Manrope',
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: -0.50,
+                        height: 1.50,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    _buildStatusBadge(leave.status),
+                  ],
+                ),
+                Container(
+                  width: 40,
+                  height: 40,
+                  decoration: ShapeDecoration(
+                    color: const Color(0xFFF3F3F3),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(9999),
+                    ),
+                  ),
+                  child: const Icon(
+                    Icons.chevron_right,
+                    color: Color(0xFF434651),
+                    size: 20,
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildStatusBadge(LeaveStatus status) {
+    final Color color;
+    switch (status) {
+      case LeaveStatus.approved:
+        color = const Color(0xFF22C55E);
+      case LeaveStatus.rejected:
+        color = const Color(0xFFEF4444);
+      case LeaveStatus.pending:
+        color = const Color(0xFFF59E0B);
+    }
+
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: 6,
+          height: 6,
+          decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+        ),
+        const SizedBox(width: 4),
+        Text(
+          status.label,
+          style: TextStyle(
+            color: color,
+            fontSize: 14,
+            fontFamily: 'Manrope',
+            fontWeight: FontWeight.w700,
+            height: 1.43,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+

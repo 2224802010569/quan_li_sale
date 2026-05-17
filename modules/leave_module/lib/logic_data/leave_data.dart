@@ -78,7 +78,7 @@ class LeaveData {
           .eq('id', id)
           .single();
 
-      return LeaveRequestEntity.fromJson(response as Map<String, dynamic>);
+      return LeaveRequestEntity.fromJson(response);
     } catch (e) {
       throw Exception('LeaveData.getLeaveById: Không tìm thấy đơn id=$id. Chi tiết: $e');
     }

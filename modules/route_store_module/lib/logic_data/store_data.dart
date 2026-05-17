@@ -1,52 +1,90 @@
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:route_store_module/entity/store_entity.dart';
+
+final storeDataProvider = Provider<StoreData>((ref) => StoreData());
 
 class StoreData {
-  final SupabaseClient _client;
-  StoreData(this._client);
+  final SupabaseClient _supabase = Supabase.instance.client;
 
-  /// Bước 1: Lấy route_id được assign cho sale hôm nay
-  Future<List<int>> getAssignedRouteIds(String userId) async {
-    final today = DateTime.now();
-    final dateStr =
-        '${today.year}-${today.month.toString().padLeft(2, '0')}-${today.day.toString().padLeft(2, '0')}';
-
-    final response = await _client
-        .from('assignments')
-        .select('route_id')
-        .eq('user_id', userId)
-        .eq('assigned_date', dateStr);
-
-    return (response as List)
-        .map((e) => e['route_id'] as int)
-        .where((id) => id != null)
-        .toList();
+  /// Lấy tất cả cửa hàng (chỉ lấy chưa bị ẩn)
+  Future<List<StoreEntity>> getAllStores() async {
+    final response = await _supabase
+        .from('stores')
+        .select()
+        .eq('is_hidden', false)
+        .order('id', ascending: true);
+    return (response as List).map((e) => StoreEntity.fromMap(e)).toList();
   }
 
-  /// Bước 2: Lấy stores thuộc các route đó qua route_details
-  Future<List<Map<String, dynamic>>> getStoresByRouteIds(List<int> routeIds) async {
-    if (routeIds.isEmpty) return [];
-
-    final response = await _client
-        .from('route_details')
-        .select('route_id, sequence, stores(id, store_name, latitude, longitude), routes(id, route_name)')
-        .inFilter('route_id', routeIds)
-        .order('sequence', ascending: true);
-
-    return List<Map<String, dynamic>>.from(response);
+  /// Lấy cửa hàng theo manager_id (chỉ chưa bị ẩn)
+  Future<List<StoreEntity>> getStoresByManager(String managerId) async {
+    final response = await _supabase
+        .from('stores')
+        .select()
+        .eq('manager_id', managerId)
+        .eq('is_hidden', false)
+        .order('id', ascending: true);
+    return (response as List).map((e) => StoreEntity.fromMap(e)).toList();
   }
 
-  /// Lấy store_id đã Completed hôm nay
-  Future<List<int>> getCompletedStoreIds(String userId) async {
-    final now = DateTime.now();
-    final startOfDay = DateTime(now.year, now.month, now.day).toIso8601String();
+  /// Lấy cửa hàng theo ID
+  Future<StoreEntity?> getStoreById(int id) async {
+    final response = await _supabase
+        .from('stores')
+        .select()
+        .eq('id', id)
+        .maybeSingle();
+    if (response != null) {
+      return StoreEntity.fromMap(response);
+    }
+    return null;
+  }
 
-    final response = await _client
-        .from('attendance')
-        .select('store_id')
-        .eq('user_id', userId)
-        .eq('status', 'Completed')
-        .gte('created_at', startOfDay);
+  /// Thêm cửa hàng mới
+  Future<void> addStore(StoreEntity store) async {
+    await _supabase.from('stores').insert(store.toMap());
+  }
 
-    return (response as List).map((e) => e['store_id'] as int).toList();
+  /// Cập nhật cửa hàng
+  Future<void> updateStore(int id, StoreEntity store) async {
+    await _supabase.from('stores').update(store.toMap()).eq('id', id);
+  }
+
+  /// Ẩn cửa hàng (soft delete - KHÔNG xóa cứng theo instructions.md)
+  Future<void> hideStore(int id) async {
+    await _supabase
+        .from('stores')
+        .update({'is_hidden': true})
+        .eq('id', id);
+  }
+
+  /// Hiện lại cửa hàng đã ẩn
+  Future<void> unhideStore(int id) async {
+    await _supabase
+        .from('stores')
+        .update({'is_hidden': false})
+        .eq('id', id);
+  }
+
+  /// Tìm kiếm cửa hàng theo tên hoặc địa chỉ
+  Future<List<StoreEntity>> searchStores(String query) async {
+    final response = await _supabase
+        .from('stores')
+        .select()
+        .eq('is_hidden', false)
+        .or('store_name.ilike.%$query%,address.ilike.%$query%')
+        .order('store_name', ascending: true);
+    return (response as List).map((e) => StoreEntity.fromMap(e)).toList();
+  }
+
+  /// Stream realtime cho bảng stores
+  Stream<List<StoreEntity>> streamStores() {
+    return _supabase
+        .from('stores')
+        .stream(primaryKey: ['id'])
+        .eq('is_hidden', false)
+        .order('id', ascending: true)
+        .map((list) => list.map((e) => StoreEntity.fromMap(e)).toList());
   }
 }

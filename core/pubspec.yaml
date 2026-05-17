@@ -1,5 +1,6 @@
 name: core
 description: "A new Flutter package project."
+publish_to: 'none' # Thêm dòng này để cho phép dùng 'path' dependencies
 version: 0.0.1
 homepage:
 

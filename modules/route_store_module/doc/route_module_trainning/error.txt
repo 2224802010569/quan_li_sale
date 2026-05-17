@@ -1,0 +1,157 @@
+Launching lib\main.dart on Chrome in debug mode...
+lib/root/route_store_root.dart:5:8: Error: Error when reading
+'../modules/route_store_module/lib/output/route_store_output.dart': The system cannot find the
+file specified
+import 'package:route_store_module/output/route_store_output.dart';
+       ^
+lib/root/route_store_root.dart:6:8: Error: Error when reading
+'../modules/route_store_module/lib/view/screens/sale/store_list_sale_view.dart': The system
+cannot find the path specified
+import 'package:route_store_module/view/screens/sale/store_list_sale_view.dart';
+       ^
+lib/root/route_store_root.dart:7:8: Error: Error when reading
+'../modules/route_store_module/lib/entity/store_item.dart': The system cannot find the file
+specified
+import 'package:route_store_module/entity/store_item.dart';
+       ^
+lib/root/route_store_root.dart:8:8: Error: Error when reading
+'../modules/route_store_module/lib/view/screens/sale/store_home_sale_view.dart': The system
+cannot find the path specified
+import 'package:route_store_module/view/screens/sale/store_home_sale_view.dart';
+       ^
+lib/root/route_store_root.dart:9:8: Error: Error when reading
+'../modules/route_store_module/lib/view/screens/manager/store_manager_view.dart': The system
+cannot find the path specified
+import 'package:route_store_module/view/screens/manager/store_manager_view.dart';
+       ^
+lib/root/route_store_root.dart:10:8: Error: Error when reading
+'../modules/route_store_module/lib/view/screens/manager/route_home_manager_view.dart': The     
+system cannot find the path specified
+import 'package:route_store_module/view/screens/manager/route_home_manager_view.dart';
+       ^
+lib/root/route_store_root.dart:18:23: Error: 'RouteStoreOutput' isn't a type.
+    void handleOutput(RouteStoreOutput output) {
+                      ^^^^^^^^^^^^^^^^
+lib/root/route_store_root.dart:37:12: Error: The method 'StoreListSaleView' isn't defined for  
+the type 'RouteStoreRoot'.
+ - 'RouteStoreRoot' is from 'package:app/root/route_store_root.dart'
+ ('lib/root/route_store_root.dart').
+Try correcting the name to the name of an existing method, or defining a method named
+'StoreListSaleView'.
+    return StoreListSaleView(userId: userId, onOutput: handleOutput);
+           ^^^^^^^^^^^^^^^^^
+lib/root/route_store_root.dart:41:12: Error: The method 'RouteHomeManagerView' isn't defined   
+for the type 'RouteStoreRoot'.
+ - 'RouteStoreRoot' is from 'package:app/root/route_store_root.dart'
+ ('lib/root/route_store_root.dart').
+Try correcting the name to the name of an existing method, or defining a method named
+'RouteHomeManagerView'.
+    return RouteHomeManagerView(
+           ^^^^^^^^^^^^^^^^^^^^
+lib/root/route_store_root.dart:55:19: Error: The method 'StoreItem' isn't defined for the type 
+'RouteStoreRoot'.
+ - 'RouteStoreRoot' is from 'package:app/root/route_store_root.dart'
+ ('lib/root/route_store_root.dart').
+Try correcting the name to the name of an existing method, or defining a method named
+'StoreItem'.
+    final store = StoreItem(
+                  ^^^^^^^^^
+lib/root/route_store_root.dart:66:12: Error: The method 'StoreHomeSaleView' isn't defined for  
+the type 'RouteStoreRoot'.
+ - 'RouteStoreRoot' is from 'package:app/root/route_store_root.dart'
+ ('lib/root/route_store_root.dart').
+Try correcting the name to the name of an existing method, or defining a method named
+'StoreHomeSaleView'.
+    return StoreHomeSaleView(
+           ^^^^^^^^^^^^^^^^^
+Unhandled exception:
+Unsupported operation: Unsupported invalid type InvalidType(<invalid>) (InvalidType).
+#0      throwUnsupportedInvalidType (package:dev_compiler/src/kernel/kernel_helpers.dart:14)   
+#1      JSTypeRep.typeFor (package:dev_compiler/src/kernel/js_typerep.dart:89)
+#2      SharedJSTypeRep.isPrimitive (package:dev_compiler/src/compiler/js_typerep.dart:127)    
+#3      LibraryCompiler._emitEqualityOperator
+(package:dev_compiler/src/kernel/compiler_new.dart:7167)
+#4      LibraryCompiler.visitEqualsCall
+(package:dev_compiler/src/kernel/compiler_new.dart:6763)
+#5      EqualsCall.accept (package:kernel/src/ast/expressions.dart:2329)
+#6      LibraryCompiler._visitExpression
+(package:dev_compiler/src/kernel/compiler_new.dart:5147)
+#7      LibraryCompiler._visitTest (package:dev_compiler/src/kernel/compiler_new.dart:5138)    
+#8      LibraryCompiler._visitTest.shortCircuit
+(package:dev_compiler/src/kernel/compiler_new.dart:5122)
+#9      LibraryCompiler._visitTest (package:dev_compiler/src/kernel/compiler_new.dart:5127)    
+#10     LibraryCompiler.visitIfStatement
+(package:dev_compiler/src/kernel/compiler_new.dart:5872)
+#11     IfStatement.accept (package:kernel/src/ast/statements.dart:1034)
+#12     LibraryCompiler._visitStatement
+(package:dev_compiler/src/kernel/compiler_new.dart:5044)
+#13     MappedIterable.elementAt (dart:_internal/iterable.dart:402)
+#14     ListIterator.moveNext (dart:_internal/iterable.dart:371)
+#15     new _GrowableList._ofEfficientLengthIterable (dart:core-patch/growable_array.dart:194) 
+#16     new _GrowableList.of (dart:core-patch/growable_array.dart:154)
+#17     new List.of (dart:core-patch/array_patch.dart:39)
+#18     SetBase.toList (dart:collection/set.dart:119)
+#19     LibraryCompiler.visitBlock (package:dev_compiler/src/kernel/compiler_new.dart:5257)    
+#20     Block.accept (package:kernel/src/ast/statements.dart:106)
+#21     LibraryCompiler._visitStatement
+(package:dev_compiler/src/kernel/compiler_new.dart:5044)
+#22     LibraryCompiler._emitFunctionScopedBody
+(package:dev_compiler/src/kernel/compiler_new.dart:5081)
+#23     LibraryCompiler._emitFunction.<anonymous closure>
+(package:dev_compiler/src/kernel/compiler_new.dart:4667)
+#24     LibraryCompiler._withLetScope (package:dev_compiler/src/kernel/compiler_new.dart:3661) 
+#25     LibraryCompiler._withCurrentFunction
+(package:dev_compiler/src/kernel/compiler_new.dart:4841)
+#26     LibraryCompiler._emitFunction (package:dev_compiler/src/kernel/compiler_new.dart:4659) 
+#27     LibraryCompiler.visitFunctionDeclaration
+(package:dev_compiler/src/kernel/compiler_new.dart:6043)
+#28     FunctionDeclaration.accept (package:kernel/src/ast/statements.dart:2018)
+#29     LibraryCompiler._visitStatement
+(package:dev_compiler/src/kernel/compiler_new.dart:5044)
+#30     MappedIterable.elementAt (dart:_internal/iterable.dart:402)
+#31     ListIterator.moveNext (dart:_internal/iterable.dart:371)
+#32     new _GrowableList._ofEfficientLengthIterable (dart:core-patch/growable_array.dart:194) 
+#33     new _GrowableList.of (dart:core-patch/growable_array.dart:154)
+#34     new List.of (dart:core-patch/array_patch.dart:39)
+#35     SetBase.toList (dart:collection/set.dart:119)
+#36     LibraryCompiler.visitBlock (package:dev_compiler/src/kernel/compiler_new.dart:5257)    
+#37     Block.accept (package:kernel/src/ast/statements.dart:106)
+#38     LibraryCompiler._visitStatement
+(package:dev_compiler/src/kernel/compiler_new.dart:5044)
+#39     LibraryCompiler._emitFunctionScopedBody
+(package:dev_compiler/src/kernel/compiler_new.dart:5081)
+#40     LibraryCompiler._emitFunction.<anonymous closure>
+(package:dev_compiler/src/kernel/compiler_new.dart:4667)
+#41     LibraryCompiler._withLetScope (package:dev_compiler/src/kernel/compiler_new.dart:3661)
+#42     LibraryCompiler._withCurrentFunction
+(package:dev_compiler/src/kernel/compiler_new.dart:4841)
+#43     LibraryCompiler._emitFunction (package:dev_compiler/src/kernel/compiler_new.dart:4659) 
+#44     LibraryCompiler._emitMethodDeclaration.<anonymous closure>
+(package:dev_compiler/src/kernel/compiler_new.dart:2941)
+#45     LibraryCompiler._withMethodDeclarationContext
+(package:dev_compiler/src/kernel/compiler_new.dart:4866)
+#46     LibraryCompiler._emitMethodDeclaration
+(package:dev_compiler/src/kernel/compiler_new.dart:2939)
+#47     LibraryCompiler._emitClassProperties
+(package:dev_compiler/src/kernel/compiler_new.dart:2880)
+#48     LibraryCompiler._emitClassDeclaration
+(package:dev_compiler/src/kernel/compiler_new.dart:1488)
+#49     LibraryCompiler._emitClass (package:dev_compiler/src/kernel/compiler_new.dart:1426)    
+#50     List.forEach (dart:core-patch/growable_array.dart:428)
+#51     LibraryCompiler._emitLibrary (package:dev_compiler/src/kernel/compiler_new.dart:1348)  
+#52     LibraryCompiler.emitLibrary (package:dev_compiler/src/kernel/compiler_new.dart:962)    
+#53     LibraryBundleCompiler.emitModule
+(package:dev_compiler/src/kernel/compiler_new.dart:165)
+#54     IncrementalJavaScriptBundler.compile
+(package:frontend_server/src/javascript_bundle.dart:324)
+#55     FrontendCompiler.writeJavaScriptBundle
+(package:frontend_server/frontend_server.dart:922)
+<asynchronous suspension>
+#56     FrontendCompiler.compile (package:frontend_server/frontend_server.dart:728)
+<asynchronous suspension>
+#57     listenAndCompile.<anonymous closure>
+(package:frontend_server/frontend_server.dart:1449)
+<asynchronous suspension>
+The Dart compiler exited unexpectedly.
+Waiting for connection from debug service on Chrome...             41.5s
+Failed to compile application.

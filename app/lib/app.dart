@@ -65,6 +65,24 @@ class _MyAppState extends State<MyApp> {
       case 'CREATE_ORDER':
         return OrderRoot().buildCreate(handleOutput);
 
+      case 'ROUTE_STORE_MANAGER':
+        return RouteStoreRoot().buildRouteManager(handleOutput);
+
+      case 'CREATE_ROUTE':
+        return RouteStoreRoot().buildCreateRoute(handleOutput, handleBack);
+
+      case 'EDIT_ROUTE':
+        return RouteStoreRoot().buildEditRoute(handleOutput, handleBack);
+
+      case 'STORE_MANAGER':
+        return RouteStoreRoot().buildStoreManager(handleOutput);
+
+      case 'CREATE_STORE':
+        return RouteStoreRoot().buildCreateStore(handleOutput, handleBack);
+
+      case 'EDIT_STORE':
+        return RouteStoreRoot().buildEditStore(handleOutput, handleBack);
+
       case 'STORE_HOME':
         return RouteStoreRoot().buildStoreHome(handleOutput);
 
@@ -165,10 +183,7 @@ class _MyAppState extends State<MyApp> {
         GlobalWidgetsLocalizations.delegate,
         GlobalCupertinoLocalizations.delegate,
       ],
-      supportedLocales: const [
-        Locale('vi', 'VN'),
-        Locale('en', 'US'),
-      ],
+      supportedLocales: const [Locale('vi', 'VN'), Locale('en', 'US')],
       home: Scaffold(
         drawer: Drawer(
           child: Menu(onOutput: handleOutput, currentModule: current),
