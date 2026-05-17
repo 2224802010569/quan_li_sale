@@ -48,7 +48,6 @@ class Menu extends StatelessWidget {
 
     // Manager
     MenuConfig(
-<<<<<<< Updated upstream
       title: 'Quản lý cửa hàng',
       icon: Icons.store_mall_directory,
       module: 'STORE_MANAGER',
@@ -62,8 +61,6 @@ class Menu extends StatelessWidget {
       roles: ['Manager'],
     ),
     MenuConfig(
-=======
->>>>>>> Stashed changes
       title: 'Lịch sử chấm công',
       icon: Icons.access_time,
       module: 'ATTENDANCE',
