@@ -56,8 +56,8 @@ class MyAppState extends State<MyApp> {
   // MODULE
   // =========================
   String getInitialModule() {
-    // Luôn bắt đầu bằng màn hình đăng nhập
-    return 'USER';
+    final user = storage.get<Map<String, dynamic>>('user');
+    return user == null ? 'USER' : 'USER_PROFILE';
   }
 
   Widget getScreen(String module) {

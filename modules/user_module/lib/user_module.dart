@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:user_module/input/login_input.dart';
 import 'package:user_module/output/user_event.dart';
 import 'view/common/login/login_view.dart';
 import 'view/home_view.dart';
@@ -11,11 +12,17 @@ class UserScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final loginInput = LoginInput();
+
     switch (view) {
       case 'HOME':
         return HomeView();
       default:
-        return LoginView(onEvent: onEvent);    
+        if (!loginInput.canOpen()) {
+          return HomeView();
+        }
+
+        return LoginView(onEvent: onEvent);
     }
   }
 }
