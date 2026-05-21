@@ -18,9 +18,9 @@ class RouteDetailEntity {
   factory RouteDetailEntity.fromJson(Map<String, dynamic> json) {
     return RouteDetailEntity(
       id: json['id'],
-      routeId: json['route_id'] as int,
-      storeId: json['store_id'] as int,
-      sequence: json['sequence'] as int,
+      routeId: (json['route_id'] as num?)?.toInt() ?? 0,
+      storeId: (json['store_id'] as num?)?.toInt() ?? 0,
+      sequence: (json['sequence'] as num?)?.toInt() ?? 0,
       createdAt: json['created_at'] != null
           ? DateTime.parse(json['created_at'].toString())
           : null,

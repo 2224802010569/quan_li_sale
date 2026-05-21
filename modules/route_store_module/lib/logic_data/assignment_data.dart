@@ -63,13 +63,13 @@ class AssignmentData {
     
     var query = _supabase
         .from('assignments')
-        .select('assignment_id')
+        .select('id')
         .eq('user_id', userId)
         .eq('assigned_date', dateStr);
 
     // Loại trừ assignment hiện tại (khi update)
     if (excludeAssignmentId != null) {
-      query = query.neq('assignment_id', excludeAssignmentId);
+      query = query.neq('id', excludeAssignmentId);
     }
 
     final response = await query;
@@ -81,8 +81,8 @@ class AssignmentData {
   /// Tạo hoặc cập nhật phân công
   Future<AssignmentEntity> upsertAssignment(AssignmentEntity assignment) async {
     final map = assignment.toMap();
-    if (map['assignment_id'] == 0) {
-      map.remove('assignment_id'); // Để DB tự gen ID
+    if (map['id'] == 0) {
+      map.remove('id'); // Để DB tự gen ID
     }
     final response = await _supabase
         .from('assignments')
@@ -101,7 +101,7 @@ class AssignmentData {
           'user_id': newUserId,
           'is_support': 2, // Đánh dấu là đi hỗ trợ
         })
-        .eq('assignment_id', assignmentId);
+        .eq('id', assignmentId);
   }
 
   /// Tạo assignment hỗ trợ mới (support assignment)
@@ -130,7 +130,7 @@ class AssignmentData {
     await _supabase
         .from('assignments')
         .delete()
-        .eq('assignment_id', assignmentId);
+        .eq('id', assignmentId);
   }
 
   // ==================== REALTIME ====================
@@ -139,7 +139,7 @@ class AssignmentData {
   Stream<List<AssignmentEntity>> streamAssignmentsByUser(String userId) {
     return _supabase
         .from('assignments')
-        .stream(primaryKey: ['assignment_id'])
+        .stream(primaryKey: ['id'])
         .eq('user_id', userId)
         .order('assigned_date', ascending: false)
         .map((list) => list.map((e) => AssignmentEntity.fromMap(e)).toList());
@@ -149,7 +149,7 @@ class AssignmentData {
   Stream<List<AssignmentEntity>> streamAllAssignments() {
     return _supabase
         .from('assignments')
-        .stream(primaryKey: ['assignment_id'])
+        .stream(primaryKey: ['id'])
         .order('assigned_date', ascending: false)
         .map((list) => list.map((e) => AssignmentEntity.fromMap(e)).toList());
   }

@@ -13,14 +13,15 @@ final _saleUsersProvider = FutureProvider<List<Map<String, dynamic>>>((
   final supabase = Supabase.instance.client;
   final response = await supabase
       .from('users')
-      .select('id, full_name, employee_code, phone')
-      .eq('role', 'sale')
-      .order('full_name', ascending: true);
+      .select('id, full_name, email, phone')
+      .or('role.eq.sale,role.eq.Sale');
   return List<Map<String, dynamic>>.from(response);
 });
 
 class AssignRouteView extends ConsumerStatefulWidget {
-  const AssignRouteView({Key? key}) : super(key: key);
+  final VoidCallback? onBack;
+
+  const AssignRouteView({Key? key, this.onBack}) : super(key: key);
 
   @override
   ConsumerState<AssignRouteView> createState() => _AssignRouteViewState();
@@ -115,6 +116,12 @@ class _AssignRouteViewState extends ConsumerState<AssignRouteView> {
     return Scaffold(
       backgroundColor: _bgColor,
       appBar: AppBar(
+        leading: widget.onBack != null
+            ? IconButton(
+                icon: const Icon(Icons.arrow_back),
+                onPressed: widget.onBack,
+              )
+            : null,
         title: const Text(
           'Phân tuyến nhân viên',
           style: TextStyle(
@@ -319,7 +326,7 @@ class _AssignRouteViewState extends ConsumerState<AssignRouteView> {
                                     ),
                                   ),
                                   Text(
-                                    sale['employee_code'] ?? '',
+                                    sale['phone'] ?? sale['email'] ?? '',
                                     style: TextStyle(
                                       color: Colors.white.withOpacity(0.5),
                                       fontFamily: 'Inter',

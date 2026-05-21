@@ -17,7 +17,7 @@ class RouteEntity {
 
   factory RouteEntity.fromJson(Map<String, dynamic> json) {
     return RouteEntity(
-      id: json['id'] as int,
+      id: (json['id'] as num?)?.toInt() ?? 0,
       routeName: json['route_name'] as String,
       createdBy: json['created_by']?.toString() ?? '',
       isHidden: json['is_hidden'] ?? false,

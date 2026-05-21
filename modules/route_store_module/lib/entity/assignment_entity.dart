@@ -28,7 +28,7 @@ class AssignmentEntity {
 
   factory AssignmentEntity.fromMap(Map<String, dynamic> map) {
     return AssignmentEntity(
-      assignmentId: map['assignment_id'] ?? 0,
+      assignmentId: map['id'] ?? map['assignment_id'] ?? 0,
       userId: map['user_id'] ?? '',
       routeId: map['route_id'] ?? 0,
       isSupport: map['is_support'] ?? 1,
@@ -48,12 +48,11 @@ class AssignmentEntity {
 
   Map<String, dynamic> toMap() {
     return {
-      'assignment_id': assignmentId,
+      'id': assignmentId,
       'user_id': userId,
       'route_id': routeId,
       'is_support': isSupport,
       'assigned_date': assignedDate.toIso8601String().split('T')[0],
-      'status': status.toString().split('.').last,
       if (data != null) 'data': data,
     };
   }

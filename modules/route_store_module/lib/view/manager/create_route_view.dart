@@ -4,6 +4,8 @@ import 'package:route_store_module/logic_uc/manage_route_uc.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:core/di/injector.dart';
 import 'package:core/storage/app_storage.dart';
+import 'package:route_store_module/entity/store_entity.dart';
+import 'package:route_store_module/logic_data/realtime_data.dart';
 
 class CreateRouteView extends ConsumerStatefulWidget {
   final VoidCallback? onBack;
@@ -15,6 +17,7 @@ class CreateRouteView extends ConsumerStatefulWidget {
 
 class _CreateRouteViewState extends ConsumerState<CreateRouteView> {
   final _nameController = TextEditingController();
+  final List<StoreEntity> _selectedStores = [];
   bool _isSaving = false;
 
   Future<void> _handleSave() async {
@@ -34,7 +37,7 @@ class _CreateRouteViewState extends ConsumerState<CreateRouteView> {
       await uc.createRouteWithStores(
         _nameController.text.trim(),
         userId,
-        [], // Start with no stores
+        _selectedStores.map((s) => s.id!).toList(),
       );
 
       if (mounted) {
@@ -98,7 +101,20 @@ class _CreateRouteViewState extends ConsumerState<CreateRouteView> {
                 ),
               ),
             ),
-            const Spacer(),
+            const SizedBox(height: 32),
+            const Text(
+              'Danh sách cửa hàng',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+                color: Color(0xFF434652),
+              ),
+            ),
+            const SizedBox(height: 12),
+            Expanded(
+              child: _buildStoreList(),
+            ),
+            const SizedBox(height: 16),
             SizedBox(
               width: double.infinity,
               height: 56,
@@ -125,6 +141,153 @@ class _CreateRouteViewState extends ConsumerState<CreateRouteView> {
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildStoreList() {
+    final allStoresAsync = ref.watch(realtimeStoresProvider);
+
+    return allStoresAsync.when(
+      loading: () => const Center(child: CircularProgressIndicator()),
+      error: (err, _) => Center(child: Text('Lỗi tải cửa hàng: $err')),
+      data: (stores) {
+        return Column(
+          children: [
+            Expanded(
+              child: ListView.builder(
+                itemCount: _selectedStores.length,
+                itemBuilder: (context, index) {
+                  final store = _selectedStores[index];
+                  return Container(
+                    margin: const EdgeInsets.only(bottom: 12),
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: const Color(0xFFE2E8F0)),
+                    ),
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 32,
+                          height: 32,
+                          decoration: const BoxDecoration(
+                            color: Color(0xFFF3F3FB),
+                            shape: BoxShape.circle,
+                          ),
+                          alignment: Alignment.center,
+                          child: Text(
+                            '${index + 1}',
+                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                store.storeName,
+                                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                              ),
+                              Text(
+                                store.address,
+                                style: const TextStyle(color: Colors.grey, fontSize: 12),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ],
+                          ),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.remove_circle_outline, color: Colors.redAccent),
+                          onPressed: () {
+                            setState(() {
+                              _selectedStores.removeAt(index);
+                            });
+                          },
+                        ),
+                      ],
+                    ),
+                  );
+                },
+              ),
+            ),
+            const SizedBox(height: 12),
+            InkWell(
+              onTap: () {
+                _showAddStoreDialog(stores);
+              },
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                decoration: BoxDecoration(
+                  border: Border.all(color: const Color(0xFFC3C6D4), width: 2, style: BorderStyle.solid),
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: const Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.add, color: Color(0xFF434652)),
+                    SizedBox(width: 8),
+                    Text(
+                      'Thêm điểm dừng mới',
+                      style: TextStyle(
+                        color: Color(0xFF434652),
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _showAddStoreDialog(List<StoreEntity> allStores) {
+    final availableStores = allStores.where((s) => !_selectedStores.any((selected) => selected.id == s.id)).toList();
+
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (context) {
+        return Container(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Chọn cửa hàng',
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 16),
+              Expanded(
+                child: ListView.builder(
+                  itemCount: availableStores.length,
+                  itemBuilder: (context, index) {
+                    final store = availableStores[index];
+                    return ListTile(
+                      title: Text(store.storeName),
+                      subtitle: Text(store.address),
+                      trailing: const Icon(Icons.add_circle_outline, color: Color(0xFF0D47A1)),
+                      onTap: () {
+                        setState(() {
+                          _selectedStores.add(store);
+                        });
+                        Navigator.pop(context);
+                      },
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 }

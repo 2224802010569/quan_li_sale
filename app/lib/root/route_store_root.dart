@@ -21,7 +21,12 @@ class RouteStoreRoot {
     return RouteListView(
       onAdd: () => onNavigate(AppOutput(toModule: 'CREATE_ROUTE')),
       onEdit: (route) => onNavigate(AppOutput(toModule: 'EDIT_ROUTE', data: {'route': route})),
+      onAssign: () => onNavigate(AppOutput(toModule: 'ASSIGN_ROUTE')),
     );
+  }
+
+  Widget buildAssignRoute(Function(AppOutput) onNavigate, VoidCallback onBack) {
+    return AssignRouteView(onBack: onBack);
   }
 
   Widget buildCreateStore(Function(AppOutput) onNavigate, VoidCallback onBack) {
@@ -43,7 +48,7 @@ class RouteStoreRoot {
     final storage = get<AppStorage>();
     final route = storage.get<RouteEntity>('route');
     if (route == null) return const Scaffold(body: Center(child: Text('Không tìm thấy thông tin tuyến')));
-    return EditRouteView(route: route);
+    return EditRouteView(route: route, onBack: onBack);
   }
 
   Widget buildStoreHome(Function(AppOutput) onNavigate) {

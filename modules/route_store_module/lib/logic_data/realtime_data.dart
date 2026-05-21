@@ -44,7 +44,11 @@ final realtimeAllAssignmentsProvider = StreamProvider<List<AssignmentEntity>>((r
 /// Stream provider cho danh sách users (Sale)
 final realtimeSaleUsersProvider = StreamProvider<List<Map<String, dynamic>>>((ref) {
   final supabase = ref.read(routeDataProvider).supabase;
-  return supabase.from('users').stream(primaryKey: ['id']).eq('role', 'sale').map((data) => List<Map<String, dynamic>>.from(data));
+  return supabase.from('users').stream(primaryKey: ['id']).map((data) {
+    return List<Map<String, dynamic>>.from(data)
+        .where((u) => u['role']?.toString().toLowerCase() == 'sale')
+        .toList();
+  });
 });
 
 /// Model cho Route Card UI
@@ -62,24 +66,50 @@ class RouteWithInfo {
   });
 }
 
+/// Stream provider cho attendance trong tuần
+final realtimeAttendanceThisWeekProvider = StreamProvider<List<Map<String, dynamic>>>((ref) {
+  final supabase = ref.read(routeDataProvider).supabase;
+  final now = DateTime.now();
+  final startOfWeek = DateTime(now.year, now.month, now.day).subtract(Duration(days: now.weekday - 1));
+  
+  return supabase
+      .from('attendance')
+      .stream(primaryKey: ['id'])
+      .gte('checkin_time', startOfWeek.toIso8601String());
+});
+
+/// Stream provider cho route_details
+final realtimeAllRouteDetailsProvider = StreamProvider<List<RouteDetailEntity>>((ref) {
+  final supabase = ref.read(routeDataProvider).supabase;
+  return supabase.from('route_details').stream(primaryKey: ['route_id', 'store_id']).map(
+    (data) => data.map((e) => RouteDetailEntity.fromJson(e)).toList(),
+  );
+});
+
 /// Provider kết hợp Routes, Assignments và Users cho Manager View
 final routeListWithInfoProvider = Provider<AsyncValue<List<RouteWithInfo>>>((ref) {
   final routesAsync = ref.watch(realtimeRoutesProvider);
   final assignmentsAsync = ref.watch(realtimeAllAssignmentsProvider);
   final usersAsync = ref.watch(realtimeSaleUsersProvider);
+  final attendanceAsync = ref.watch(realtimeAttendanceThisWeekProvider);
+  final routeDetailsAsync = ref.watch(realtimeAllRouteDetailsProvider);
 
   // Xử lý loading và error tập trung
-  if (routesAsync.isLoading || assignmentsAsync.isLoading || usersAsync.isLoading) {
+  if (routesAsync.isLoading || assignmentsAsync.isLoading || usersAsync.isLoading || attendanceAsync.isLoading || routeDetailsAsync.isLoading) {
     return const AsyncValue.loading();
   }
 
   if (routesAsync.hasError) return AsyncValue.error(routesAsync.error!, routesAsync.stackTrace!);
   if (assignmentsAsync.hasError) return AsyncValue.error(assignmentsAsync.error!, assignmentsAsync.stackTrace!);
   if (usersAsync.hasError) return AsyncValue.error(usersAsync.error!, usersAsync.stackTrace!);
+  if (attendanceAsync.hasError) return AsyncValue.error(attendanceAsync.error!, attendanceAsync.stackTrace!);
+  if (routeDetailsAsync.hasError) return AsyncValue.error(routeDetailsAsync.error!, routeDetailsAsync.stackTrace!);
 
   final routes = routesAsync.value ?? [];
   final assignments = assignmentsAsync.value ?? [];
   final users = usersAsync.value ?? [];
+  final attendance = attendanceAsync.value ?? [];
+  final routeDetails = routeDetailsAsync.value ?? [];
 
   final result = routes.map((route) {
     // Tìm assignment cho route này (giả sử 1 route chỉ có 1 active assignment tại 1 thời điểm)
@@ -99,12 +129,23 @@ final routeListWithInfoProvider = Provider<AsyncValue<List<RouteWithInfo>>>((ref
         ? users.firstWhere((u) => u['id'].toString() == assignment.userId, orElse: () => {})
         : null;
 
-    // TODO: Calculate progress from visit logs
+    // Calculate progress
+    final storesInRoute = routeDetails.where((rd) => rd.routeId == route.id).map((rd) => rd.storeId).toSet();
+    final totalStores = storesInRoute.length;
+    
+    double progress = 0.0;
+    if (totalStores > 0) {
+      final visitedStores = storesInRoute.where((storeId) => 
+        attendance.any((a) => a['store_id'] == storeId && a['checkin_time'] != null && a['checkout_time'] != null)
+      ).length;
+      progress = visitedStores / totalStores;
+    }
+
     return RouteWithInfo(
       route: route,
       assignment: hasAssignment ? assignment : null,
       saleUser: saleUser,
-      progress: 0.8, // Mock progress
+      progress: progress,
     );
   }).toList();
 

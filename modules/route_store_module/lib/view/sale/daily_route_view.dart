@@ -25,9 +25,12 @@ class DailyRouteView extends ConsumerWidget {
               loading: () => const Center(child: CircularProgressIndicator()),
               error: (err, _) => Center(child: Text('Lỗi tải tuyến: $err')),
               data: (routes) {
-                // Filter routes that are assigned to the user
+                // Filter routes that are assigned to the user for TODAY
+                final todayStr = DateTime.now().toIso8601String().split('T')[0];
+                final todayAssignments = assignments.where((a) => a.assignedDate.toIso8601String().split('T')[0] == todayStr).toList();
+                
                 final assignedRoutes = routes
-                    .where((r) => assignments.any((a) => a.routeId == r.id))
+                    .where((r) => todayAssignments.any((a) => a.routeId == r.id))
                     .toList();
 
                 if (assignedRoutes.isEmpty) {

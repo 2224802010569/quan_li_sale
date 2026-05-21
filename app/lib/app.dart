@@ -90,6 +90,9 @@ class MyAppState extends State<MyApp> {
 
       case 'EDIT_ROUTE':
         return RouteStoreRoot().buildEditRoute(handleOutput, handleBack);
+        
+      case 'ASSIGN_ROUTE':
+        return RouteStoreRoot().buildAssignRoute(handleOutput, handleBack);
 
       case 'STORE_MANAGER':
         return RouteStoreRoot().buildStoreManager(handleOutput);

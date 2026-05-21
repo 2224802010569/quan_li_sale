@@ -6,9 +6,10 @@ import 'package:route_store_module/entity/assignment_entity.dart';
 
 class RouteListView extends ConsumerWidget {
   final VoidCallback? onAdd;
+  final VoidCallback? onAssign;
   final Function(RouteEntity)? onEdit;
 
-  const RouteListView({Key? key, this.onAdd, this.onEdit}) : super(key: key);
+  const RouteListView({Key? key, this.onAdd, this.onAssign, this.onEdit}) : super(key: key);
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -76,7 +77,15 @@ class RouteListView extends ConsumerWidget {
                               itemCount: items.length,
                               separatorBuilder: (_, __) => const SizedBox(height: 24),
                               itemBuilder: (context, index) {
-                                return _RouteCard(info: items[index]);
+                                return InkWell(
+                                  onTap: () {
+                                    if (onEdit != null) {
+                                      onEdit!(items[index].route);
+                                    }
+                                  },
+                                  borderRadius: BorderRadius.circular(24),
+                                  child: _RouteCard(info: items[index]),
+                                );
                               },
                             );
                           },
@@ -125,12 +134,22 @@ class RouteListView extends ConsumerWidget {
                           letterSpacing: -0.55,
                         ),
                       ),
-                      IconButton(
-                        onPressed: () {
-                          ref.invalidate(realtimeRoutesProvider);
-                          ref.invalidate(routeListWithInfoProvider);
-                        },
-                        icon: const Icon(Icons.refresh, color: Color(0xFF0D47A1)),
+                      Row(
+                        children: [
+                          if (onAssign != null)
+                            IconButton(
+                              onPressed: onAssign,
+                              icon: const Icon(Icons.assignment_ind, color: Color(0xFF0D47A1)),
+                              tooltip: 'Phân công tuyến',
+                            ),
+                          IconButton(
+                            onPressed: () {
+                              ref.invalidate(realtimeRoutesProvider);
+                              ref.invalidate(routeListWithInfoProvider);
+                            },
+                            icon: const Icon(Icons.refresh, color: Color(0xFF0D47A1)),
+                          ),
+                        ],
                       ),
                     ],
                   ),
@@ -236,7 +255,9 @@ class _RouteCard extends StatelessWidget {
                       const Icon(Icons.access_time, size: 14, color: Color(0xFF434652)),
                       const SizedBox(width: 4),
                       Text(
-                        'Thứ 2, 08:30 AM', // Mock
+                        assignment != null 
+                            ? '${assignment.assignedDate.day.toString().padLeft(2, '0')}/${assignment.assignedDate.month.toString().padLeft(2, '0')}/${assignment.assignedDate.year}' 
+                            : 'Chưa phân công',
                         style: const TextStyle(
                           color: Color(0xFF434652),
                           fontSize: 12,

@@ -8,8 +8,9 @@ import 'package:route_store_module/logic_uc/manage_route_uc.dart';
 
 class EditRouteView extends ConsumerStatefulWidget {
   final RouteEntity route;
+  final VoidCallback? onBack;
 
-  const EditRouteView({Key? key, required this.route}) : super(key: key);
+  const EditRouteView({Key? key, required this.route, this.onBack}) : super(key: key);
 
   @override
   ConsumerState<EditRouteView> createState() => _EditRouteViewState();
@@ -40,7 +41,11 @@ class _EditRouteViewState extends ConsumerState<EditRouteView> {
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(const SnackBar(content: Text('Đã cập nhật lộ trình')));
-        Navigator.pop(context);
+        if (widget.onBack != null) {
+          widget.onBack!();
+        } else {
+          Navigator.pop(context);
+        }
       }
     } catch (e) {
       if (mounted) {
@@ -67,6 +72,16 @@ class _EditRouteViewState extends ConsumerState<EditRouteView> {
         backgroundColor: Colors.white,
         foregroundColor: const Color(0xFF0D47A1),
         elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () {
+            if (widget.onBack != null) {
+              widget.onBack!();
+            } else {
+              Navigator.pop(context);
+            }
+          },
+        ),
         actions: [
           if (_isSaving)
             const Padding(
