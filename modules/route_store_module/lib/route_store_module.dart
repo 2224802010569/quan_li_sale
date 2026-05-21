@@ -34,7 +34,6 @@ export 'view/sale/camera_visit_view.dart';
 
 // Views - Manager
 export 'view/manager/store_list_view.dart';
-export 'view/manager/assign_route_view.dart';
 export 'view/manager/create_store_view.dart';
 export 'view/manager/route_list_view.dart';
 export 'view/manager/route_detail_view.dart';

@@ -34,6 +34,7 @@ dependencies:
     sdk: flutter
   supabase_flutter: ^2.0.0    
   mailer: ^7.1.0
+  flutter_riverpod: ^2.6.1
 
   core:
     path: ../core
@@ -62,7 +63,6 @@ dependencies:
   # The following adds the Cupertino Icons font to your application.
   # Use with the CupertinoIcons class for iOS style icons.
   cupertino_icons: ^1.0.8
-  flutter_riverpod: ^2.5.1
 
 dev_dependencies:
   flutter_test:

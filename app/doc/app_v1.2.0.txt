@@ -1,0 +1,936 @@
+
+FILE: c:\Users\Admin\Documents\GitHub\quan_li_sale\app\lib\app.dart
+import 'package:app/root/app_output.dart';
+import 'package:app/partial/menu/menu.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:flutter/services.dart';
+import 'package:core/di/injector.dart';
+import 'package:core/error/global_error_reporter.dart';
+import 'package:core/storage/app_storage.dart';
+import 'package:test_module/test_module.dart';
+import 'root/user_root.dart';
+import 'root/attendance_root.dart';
+import 'root/inventory_root.dart';
+import 'root/order_root.dart';
+import 'root/route_store_root.dart';
+import 'root/leave_root.dart';
+
+class AppState {
+  final String module;
+  AppState(this.module);
+}
+
+final appKey = GlobalKey<MyAppState>();
+
+void recoverFromGlobalError(GlobalErrorInfo info) {
+  appKey.currentState?.recoverFromGlobalError(info);
+}
+
+class MyApp extends StatefulWidget {
+  const MyApp({super.key});
+
+  @override
+  State<MyApp> createState() => MyAppState();
+}
+
+class MyAppState extends State<MyApp> {
+  final storage = get<AppStorage>();
+  final List<AppState> moduleStack = [];
+  final _navigatorKey = GlobalKey<NavigatorState>();
+  final _scaffoldMessengerKey = GlobalKey<ScaffoldMessengerState>();
+  final _globalErrorFocusNode = FocusNode(debugLabel: 'global_error_dismiss');
+  DateTime? _lastGlobalErrorAt;
+
+  @override
+  void initState() {
+    super.initState();
+    moduleStack.add(AppState(getInitialModule()));
+  }
+
+  @override
+  void dispose() {
+    _globalErrorFocusNode.dispose();
+    super.dispose();
+  }
+
+  // =========================
+  // MODULE
+  // =========================
+  String getInitialModule() {
+    final user = storage.get<Map<String, dynamic>>('user');
+    return user == null ? 'USER' : 'USER_PROFILE';
+  }
+
+  Widget getScreen(String module) {
+    switch (module) {
+      case 'USER':
+        return UserRoot().build(handleOutput);
+
+      case 'USER_PROFILE':
+        return UserRoot().buildProfile(handleOutput);
+
+      case 'USER_MANAGER_VIEW':
+        return UserRoot().buildManager(handleOutput);
+
+      case 'ATTENDANCE':
+        return AttendanceRoot().build(handleOutput);
+
+      case 'INVENTORY':
+        return InventoryRoot().build(handleOutput);
+
+      case 'ORDER':
+        return OrderRoot().build(handleOutput);
+
+      case 'CREATE_ORDER':
+        return OrderRoot().buildCreate(handleOutput);
+      case 'ROUTE_STORE_MANAGER':
+        return RouteStoreRoot().buildRouteManager(handleOutput);
+
+      case 'CREATE_ROUTE':
+        return RouteStoreRoot().buildCreateRoute(handleOutput, handleBack);
+
+      case 'EDIT_ROUTE':
+        return RouteStoreRoot().buildEditRoute(handleOutput, handleBack);
+
+      case 'STORE_MANAGER':
+        return RouteStoreRoot().buildStoreManager(handleOutput);
+
+      case 'CREATE_STORE':
+        return RouteStoreRoot().buildCreateStore(handleOutput, handleBack);
+
+      case 'EDIT_STORE':
+        return RouteStoreRoot().buildEditStore(handleOutput, handleBack);
+
+      case 'STORE_HOME':
+        return RouteStoreRoot().buildStoreHome(handleOutput);
+
+      case 'CHECKOUT':
+        return AttendanceRoot().buildCheckout(handleOutput);
+
+      case 'ROUTE_STORE':
+        return RouteStoreRoot().build(handleOutput);
+
+      case 'LEAVE':
+        return LeaveRoot().build(handleOutput);
+
+      case 'LEAVE_FORM':
+        return LeaveRoot().buildForm(handleOutput);
+
+      case 'LEAVE_MANAGER_PENDING':
+        return LeaveRoot().buildManagerPending(handleOutput);
+
+      case 'LEAVE_MANAGER_HISTORY':
+        return LeaveRoot().buildManagerHistory(handleOutput);
+
+      case 'TEST':
+        return const MyHomePage(title: 'Test Module');
+
+      default:
+        return const Scaffold(
+          body: Center(child: Text('Module không tồn tại')),
+        );
+    }
+  }
+
+  // =========================
+  // HANDLE OUTPUT
+  // =========================
+  void handleOutput(AppOutput output) {
+    saveData(output.data);
+    handleProfileLogic(output);
+
+    final current = moduleStack.last.module;
+    if (current == output.toModule) return;
+
+    setState(() {
+      if (output.toModule == 'USER') {
+        moduleStack
+          ..clear()
+          ..add(AppState(output.toModule));
+        return;
+      }
+
+      moduleStack.add(AppState(output.toModule));
+    });
+  }
+
+  void saveData(Map<String, dynamic>? data) {
+    if (data == null) return;
+
+    data.forEach((k, v) => storage.set(k, v));
+
+    if (data.containsKey('id') && data.containsKey('role')) {
+      storage.set('user', data);
+    }
+  }
+
+  void handleProfileLogic(AppOutput output) {
+    final data = output.data;
+
+    if (output.toModule == 'USER_PROFILE') {
+      if (data == null || !data.containsKey('profile_user_id')) {
+        storage.remove('profile_user_id');
+      }
+    } else {
+      storage.remove('profile_user_id');
+    }
+  }
+
+  // =========================
+  // BACK
+  // =========================
+  void handleBack() {
+    if (moduleStack.length > 1) {
+      setState(() {
+        moduleStack.removeLast();
+      });
+    }
+  }
+
+  void recoverFromGlobalError(GlobalErrorInfo info) {
+    final now = DateTime.now();
+    final lastGlobalErrorAt = _lastGlobalErrorAt;
+    if (lastGlobalErrorAt != null &&
+        now.difference(lastGlobalErrorAt) < const Duration(seconds: 2)) {
+      return;
+    }
+
+    _lastGlobalErrorAt = now;
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+
+      var movedBack = false;
+      final navigator = _navigatorKey.currentState;
+      if (navigator != null && navigator.canPop()) {
+        navigator.pop();
+        movedBack = true;
+      } else if (moduleStack.length > 1) {
+        setState(() {
+          moduleStack.removeLast();
+        });
+        movedBack = true;
+      }
+
+      _showGlobalErrorMessage(info, movedBack: movedBack);
+    });
+  }
+
+  void _showGlobalErrorMessage(
+    GlobalErrorInfo info, {
+    required bool movedBack,
+  }) {
+    final messenger = _scaffoldMessengerKey.currentState;
+    if (messenger == null) return;
+
+    messenger
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          content: Text(_friendlyErrorMessage(info, movedBack: movedBack)),
+          duration: const Duration(seconds: 10),
+          behavior: SnackBarBehavior.floating,
+          action: SnackBarAction(
+            label: 'Đóng',
+            onPressed: messenger.hideCurrentSnackBar,
+          ),
+        ),
+      );
+
+    _globalErrorFocusNode.requestFocus();
+  }
+
+  void _hideGlobalErrorMessageOnKey(KeyEvent event) {
+    if (event is! KeyDownEvent) return;
+    _scaffoldMessengerKey.currentState?.hideCurrentSnackBar();
+  }
+
+  String _friendlyErrorMessage(
+    GlobalErrorInfo info, {
+    required bool movedBack,
+  }) {
+    final raw = info.error.toString().toLowerCase();
+    final prefix = movedBack ? 'Đã quay về màn hình trước. ' : '';
+
+    if (raw.contains('socketexception') ||
+        raw.contains('failed host lookup') ||
+        raw.contains('network') ||
+        raw.contains('connection') ||
+        raw.contains('timeout') ||
+        raw.contains('xmlhttprequest')) {
+      return '${prefix}Có thể wifi hoặc mạng đang yếu, vui lòng thử lại.';
+    }
+
+    if (raw.contains('supabase') ||
+        raw.contains('postgrest') ||
+        raw.contains('database') ||
+        raw.contains('storage')) {
+      return '${prefix}Dữ liệu đang được cập nhật, vui lòng thử lại sau.';
+    }
+
+    return '${prefix}Một phần tính năng đang cập nhật, vui lòng thử lại sau.';
+  }
+
+  // =========================
+  // UI
+  // =========================
+  @override
+  Widget build(BuildContext context) {
+    final current = moduleStack.last.module;
+
+    return MaterialApp(
+      navigatorKey: _navigatorKey,
+      scaffoldMessengerKey: _scaffoldMessengerKey,
+      debugShowCheckedModeBanner: false,
+      localizationsDelegates: const [
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
+      supportedLocales: const [Locale('vi', 'VN'), Locale('en', 'US')],
+      home: KeyboardListener(
+        focusNode: _globalErrorFocusNode,
+        onKeyEvent: _hideGlobalErrorMessageOnKey,
+        child: Scaffold(
+          drawer: Drawer(
+            child: Menu(onOutput: handleOutput, currentModule: current),
+          ),
+          appBar: AppBar(title: const Text('App')),
+          body: getScreen(current),
+        ),
+      ),
+    );
+  }
+}
+
+
+FILE: c:\Users\Admin\Documents\GitHub\quan_li_sale\app\lib\main.dart
+import 'package:core/di/injector.dart';
+import 'package:core/di/supabase.dart';
+import 'package:flutter/material.dart';
+import 'package:core/core.dart';
+import 'app.dart';
+
+void main() async {
+  await GlobalErrorReporter.runGuarded(
+    () async {
+      WidgetsFlutterBinding.ensureInitialized();
+
+      final supabase = SupabaseConnect();
+      await supabase.init();
+
+      put<SupabaseConnect>(supabase);
+
+      final storage = AppStorage();
+      await storage.init();
+      put<AppStorage>(storage);
+
+      runApp(MyApp(key: appKey));
+    },
+    config: const GlobalErrorReporterConfig(
+      recoveryCallback: recoverFromGlobalError,
+    ),
+  );
+}
+
+
+FILE: c:\Users\Admin\Documents\GitHub\quan_li_sale\app\lib\partial\menu\menu.dart
+import 'package:app/partial/menu/menu_widget/menu_config.dart';
+import 'package:app/partial/menu/menu_widget/menu_item.dart';
+import 'package:app/root/app_output.dart';
+import 'package:core/di/injector.dart';
+import 'package:core/storage/app_storage.dart';
+import 'package:flutter/material.dart';
+
+class Menu extends StatelessWidget {
+  final Function(AppOutput) onOutput;
+  final String currentModule;
+
+  const Menu({super.key, required this.onOutput, required this.currentModule});
+  static const List<MenuConfig> _allMenus = [
+    // Không cần login
+    MenuConfig(
+      title: 'Đăng nhập',
+      icon: Icons.login,
+      module: 'USER',
+      roles: [],
+    ),
+
+    // Sale
+    MenuConfig(
+      title: 'Danh sách cửa hàng',
+      icon: Icons.store,
+      module: 'ROUTE_STORE',
+      roles: ['Sale'],
+    ),
+    //  MenuConfig(title: 'Chấm công',            icon: Icons.check_circle_outline, module: 'ATTENDANCE',          roles: ['Sale']),
+    MenuConfig(
+      title: 'Lịch sử đơn hàng',
+      icon: Icons.history,
+      module: 'ORDER',
+      roles: ['Sale'],
+    ),
+    MenuConfig(
+      title: 'Đăng ký nghỉ phép',
+      icon: Icons.event_busy,
+      module: 'LEAVE',
+      roles: ['Sale'],
+    ),
+    MenuConfig(
+      title: 'Profile',
+      icon: Icons.person,
+      module: 'USER_PROFILE',
+      roles: ['Sale', 'Manager'],
+    ),
+
+    // Manager
+    MenuConfig(
+      title: 'Quản lý cửa hàng',
+      icon: Icons.store_mall_directory,
+      module: 'STORE_MANAGER',
+      roles: ['Manager'],
+    ),
+
+    MenuConfig(
+      title: 'Quản lý tuyến',
+      icon: Icons.route,
+      module: 'ROUTE_STORE_MANAGER',
+      roles: ['Manager'],
+    ),
+    MenuConfig(
+      title: 'Lịch sử chấm công',
+      icon: Icons.access_time,
+      module: 'ATTENDANCE',
+      roles: ['Manager'],
+    ),
+    MenuConfig(
+      title: 'Lịch sử đơn hàng',
+      icon: Icons.history,
+      module: 'ORDER',
+      roles: ['Manager'],
+    ),
+    MenuConfig(
+      title: 'Quản lý nhân sự',
+      icon: Icons.group,
+      module: 'USER_MANAGER_VIEW',
+      roles: ['Manager'],
+    ),
+    MenuConfig(
+      title: 'Duyệt đơn nghỉ phép',
+      icon: Icons.approval,
+      module: 'LEAVE_MANAGER_PENDING',
+      roles: ['Manager'],
+    ),
+    MenuConfig(
+      title: 'Lịch sử nghỉ phép',
+      icon: Icons.history_edu,
+      module: 'LEAVE_MANAGER_HISTORY',
+      roles: ['Manager'],
+    ),
+  ];
+
+  void _navigate(BuildContext context, String module) {
+    Navigator.pop(context);
+    onOutput(AppOutput(toModule: module));
+  }
+
+  List<MenuConfig> get menus {
+    final storage = get<AppStorage>();
+    final user = storage.get<Map<String, dynamic>>('user');
+    if (user == null) {
+      return _allMenus.where((m) => m.roles.isEmpty).toList();
+    }
+
+    final role = (user['role'] ?? '').toString().trim().toLowerCase();
+    return _allMenus.where((m) {
+      if (m.module == 'USER') return false;
+      if (m.roles.isEmpty) return true;
+      return m.roles.any(
+        (allowedRole) => allowedRole.trim().toLowerCase() == role,
+      );
+    }).toList();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      child: Container(
+        color: const Color(0xFFF5F6FA),
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text(
+                  "Menu",
+                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.close),
+                  onPressed: () => Navigator.pop(context),
+                ),
+              ],
+            ),
+
+            const SizedBox(height: 24),
+            ...menus.map((item) {
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 16),
+                child: MenuItem(
+                  title: item.title,
+                  icon: item.icon,
+                  isActive: currentModule == item.module,
+                  onTap: () => _navigate(context, item.module),
+                ),
+              );
+            }),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+
+FILE: c:\Users\Admin\Documents\GitHub\quan_li_sale\app\lib\partial\menu\menu_widget\menu_config.dart
+import 'package:flutter/material.dart';
+
+class MenuConfig {
+  final String title;
+  final IconData icon;
+  final String module;
+  final List<String> roles;
+
+  const MenuConfig({
+    required this.title,
+    required this.icon,
+    required this.module,
+    this.roles = const [],
+  });
+}
+
+
+FILE: c:\Users\Admin\Documents\GitHub\quan_li_sale\app\lib\partial\menu\menu_widget\menu_item.dart
+import 'package:flutter/material.dart';
+
+class MenuItem extends StatelessWidget {
+  final String title;
+  final IconData icon;
+  final VoidCallback onTap;
+  final bool isActive;
+
+  const MenuItem({
+    super.key,
+    required this.title,
+    required this.icon,
+    required this.onTap,
+    this.isActive = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: isActive ? Colors.white : Colors.grey.shade200,
+          borderRadius: BorderRadius.circular(16),
+          border: isActive
+              ? const Border(left: BorderSide(color: Colors.blue, width: 4))
+              : null,
+          boxShadow: isActive
+              ? [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.05),
+                    blurRadius: 10,
+                    offset: const Offset(0, 4),
+                  ),
+                ]
+              : [],
+        ),
+        child: Row(
+          children: [
+            CircleAvatar(
+              backgroundColor: isActive
+                  ? Colors.blue.shade100
+                  : Colors.grey.shade300,
+              child: Icon(
+                icon,
+                color: isActive ? Colors.blue : Colors.grey.shade700,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                title,
+                style: TextStyle(
+                  fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
+                ),
+              ),
+            ),
+            const Icon(Icons.chevron_right),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+
+FILE: c:\Users\Admin\Documents\GitHub\quan_li_sale\app\lib\root\app_output.dart
+class AppOutput {
+  final String toModule;
+  final Map<String, dynamic>? data;
+
+  AppOutput({required this.toModule, this.data});
+}
+
+
+FILE: c:\Users\Admin\Documents\GitHub\quan_li_sale\app\lib\root\attendance_root.dart
+import 'package:app/root/app_output.dart';
+import 'package:attendance_module/attendance_module.dart';
+import 'package:core/di/injector.dart';
+import 'package:core/storage/app_storage.dart';
+import 'package:flutter/material.dart';
+
+class AttendanceRoot {
+  Widget build(Function(AppOutput) onNavigate) {
+    return AttendanceScreen(
+      input: AttendanceInput(
+        storeId: get<AppStorage>().get<int>('current_store_id') ?? 0,
+        storeName: get<AppStorage>().get<String>('current_store_name') ?? 'Không rõ',
+        routeId: get<AppStorage>().get<int>('current_route_id'),
+        routeName: get<AppStorage>().get<String>('current_route_name') ?? '',
+        latitude: get<AppStorage>().get<double>('current_store_lat'),
+        longitude: get<AppStorage>().get<double>('current_store_lng'),
+      ),
+      onOutput: (output) {
+        if (output.success && output.storeId != null) {
+          // Lưu thông tin cửa hàng vào storage
+          get<AppStorage>().set('current_store_id', output.storeId);
+          get<AppStorage>().set('current_store_name', output.storeName ?? '');
+          get<AppStorage>().set('current_route_id', output.routeId);
+          // Chuyển sang trang chủ cửa hàng
+          onNavigate(AppOutput(toModule: 'STORE_HOME'));
+        }
+        // Nếu Manager xem lịch sử thì không cần navigate
+      },
+      onBack: () => onNavigate(AppOutput(toModule: 'ROUTE_STORE')),
+    );
+  }
+
+  Widget buildCheckout(Function(AppOutput) onNavigate) {
+    final storage = get<AppStorage>();
+    return AttendanceScreen(
+      input: AttendanceInput(
+        storeId: storage.get<int>('current_store_id') ?? 0,
+        storeName: storage.get<String>('current_store_name') ?? '',
+        routeId: storage.get<int>('current_route_id'),
+        routeName: storage.get<String>('current_route_name') ?? '',
+        latitude: storage.get<double>('current_store_lat'),
+        longitude: storage.get<double>('current_store_lng'),
+        forceCheckout: true,
+      ),
+      onOutput: (output) {
+        if (output.success) {
+          onNavigate(AppOutput(toModule: 'STORE_HOME'));
+        }
+      },
+      onBack: () => onNavigate(AppOutput(toModule: 'STORE_HOME')),
+    );
+  }
+}
+
+
+FILE: c:\Users\Admin\Documents\GitHub\quan_li_sale\app\lib\root\inventory_root.dart
+import 'package:app/root/app_output.dart';
+import 'package:core/di/injector.dart';
+import 'package:core/storage/app_storage.dart';
+import 'package:inventory_module/inventory_module.dart';
+import 'package:inventory_module/input/inventory_input.dart';
+import 'package:flutter/material.dart';
+
+class InventoryRoot {
+  Widget build(Function(AppOutput) onNavigate) {
+    final storage = get<AppStorage>();
+    final user = storage.get<Map<String, dynamic>>('user')!;
+    final storeId = storage.get<int>('current_store_id') ?? 0;
+
+    final input = InventoryInput(
+      userId: user['id'],
+      storeId: storeId.toString(),
+      productIds: [], // TODO: lấy danh sách product từ route sau
+    );
+
+    return InventoryModule(
+      input: input,
+      onOutput: (output) {
+        if (output.success) {
+          onNavigate(AppOutput(toModule: 'STORE_HOME'));
+        }
+      },
+      onBack: () => onNavigate(AppOutput(toModule: 'STORE_HOME')),
+    );
+  }
+}
+
+
+FILE: c:\Users\Admin\Documents\GitHub\quan_li_sale\app\lib\root\leave_root.dart
+import 'package:app/root/app_output.dart';
+import 'package:flutter/material.dart';
+import 'package:leave_module/leave_module.dart';
+
+/// LeaveRoot kết nối Leave_Module vào App.
+/// Pattern giống UserRoot: mỗi hàm build*() trả về 1 LeaveScreen với view cụ thể.
+class LeaveRoot {
+  // ── Sale ────────────────────────────────────────────────────────────────────
+
+  /// Sale xem danh sách đơn nghỉ của mình.
+  Widget build(Function(AppOutput) onNavigate) {
+    return LeaveScreen(
+      onEvent: (event) => _handleEvent(event, onNavigate),
+    );
+  }
+
+  /// Sale tạo đơn nghỉ mới.
+  Widget buildForm(Function(AppOutput) onNavigate) {
+    return LeaveScreen(
+      view: 'SALE_FORM',
+      onEvent: (event) => _handleEvent(event, onNavigate),
+    );
+  }
+
+  // ── Manager ─────────────────────────────────────────────────────────────────
+
+  /// Manager xem danh sách đơn chờ duyệt.
+  Widget buildManagerPending(Function(AppOutput) onNavigate) {
+    return LeaveScreen(
+      view: 'MANAGER_PENDING',
+      onEvent: (event) => _handleEvent(event, onNavigate),
+    );
+  }
+
+  /// Manager xem lịch sử nghỉ phép nhân viên.
+  Widget buildManagerHistory(Function(AppOutput) onNavigate) {
+    return LeaveScreen(
+      view: 'MANAGER_HISTORY',
+      onEvent: (event) => _handleEvent(event, onNavigate),
+    );
+  }
+
+  // ── Event handler ────────────────────────────────────────────────────────────
+
+  void _handleEvent(LeaveEvent event, Function(AppOutput) onNavigate) {
+    switch (event.type) {
+      case LeaveEventType.submitted:
+        // Sau khi nộp đơn → quay về danh sách đơn của Sale
+        onNavigate(AppOutput(toModule: 'LEAVE'));
+        break;
+
+      case LeaveEventType.approved:
+      case LeaveEventType.rejected:
+        // Sau khi duyệt/từ chối → refresh danh sách đơn Pending
+        onNavigate(AppOutput(toModule: 'LEAVE_MANAGER_PENDING'));
+        break;
+
+      case LeaveEventType.close:
+        // Quay về màn trước (ROUTE_STORE là màn home mặc định)
+        onNavigate(AppOutput(toModule: 'ROUTE_STORE'));
+        break;
+    }
+  }
+}
+
+
+FILE: c:\Users\Admin\Documents\GitHub\quan_li_sale\app\lib\root\order_root.dart
+import 'package:app/root/app_output.dart';
+import 'package:core/di/injector.dart';
+import 'package:core/storage/app_storage.dart';
+import 'package:oder_module/order_module.dart';
+import 'package:oder_module/input/order_input.dart';
+import 'package:flutter/material.dart';
+
+class OrderRoot {
+  Widget build(Function(AppOutput) onNavigate) {
+    return _buildInternal(onNavigate, isCreate: false);
+  }
+
+  Widget buildCreate(Function(AppOutput) onNavigate) {
+    return _buildInternal(onNavigate, isCreate: true);
+  }
+
+  Widget _buildInternal(Function(AppOutput) onNavigate, {required bool isCreate}) {
+    final storage = get<AppStorage>();
+    final user = storage.get<Map<String, dynamic>>('user')!;
+    final storeId = storage.get<int>('current_store_id');
+    final storeName = storage.get<String>('current_store_name') ?? '';
+    final role = user['role'] ?? 'Sale';
+
+    final input = OrderInput(
+      action: isCreate ? 'CREATE' : 'HISTORY',
+      role: role,
+      userId: user['id'],
+      employeeName: user['full_name'] ?? '',
+      storeId: storeId,
+      storeName: storeName,
+      groupId: user['groupId'] ?? storage.get<String>('groupId'),
+    );
+
+    return OrderModule(
+      input: input,
+      onBack: () => onNavigate(AppOutput(toModule: isCreate ? 'STORE_HOME' : 'ROUTE_STORE')),
+      onOutput: (output) {
+        onNavigate(AppOutput(toModule: isCreate ? 'STORE_HOME' : 'ROUTE_STORE'));
+      },
+    );
+  }
+}
+
+
+FILE: c:\Users\Admin\Documents\GitHub\quan_li_sale\app\lib\root\route_store_root.dart
+import 'package:app/root/app_output.dart';
+import 'package:flutter/material.dart';
+import 'package:route_store_module/route_store_module.dart';
+import 'package:core/di/injector.dart';
+import 'package:core/storage/app_storage.dart';
+
+class RouteStoreRoot {
+  Widget build(Function(AppOutput) onNavigate) {
+    // TODO: Connect DailyRouteView outputs to AppOutput
+    return DailyRouteView();
+  }
+
+  Widget buildStoreManager(Function(AppOutput) onNavigate) {
+    return StoreListView(
+      onAdd: () => onNavigate(AppOutput(toModule: 'CREATE_STORE')),
+      onEdit: (store) => onNavigate(AppOutput(toModule: 'EDIT_STORE', data: {'store': store})),
+    );
+  }
+
+  Widget buildRouteManager(Function(AppOutput) onNavigate) {
+    return RouteListView(
+      onAdd: () => onNavigate(AppOutput(toModule: 'CREATE_ROUTE')),
+      onEdit: (route) => onNavigate(AppOutput(toModule: 'EDIT_ROUTE', data: {'route': route})),
+    );
+  }
+
+  Widget buildCreateStore(Function(AppOutput) onNavigate, VoidCallback onBack) {
+    return CreateStoreView(onBack: onBack);
+  }
+
+  Widget buildEditStore(Function(AppOutput) onNavigate, VoidCallback onBack) {
+    final storage = get<AppStorage>();
+    final store = storage.get<StoreEntity>('store');
+    if (store == null) return const Scaffold(body: Center(child: Text('Không tìm thấy thông tin cửa hàng')));
+    return CreateStoreView(onBack: onBack, store: store);
+  }
+
+  Widget buildCreateRoute(Function(AppOutput) onNavigate, VoidCallback onBack) {
+    return CreateRouteView(onBack: onBack);
+  }
+
+  Widget buildEditRoute(Function(AppOutput) onNavigate, VoidCallback onBack) {
+    final storage = get<AppStorage>();
+    final route = storage.get<RouteEntity>('route');
+    if (route == null) return const Scaffold(body: Center(child: Text('Không tìm thấy thông tin tuyến')));
+    return EditRouteView(route: route);
+  }
+
+  Widget buildStoreHome(Function(AppOutput) onNavigate) {
+    // Thêm một trang tạm cho Store Home
+    return Scaffold(
+      appBar: AppBar(title: const Text('Store Home')),
+      body: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            ElevatedButton(
+              onPressed: () {
+                onNavigate(AppOutput(toModule: 'CREATE_ORDER'));
+              },
+              child: const Text('Lên đơn hàng (ORDER)'),
+            ),
+            const SizedBox(height: 16),
+            ElevatedButton(
+              onPressed: () {
+                onNavigate(AppOutput(toModule: 'INVENTORY'));
+              },
+              child: const Text('Tồn kho (INVENTORY)'),
+            ),
+            const SizedBox(height: 16),
+            ElevatedButton(
+              onPressed: () {
+                onNavigate(AppOutput(toModule: 'ROUTE_STORE'));
+              },
+              child: const Text('Quay lại lộ trình (BACK)'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+
+FILE: c:\Users\Admin\Documents\GitHub\quan_li_sale\app\lib\root\user_root.dart
+import 'package:app/root/app_output.dart';
+import 'package:core/di/injector.dart';
+import 'package:core/storage/app_storage.dart';
+import 'package:flutter/material.dart';
+import 'package:user_module/input/manager_input.dart';
+import 'package:user_module/input/profile_input.dart';
+import 'package:user_module/user_module.dart';
+import 'package:user_module/output/user_event.dart';
+import 'package:user_module/view/common/profile/profile_view.dart';
+import 'package:user_module/view/manager/manage_user_view.dart';
+
+class UserRoot {
+  Widget build(Function(AppOutput) onNavigate) {
+    return UserScreen(
+      onEvent: (UserEvent event) => _handleEvent(event, onNavigate),
+    );
+  }
+
+  Widget buildProfile(Function(AppOutput) onNavigate) {
+    final storage = get<AppStorage>();
+    final selectedUserId = storage.get<String>('profile_user_id');
+    return ProfileView(
+      input: ProfileInput(userId: selectedUserId),
+      onLogout: () {
+        onNavigate(AppOutput(toModule: 'USER'));
+      },
+    );
+  }
+
+  Widget buildManager(Function(AppOutput) onOutput) {
+    return ManagerView(
+      input: ManagerInput(),
+      onOpenProfile: (userId) {
+        onOutput(
+          AppOutput(
+            toModule: 'USER_PROFILE',
+            data: {'profile_user_id': userId},
+          ),
+        );
+      },
+    );
+  }
+
+  void _handleEvent(UserEvent event, Function(AppOutput) onNavigate) {
+    switch (event.type) {
+      case UserEventType.loginSuccess:
+        final role = event.data?['role']?.toString().toLowerCase() ?? '';
+        if (role == 'manager') {
+          onNavigate(AppOutput(toModule: 'ROUTE_STORE_MANAGER'));
+        } else {
+          onNavigate(AppOutput(toModule: 'ROUTE_STORE'));
+        }
+        break;
+    }
+  }
+}
+

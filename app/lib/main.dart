@@ -1,6 +1,7 @@
 import 'package:core/di/injector.dart';
 import 'package:core/di/supabase.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:core/core.dart';
 import 'app.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart'; // Đảm bảo đã import thư viện này

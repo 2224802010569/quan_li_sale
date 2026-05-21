@@ -3,11 +3,27 @@ import 'package:flutter/material.dart';
 import 'package:route_store_module/route_store_module.dart';
 import 'package:core/di/injector.dart';
 import 'package:core/storage/app_storage.dart';
+import 'package:app/root/store_home_screen.dart';
 
 class RouteStoreRoot {
   Widget build(Function(AppOutput) onNavigate) {
-    // TODO: Connect DailyRouteView outputs to AppOutput
-    return DailyRouteView();
+    final storage = get<AppStorage>();
+    return DailyRouteView(
+      onCheckin: (store, route) {
+        // Lưu thông tin cửa hàng vào storage để AttendanceRoot đọc
+        storage.set('current_store_id', store.id);
+        storage.set('current_store_name', store.storeName);
+        storage.set('current_store_lat', store.latitude);
+        storage.set('current_store_lng', store.longitude);
+        
+        // Lưu thông tin tuyến vào storage
+        storage.set('current_route_id', route.id);
+        storage.set('current_route_name', route.routeName);
+        
+        // Navigate sang màn hình chấm công (check-in)
+        onNavigate(AppOutput(toModule: 'ATTENDANCE'));
+      },
+    );
   }
 
   Widget buildStoreManager(Function(AppOutput) onNavigate) {
@@ -21,13 +37,10 @@ class RouteStoreRoot {
     return RouteListView(
       onAdd: () => onNavigate(AppOutput(toModule: 'CREATE_ROUTE')),
       onEdit: (route) => onNavigate(AppOutput(toModule: 'EDIT_ROUTE', data: {'route': route})),
-      onAssign: () => onNavigate(AppOutput(toModule: 'ASSIGN_ROUTE')),
     );
   }
 
-  Widget buildAssignRoute(Function(AppOutput) onNavigate, VoidCallback onBack) {
-    return AssignRouteView(onBack: onBack);
-  }
+
 
   Widget buildCreateStore(Function(AppOutput) onNavigate, VoidCallback onBack) {
     return CreateStoreView(onBack: onBack);
@@ -52,36 +65,6 @@ class RouteStoreRoot {
   }
 
   Widget buildStoreHome(Function(AppOutput) onNavigate) {
-    // Thêm một trang tạm cho Store Home
-    return Scaffold(
-      appBar: AppBar(title: const Text('Store Home')),
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            ElevatedButton(
-              onPressed: () {
-                onNavigate(AppOutput(toModule: 'CREATE_ORDER'));
-              },
-              child: const Text('Lên đơn hàng (ORDER)'),
-            ),
-            const SizedBox(height: 16),
-            ElevatedButton(
-              onPressed: () {
-                onNavigate(AppOutput(toModule: 'INVENTORY'));
-              },
-              child: const Text('Tồn kho (INVENTORY)'),
-            ),
-            const SizedBox(height: 16),
-            ElevatedButton(
-              onPressed: () {
-                onNavigate(AppOutput(toModule: 'ROUTE_STORE'));
-              },
-              child: const Text('Quay lại lộ trình (BACK)'),
-            ),
-          ],
-        ),
-      ),
-    );
+    return StoreHomeScreen(onNavigate: onNavigate);
   }
 }

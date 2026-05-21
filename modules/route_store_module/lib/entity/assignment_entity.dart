@@ -57,6 +57,7 @@ class AssignmentEntity {
     };
   }
 
+
   /// Kiểm tra xem đây có phải assignment hỗ trợ không
   bool get isSupportAssignment => isSupport == 2;
 

@@ -88,35 +88,43 @@ class HistoryCard extends StatelessWidget {
                   children: [
                     ClipRRect(
                       borderRadius: const BorderRadius.only(topRight: Radius.circular(12)),
-                      child: attendance.checkoutImage.isNotEmpty
-                          ? Image.network(
-                              attendance.checkoutImage,
-                              height: 150,
-                              width: double.infinity,
-                              fit: BoxFit.cover,
-                              errorBuilder: (context, error, stackTrace) => Container(
-                                height: 150,
-                                width: double.infinity,
-                                color: Colors.grey[300],
-                                child: const Icon(Icons.image_not_supported, size: 40, color: Colors.grey),
-                              ),
-                            )
-                          : Container(
-                              height: 150,
-                              width: double.infinity,
-                              color: const Color(0xFFF4F6FA),
-                              child: const Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Icon(Icons.pending_actions, size: 40, color: Colors.orange),
-                                  SizedBox(height: 8),
-                                  Text(
-                                    'Waiting for Check-out',
-                                    style: TextStyle(fontSize: 10, color: Colors.orange, fontWeight: FontWeight.bold),
-                                  ),
-                                ],
-                              ),
+                      child: Builder(builder: (context) {
+                        final isCompleted = attendance.status == 'Completed';
+                        final hasPhoto = attendance.checkoutImage.isNotEmpty;
+
+                        if (!isCompleted) {
+                          // Chưa check-out
+                          return Container(
+                            height: 150,
+                            width: double.infinity,
+                            color: const Color(0xFFF4F6FA),
+                            child: const Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(Icons.pending_actions, size: 40, color: Colors.orange),
+                                SizedBox(height: 8),
+                                Text(
+                                  'Waiting for Check-out',
+                                  textAlign: TextAlign.center,
+                                  style: TextStyle(fontSize: 10, color: Colors.orange, fontWeight: FontWeight.bold),
+                                ),
+                              ],
                             ),
+                          );
+                        } else if (hasPhoto) {
+                          // Đã check-out + có ảnh thật
+                          return Image.network(
+                            attendance.checkoutImage,
+                            height: 150,
+                            width: double.infinity,
+                            fit: BoxFit.cover,
+                            errorBuilder: (context, error, stackTrace) => _buildCheckedOutPlaceholder(),
+                          );
+                        } else {
+                          // Đã check-out nhưng không có ảnh
+                          return _buildCheckedOutPlaceholder();
+                        }
+                      }),
                     ),
                     Positioned(
                       top: 8,
@@ -180,6 +188,30 @@ class HistoryCard extends StatelessWidget {
                   ],
                 ),
               ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCheckedOutPlaceholder() {
+    return Container(
+      height: 150,
+      width: double.infinity,
+      color: const Color(0xFFE8F5E9),
+      child: const Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.check_circle_outline, size: 40, color: Color(0xFF388E3C)),
+          SizedBox(height: 8),
+          Text(
+            'Đã Check-out',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 11,
+              color: Color(0xFF388E3C),
+              fontWeight: FontWeight.bold,
             ),
           ),
         ],

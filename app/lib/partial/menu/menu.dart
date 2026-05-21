@@ -137,17 +137,24 @@ class Menu extends StatelessWidget {
             ),
 
             const SizedBox(height: 24),
-            ...menus.map((item) {
-              return Padding(
-                padding: const EdgeInsets.only(bottom: 16),
-                child: MenuItem(
-                  title: item.title,
-                  icon: item.icon,
-                  isActive: currentModule == item.module,
-                  onTap: () => _navigate(context, item.module),
+
+            Expanded(
+              child: SingleChildScrollView(
+                child: Column(
+                  children: menus.map((item) {
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 16),
+                      child: MenuItem(
+                        title: item.title,
+                        icon: item.icon,
+                        isActive: currentModule == item.module,
+                        onTap: () => _navigate(context, item.module),
+                      ),
+                    );
+                  }).toList(),
                 ),
-              );
-            }),
+              ),
+            ),
           ],
         ),
       ),

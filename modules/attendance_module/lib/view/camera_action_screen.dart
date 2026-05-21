@@ -105,12 +105,60 @@ class _CameraActionScreenState extends State<CameraActionScreen> {
 
   void _startLocationStream(double destLat, double destLng) async {
     bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
-    if (!serviceEnabled) return;
+    if (!serviceEnabled) {
+      if (mounted) {
+        setState(() {
+          _cameraError = 'Dịch vụ định vị đang bị tắt. Vui lòng bật vị trí.';
+        });
+      }
+      return;
+    }
 
     LocationPermission permission = await Geolocator.checkPermission();
-    if (permission == LocationPermission.denied ||
-        permission == LocationPermission.deniedForever)
+    if (permission == LocationPermission.denied) {
+      permission = await Geolocator.requestPermission();
+      if (permission == LocationPermission.denied) return;
+    }
+    
+    if (permission == LocationPermission.deniedForever) {
+      if (mounted) {
+        setState(() {
+          _cameraError = 'Quyền truy cập vị trí bị từ chối vĩnh viễn. Vui lòng cấp quyền trong Cài đặt.';
+        });
+      }
       return;
+    }
+
+    // Lấy vị trí lập tức để hiển thị khoảng cách ngay
+    try {
+      final initialPosition = await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.high,
+      );
+      if (mounted) {
+        setState(() {
+          _currentDistance = Geolocator.distanceBetween(
+            initialPosition.latitude,
+            initialPosition.longitude,
+            destLat,
+            destLng,
+          );
+        });
+      }
+    } catch (_) {
+      try {
+        final lastPosition = await Geolocator.getLastKnownPosition();
+        if (lastPosition != null && mounted) {
+          setState(() {
+            _currentDistance = Geolocator.distanceBetween(
+              lastPosition.latitude,
+              lastPosition.longitude,
+              destLat,
+              destLng,
+            );
+          });
+        }
+      } catch (_) {}
+    }
 
     const LocationSettings locationSettings = LocationSettings(
       accuracy: LocationAccuracy.high,

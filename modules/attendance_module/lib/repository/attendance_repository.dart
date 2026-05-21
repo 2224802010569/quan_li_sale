@@ -17,7 +17,7 @@ class AttendanceRepository {
       throw Exception('Người dùng chưa đăng nhập');
     }
     final userId = stored['id'] as String;
-    final response = await _client.from('users').select('id, full_name, phone, password, role, employee_code, last_updated, group_id').eq('id', userId).single();
+    final response = await _client.from('users').select('id, full_name, phone, password, role, last_updated, group_id').eq('id', userId).single();
     return User.fromMap(response);
   }
 
@@ -25,14 +25,27 @@ class AttendanceRepository {
   /// Nếu là Manager: Lấy tất cả hoặc theo userId được chọn
   /// Nếu là Sale: Chỉ lấy của chính mình
   Future<List<Attendance>> getAttendanceHistory({String? userId, String? groupId, DateTime? month}) async {
+    // Step 1: Nếu filter theo group, lấy danh sách user IDs trước
+    // PostgREST không thể resolve joined column (users.group_id) trong filter context
+    List<String>? groupUserIds;
+    if (userId == null && groupId != null) {
+      final usersRes = await _client
+          .from('users')
+          .select('id')
+          .eq('group_id', groupId);
+      groupUserIds = (usersRes as List).map((e) => e['id'] as String).toList();
+      if (groupUserIds.isEmpty) return [];
+    }
+
+    // Step 2: Query attendance không join users
     var query = _client
         .from('attendance')
-        .select('*, stores(store_name), routes(route_name), users!inner(group_id)');
+        .select('*, stores(store_name), routes(route_name)');
 
     if (userId != null) {
       query = query.eq('user_id', userId);
-    } else if (groupId != null) {
-      query = query.eq('users.group_id', groupId);
+    } else if (groupUserIds != null) {
+      query = query.inFilter('user_id', groupUserIds);
     }
 
     if (month != null) {
@@ -162,14 +175,14 @@ class AttendanceRepository {
   Future<void> submitCheckOut({
     required String userId,
     required int storeId,
+    String? checkoutImageUrl,
   }) async {
     final now = DateTime.now().toIso8601String();
     
-    // Update attendance checkout_time
     final map = {
       'checkout_time': now,
-      'checkout_image': 'https://example.com/mock-checkout-image.jpg',
       'status': 'Completed',
+      if (checkoutImageUrl != null) 'checkout_image': checkoutImageUrl,
     };
     await _client.from('attendance')
         .update(map)
@@ -199,7 +212,7 @@ class AttendanceRepository {
 
   Future<List<User>> getUsersByGroup(String groupId, String excludeUserId) async {
     final response = await _client.from('users')
-        .select('id, full_name, phone, password, role, employee_code, last_updated, group_id')
+        .select('id, full_name, phone, password, role, last_updated, group_id')
         .eq('group_id', groupId)
         .neq('id', excludeUserId);
     return (response as List).map((e) => User.fromMap(e)).toList(); 

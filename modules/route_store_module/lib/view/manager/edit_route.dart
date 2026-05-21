@@ -64,6 +64,7 @@ class _EditRouteViewState extends ConsumerState<EditRouteView> {
       realtimeRouteDetailsProvider(widget.route.id),
     );
     final allStoresAsync = ref.watch(realtimeStoresProvider);
+    final allRouteDetailsAsync = ref.watch(realtimeAllRouteDetailsProvider);
 
     return Scaffold(
       backgroundColor: const Color(0xFFF5F5F5),
@@ -133,6 +134,14 @@ class _EditRouteViewState extends ConsumerState<EditRouteView> {
                         ...details.map((d) {
                           final store = stores.firstWhere(
                             (s) => s.id == d.storeId,
+                            orElse: () => StoreEntity(
+                              id: d.storeId,
+                              storeName: 'Cửa hàng #${d.storeId}',
+                              address: 'Đã bị xóa hoặc không tìm thấy',
+                              latitude: 0.0,
+                              longitude: 0.0,
+                              managerId: '',
+                            ),
                           );
                           return _EditableStoreItem(
                             detail: d,
@@ -144,11 +153,13 @@ class _EditRouteViewState extends ConsumerState<EditRouteView> {
                                     widget.route.id,
                                     d.storeId,
                                   );
+                              ref.invalidate(realtimeRouteDetailsProvider(widget.route.id));
+                              ref.invalidate(realtimeAllRouteDetailsProvider);
                             },
                           );
                         }).toList(),
                         const SizedBox(height: 16),
-                        _buildAddButton(stores, details),
+                        _buildAddButton(stores, details, allRouteDetailsAsync.value ?? []),
                       ],
                     );
                   },
@@ -192,10 +203,11 @@ class _EditRouteViewState extends ConsumerState<EditRouteView> {
   Widget _buildAddButton(
     List<StoreEntity> allStores,
     List<RouteDetailEntity> currentDetails,
+    List<RouteDetailEntity> allDetails,
   ) {
     return InkWell(
       onTap: () {
-        _showAddStoreDialog(allStores, currentDetails);
+        _showAddStoreDialog(allStores, currentDetails, allDetails);
       },
       child: Container(
         width: double.infinity,
@@ -225,10 +237,11 @@ class _EditRouteViewState extends ConsumerState<EditRouteView> {
   void _showAddStoreDialog(
     List<StoreEntity> allStores,
     List<RouteDetailEntity> currentDetails,
+    List<RouteDetailEntity> allDetails,
   ) {
-    // Filter out stores already in the route
+    // Filter out stores already in ANY route
     final availableStores = allStores
-        .where((s) => !currentDetails.any((d) => d.storeId == s.id))
+        .where((s) => !allDetails.any((d) => d.storeId == s.id))
         .toList();
 
     showModalBottomSheet(
@@ -266,6 +279,8 @@ class _EditRouteViewState extends ConsumerState<EditRouteView> {
                           store.id!,
                           currentDetails.length + 1,
                         );
+                        ref.invalidate(realtimeRouteDetailsProvider(widget.route.id));
+                        ref.invalidate(realtimeAllRouteDetailsProvider);
                         if (Navigator.canPop(context)) Navigator.pop(context);
                       },
                     );

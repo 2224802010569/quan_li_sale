@@ -28,6 +28,15 @@ final realtimeRouteDetailsProvider = StreamProvider.family<List<RouteDetailEntit
   return routeData.streamRouteDetails(routeId);
 });
 
+/// Stream provider cho tất cả chi tiết tuyến (tất cả các cửa hàng đã có tuyến)
+final realtimeAllRouteDetailsProvider = StreamProvider<List<RouteDetailEntity>>((ref) {
+  final routeData = ref.read(routeDataProvider);
+  return routeData.supabase
+      .from('route_details')
+      .stream(primaryKey: ['id'])
+      .map((list) => list.map((e) => RouteDetailEntity.fromJson(e)).toList());
+});
+
 /// Stream provider cho assignments của user hiện tại (realtime)
 final realtimeUserAssignmentsProvider = StreamProvider.family<List<AssignmentEntity>, String>((ref, userId) {
   if (userId.isEmpty) return Stream.value([]);
@@ -50,6 +59,7 @@ final realtimeSaleUsersProvider = StreamProvider<List<Map<String, dynamic>>>((re
         .toList();
   });
 });
+
 
 /// Model cho Route Card UI
 class RouteWithInfo {
@@ -78,13 +88,7 @@ final realtimeAttendanceThisWeekProvider = StreamProvider<List<Map<String, dynam
       .gte('checkin_time', startOfWeek.toIso8601String());
 });
 
-/// Stream provider cho route_details
-final realtimeAllRouteDetailsProvider = StreamProvider<List<RouteDetailEntity>>((ref) {
-  final supabase = ref.read(routeDataProvider).supabase;
-  return supabase.from('route_details').stream(primaryKey: ['route_id', 'store_id']).map(
-    (data) => data.map((e) => RouteDetailEntity.fromJson(e)).toList(),
-  );
-});
+
 
 /// Provider kết hợp Routes, Assignments và Users cho Manager View
 final routeListWithInfoProvider = Provider<AsyncValue<List<RouteWithInfo>>>((ref) {

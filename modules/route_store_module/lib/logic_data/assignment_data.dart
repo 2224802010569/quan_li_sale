@@ -117,7 +117,6 @@ class AssignmentData {
           'route_id': routeId,
           'assigned_date': date.toIso8601String().split('T')[0],
           'is_support': 2, // Hỗ trợ
-          'status': 'pending',
         })
         .select()
         .single();

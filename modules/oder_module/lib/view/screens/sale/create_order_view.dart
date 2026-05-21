@@ -435,15 +435,9 @@ class _CreateOrderViewState extends State<CreateOrderView> {
   }
 }
 
-class _ProductPickerSheet extends StatelessWidget {
+class _ProductPickerSheet extends StatefulWidget {
   final List<Product> products;
   final ValueChanged<Product> onSelect;
-
-  static final _currencyFormat = NumberFormat.currency(
-    locale: 'vi_VN',
-    symbol: 'đ',
-    decimalDigits: 0,
-  );
 
   const _ProductPickerSheet({
     required this.products,
@@ -451,10 +445,45 @@ class _ProductPickerSheet extends StatelessWidget {
   });
 
   @override
+  State<_ProductPickerSheet> createState() => _ProductPickerSheetState();
+}
+
+class _ProductPickerSheetState extends State<_ProductPickerSheet> {
+  String _searchQuery = '';
+  late final TextEditingController _searchController;
+
+  static final _currencyFormat = NumberFormat.currency(
+    locale: 'vi_VN',
+    symbol: 'đ',
+    decimalDigits: 0,
+  );
+
+  @override
+  void initState() {
+    super.initState();
+    _searchController = TextEditingController();
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final filteredProducts = widget.products.where((p) {
+      final name = p.productName.toLowerCase();
+      final query = _searchQuery.toLowerCase();
+      return name.contains(query);
+    }).toList();
+
     return Container(
       constraints: BoxConstraints(
-        maxHeight: MediaQuery.of(context).size.height * 0.6,
+        maxHeight: MediaQuery.of(context).size.height * 0.75,
+      ),
+      padding: EdgeInsets.only(
+        bottom: MediaQuery.of(context).viewInsets.bottom,
       ),
       decoration: const BoxDecoration(
         color: Colors.white,
@@ -483,62 +512,125 @@ class _ProductPickerSheet extends StatelessWidget {
               letterSpacing: -0.50,
             ),
           ),
-          const SizedBox(height: 16),
-          Flexible(
-            child: ListView.separated(
-              shrinkWrap: true,
-              padding: const EdgeInsets.symmetric(horizontal: 24),
-              itemCount: products.length,
-              separatorBuilder: (_, i) => const Divider(
-                height: 1,
-                color: Color(0xFFF3F3F3),
+          const SizedBox(height: 12),
+          // Search bar
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+            child: TextField(
+              controller: _searchController,
+              onChanged: (val) {
+                setState(() {
+                  _searchQuery = val;
+                });
+              },
+              decoration: InputDecoration(
+                hintText: 'Tìm kiếm sản phẩm...',
+                hintStyle: const TextStyle(color: Color(0xFF94A3B8), fontSize: 14),
+                prefixIcon: const Icon(Icons.search, color: Color(0xFF94A3B8)),
+                suffixIcon: _searchQuery.isNotEmpty
+                    ? IconButton(
+                        icon: const Icon(Icons.clear, color: Color(0xFF94A3B8)),
+                        onPressed: () {
+                          _searchController.clear();
+                          setState(() {
+                            _searchQuery = '';
+                          });
+                        },
+                      )
+                    : null,
+                contentPadding: const EdgeInsets.symmetric(vertical: 8),
+                filled: true,
+                fillColor: const Color(0xFFF8FAFC),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(16),
+                  borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(16),
+                  borderSide: const BorderSide(color: Color(0xFF003178), width: 1.5),
+                ),
               ),
-              itemBuilder: (context, index) {
-                final product = products[index];
-                return ListTile(
-                  contentPadding: const EdgeInsets.symmetric(vertical: 8),
-                  leading: Container(
-                    width: 48,
-                    height: 48,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFF3F3F3),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: const Center(
-                      child: Icon(
-                        Icons.inventory_2_outlined,
-                        color: Color(0xFF94A3B8),
-                        size: 24,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Flexible(
+            child: filteredProducts.isEmpty
+                ? Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 40, horizontal: 24),
+                    child: Center(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(Icons.search_off, size: 48, color: Color(0xFF94A3B8)),
+                          const SizedBox(height: 12),
+                          const Text(
+                            'Không tìm thấy sản phẩm phù hợp',
+                            style: TextStyle(
+                              color: Color(0xFF94A3B8),
+                              fontSize: 15,
+                              fontFamily: 'Manrope',
+                              fontWeight: FontWeight.w500,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                        ],
                       ),
                     ),
-                  ),
-                  title: Text(
-                    product.productName,
-                    style: const TextStyle(
-                      color: Color(0xFF172554),
-                      fontSize: 16,
-                      fontFamily: 'Manrope',
-                      fontWeight: FontWeight.w600,
+                  )
+                : ListView.separated(
+                    shrinkWrap: true,
+                    padding: const EdgeInsets.symmetric(horizontal: 24),
+                    itemCount: filteredProducts.length,
+                    separatorBuilder: (_, i) => const Divider(
+                      height: 1,
+                      color: Color(0xFFF3F3F3),
                     ),
+                    itemBuilder: (context, index) {
+                      final product = filteredProducts[index];
+                      return ListTile(
+                        contentPadding: const EdgeInsets.symmetric(vertical: 8),
+                        leading: Container(
+                          width: 48,
+                          height: 48,
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFF3F3F3),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: const Center(
+                            child: Icon(
+                              Icons.inventory_2_outlined,
+                              color: Color(0xFF94A3B8),
+                              size: 24,
+                            ),
+                          ),
+                        ),
+                        title: Text(
+                          product.productName,
+                          style: const TextStyle(
+                            color: Color(0xFF172554),
+                            fontSize: 16,
+                            fontFamily: 'Manrope',
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        subtitle: Text(
+                          _currencyFormat.format(product.price),
+                          style: const TextStyle(
+                            color: Color(0xFF94A3B8),
+                            fontSize: 14,
+                            fontFamily: 'Manrope',
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        trailing: const Icon(
+                          Icons.add_circle,
+                          color: Color(0xFF003178),
+                          size: 28,
+                        ),
+                        onTap: () => widget.onSelect(product),
+                      );
+                    },
                   ),
-                  subtitle: Text(
-                    _currencyFormat.format(product.price),
-                    style: const TextStyle(
-                      color: Color(0xFF94A3B8),
-                      fontSize: 14,
-                      fontFamily: 'Manrope',
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                  trailing: const Icon(
-                    Icons.add_circle,
-                    color: Color(0xFF003178),
-                    size: 28,
-                  ),
-                  onTap: () => onSelect(product),
-                );
-              },
-            ),
           ),
           SizedBox(height: MediaQuery.of(context).padding.bottom + 16),
         ],
