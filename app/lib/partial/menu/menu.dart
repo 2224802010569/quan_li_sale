@@ -90,6 +90,12 @@ class Menu extends StatelessWidget {
       module: 'LEAVE_MANAGER_HISTORY',
       roles: ['Manager'],
     ),
+    MenuConfig(
+      title: 'Báo cáo KPI',
+      icon: Icons.bar_chart,
+      module: 'KPI_MANAGER',
+      roles: ['Manager'],
+    ),
   ];
 
   void _navigate(BuildContext context, String module) {

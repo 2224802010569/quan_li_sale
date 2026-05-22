@@ -83,40 +83,34 @@ class _ManagerViewState extends State<ManagerView> {
       backgroundColor: const Color(0xFFF5F6FA),
       appBar: AppBar(title: const Text("Team")),
       body: SafeArea(
-        child: LayoutBuilder(
-          builder: (context, constraints) {
-            final horizontalPadding = constraints.maxWidth < 520 ? 16.0 : 24.0;
-            final maxWidth = constraints.maxWidth >= 900
-                ? 760.0
-                : constraints.maxWidth;
-            final listHeight = (constraints.maxHeight - 260).clamp(
-              220.0,
-              520.0,
-            );
-
-            return Align(
-              alignment: Alignment.topCenter,
-              child: ConstrainedBox(
-                constraints: BoxConstraints(maxWidth: maxWidth),
-                child: Padding(
-                  padding: EdgeInsets.all(horizontalPadding),
-                  child: loading
-                      ? const Center(child: CircularProgressIndicator())
-                      : error.isNotEmpty
-                      ? Center(child: Text(error))
-                      : ManagerCard(
-                          users: filtered,
-                          onSearch: searchCtrl,
-                          onTapUser: openProfile,
-                          onDeleteUser: confirmDeleteUser,
-                          deletingUserId: deletingUserId,
-                          onAdd: openAddUser,
-                          listHeight: listHeight,
-                        ),
-                ),
+        child: SingleChildScrollView(
+          child: Align(
+            alignment: Alignment.topCenter,
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 760),
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: loading
+                    ? const Padding(
+                        padding: EdgeInsets.all(32.0),
+                        child: Center(child: CircularProgressIndicator()),
+                      )
+                    : error.isNotEmpty
+                        ? Padding(
+                            padding: const EdgeInsets.all(32.0),
+                            child: Center(child: Text(error)),
+                          )
+                        : ManagerCard(
+                            users: filtered,
+                            onSearch: searchCtrl,
+                            onTapUser: openProfile,
+                            onDeleteUser: confirmDeleteUser,
+                            deletingUserId: deletingUserId,
+                            onAdd: openAddUser,
+                          ),
               ),
-            );
-          },
+            ),
+          ),
         ),
       ),
     );

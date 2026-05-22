@@ -8,7 +8,6 @@ class ManagerCard extends StatelessWidget {
   final Function(User) onDeleteUser;
   final String? deletingUserId;
   final VoidCallback onAdd;
-  final double listHeight;
 
   const ManagerCard({
     super.key,
@@ -18,7 +17,6 @@ class ManagerCard extends StatelessWidget {
     required this.onDeleteUser,
     this.deletingUserId,
     required this.onAdd,
-    required this.listHeight,
   });
 
   @override
@@ -65,72 +63,72 @@ class ManagerCard extends StatelessWidget {
           const SizedBox(height: 16),
 
           /// LIST
-          ConstrainedBox(
-            constraints: BoxConstraints(maxHeight: listHeight),
-            child: ListView.separated(
-              shrinkWrap: true,
-              itemCount: users.length,
-              separatorBuilder: (_, __) => const SizedBox(height: 12),
-              itemBuilder: (_, i) {
-                final u = users[i];
-                final deleting = deletingUserId == u.id;
+          /// LIST
+          ListView.separated(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            itemCount: users.length,
+            separatorBuilder: (_, __) => const SizedBox(height: 12),
+            itemBuilder: (_, i) {
+              final u = users[i];
+              final deleting = deletingUserId == u.id;
 
-                return Material(
-                  color: Colors.grey.shade100,
-                  borderRadius: BorderRadius.circular(8),
-                  child: Container(
-                    padding: const EdgeInsets.all(12),
-                    child: Row(
-                      children: [
-                        const CircleAvatar(
-                          radius: 20,
-                          child: Icon(Icons.person),
+              return Material(
+                color: Colors.grey.shade100,
+                borderRadius: BorderRadius.circular(8),
+                child: Container(
+                  padding: const EdgeInsets.all(12),
+                  child: Row(
+                    children: [
+                      CircleAvatar(
+                        radius: 20,
+                        backgroundImage: u.avatarUrl.isNotEmpty ? NetworkImage(u.avatarUrl) : null,
+                        child: u.avatarUrl.isEmpty ? const Icon(Icons.person) : null,
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              u.fullName,
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              u.phone,
+                              style: const TextStyle(color: Colors.grey),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ],
                         ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                u.fullName,
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.bold,
+                      ),
+                      IconButton(
+                        tooltip: "Xem hồ sơ",
+                        onPressed: () => onTapUser(u),
+                        icon: const Icon(Icons.chevron_right),
+                      ),
+                      IconButton(
+                        tooltip: "Xóa nhân viên",
+                        onPressed: deleting ? null : () => onDeleteUser(u),
+                        color: Colors.red,
+                        icon: deleting
+                            ? const SizedBox(
+                                width: 18,
+                                height: 18,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
                                 ),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                u.phone,
-                                style: const TextStyle(color: Colors.grey),
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ],
-                          ),
-                        ),
-                        IconButton(
-                          tooltip: "Xem hồ sơ",
-                          onPressed: () => onTapUser(u),
-                          icon: const Icon(Icons.chevron_right),
-                        ),
-                        IconButton(
-                          tooltip: "Xóa nhân viên",
-                          onPressed: deleting ? null : () => onDeleteUser(u),
-                          color: Colors.red,
-                          icon: deleting
-                              ? const SizedBox(
-                                  width: 18,
-                                  height: 18,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                  ),
-                                )
-                              : const Icon(Icons.delete_outline),
-                        ),
-                      ],
-                    ),
+                              )
+                            : const Icon(Icons.delete_outline),
+                      ),
+                    ],
                   ),
-                );
-              },
-            ),
+                ),
+              );
+            },
           ),
 
           const SizedBox(height: 20),

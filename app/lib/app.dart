@@ -13,6 +13,7 @@ import 'root/inventory_root.dart';
 import 'root/order_root.dart';
 import 'root/route_store_root.dart';
 import 'root/leave_root.dart';
+import 'root/kpi_root.dart';
 
 class AppState {
   final String module;
@@ -121,6 +122,9 @@ class MyAppState extends State<MyApp> {
 
       case 'LEAVE_MANAGER_HISTORY':
         return LeaveRoot().buildManagerHistory(handleOutput);
+
+      case 'KPI_MANAGER':
+        return KpiRoot().buildManagerDashboard(handleOutput);
 
       case 'TEST':
         return const MyHomePage(title: 'Test Module');

@@ -682,6 +682,13 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "0.3.1"
+  kpi_module:
+    dependency: "direct main"
+    description:
+      path: "../modules/kpi_module"
+      relative: true
+    source: path
+    version: "0.1.0+1"
   latlong2:
     dependency: transitive
     description:
