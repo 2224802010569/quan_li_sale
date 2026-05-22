@@ -266,13 +266,35 @@ class DailyRouteView extends ConsumerWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        route.routeName,
-                        style: const TextStyle(
-                          color: Color(0xFF1A1B21),
-                          fontSize: 20,
-                          fontWeight: FontWeight.w700,
-                        ),
+                      Row(
+                        children: [
+                          Text(
+                            route.routeName,
+                            style: const TextStyle(
+                              color: Color(0xFF1A1B21),
+                              fontSize: 20,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                          if (assignment.isSupport == 2) ...[
+                            const SizedBox(width: 8),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFFFDBCD),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: const Text(
+                                'SUPPORT',
+                                style: TextStyle(
+                                  color: Color(0xFF853100),
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ],
                       ),
                       Text(
                         '[$visitedStores/$totalStores] Cửa hàng đã hoàn thành',
@@ -322,10 +344,17 @@ class DailyRouteView extends ConsumerWidget {
               width: 48,
               height: 48,
               decoration: BoxDecoration(
-                color: const Color(0xFFFFDBCD),
+                color: assignment.isSupport == 2
+                    ? const Color(0xFFFFDBCD)
+                    : const Color(0xFFD9E2FF),
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: const Icon(Icons.support, color: Color(0xFF853100)),
+              child: Icon(
+                assignment.isSupport == 2 ? Icons.support : Icons.route,
+                color: assignment.isSupport == 2
+                    ? const Color(0xFF853100)
+                    : const Color(0xFF0D47A1),
+              ),
             ),
             const SizedBox(width: 16),
             Expanded(
@@ -340,10 +369,12 @@ class DailyRouteView extends ConsumerWidget {
                       fontWeight: FontWeight.w700,
                     ),
                   ),
-                  const Text(
-                    'SUPPORT',
+                  Text(
+                    assignment.isSupport == 2 ? 'SUPPORT' : 'CHÍNH',
                     style: TextStyle(
-                      color: Color(0xFF853100),
+                      color: assignment.isSupport == 2
+                          ? const Color(0xFF853100)
+                          : const Color(0xFF0D47A1),
                       fontSize: 12,
                       fontWeight: FontWeight.bold,
                     ),

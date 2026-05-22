@@ -68,6 +68,23 @@ class ApproveLeaveUc {
     // -------------------------------------------------------------------------
     await _leaveData.updateLeaveStatus(leaveId, decision, approverId);
 
+    // Tự động chuyển các tuyến đã giao cho nhân viên trong thời gian nghỉ sang tuyến hỗ trợ
+    if (decision == 'Approved') {
+      try {
+        final updatedRows = await _client
+            .from('assignments')
+            .update({'is_support': 2})
+            .eq('user_id', leave.userId)
+            .select();
+        
+        print('Updated assignments to support: $updatedRows');
+      } catch (e) {
+        throw Exception(
+          'ApproveLeaveUc: Lỗi khi chuyển đổi tuyến sang tuyến hỗ trợ. Chi tiết: $e',
+        );
+      }
+    }
+
     // -------------------------------------------------------------------------
     // Bước 6: Trả về entity đã được cập nhật
     // -------------------------------------------------------------------------

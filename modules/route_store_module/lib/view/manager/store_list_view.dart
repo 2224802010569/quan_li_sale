@@ -54,7 +54,14 @@ class StoreListView extends ConsumerWidget {
                             ),
                           ),
                           data: (stores) {
-                            if (stores.isEmpty) {
+                            final filteredStores = stores.where((store) {
+                              final query = searchQuery.trim().toLowerCase();
+                              if (query.isEmpty) return true;
+                              return store.storeName.toLowerCase().contains(query) ||
+                                     store.address.toLowerCase().contains(query);
+                            }).toList();
+
+                            if (filteredStores.isEmpty) {
                               return const Center(
                                 child: Padding(
                                   padding: EdgeInsets.only(top: 40),
@@ -65,12 +72,12 @@ class StoreListView extends ConsumerWidget {
                             return ListView.separated(
                               shrinkWrap: true,
                               physics: const NeverScrollableScrollPhysics(),
-                              itemCount: stores.length,
+                              itemCount: filteredStores.length,
                               separatorBuilder: (_, __) =>
                                   const SizedBox(height: 16),
                               itemBuilder: (context, index) {
                                 return _StoreCard(
-                                  store: stores[index],
+                                  store: filteredStores[index],
                                   onEdit: onEdit,
                                 );
                               },
