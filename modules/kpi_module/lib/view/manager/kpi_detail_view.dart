@@ -156,13 +156,15 @@ class _KpiDetailViewState extends ConsumerState<KpiDetailView> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          _buildSummaryItem('MỤC TIÊU', currencyFormat.format(r.targetRevenue), const Color(0xFF434651)),
-          _buildSummaryItem('THỰC ĐẠT', currencyFormat.format(r.actualRevenue), const Color(0xFF001D4E)),
-          _buildSummaryItem(
+          Expanded(child: _buildSummaryItem('MỤC TIÊU', currencyFormat.format(r.targetRevenue), const Color(0xFF434651))),
+          const SizedBox(width: 8),
+          Expanded(child: _buildSummaryItem('THỰC ĐẠT', currencyFormat.format(r.actualRevenue), const Color(0xFF001D4E))),
+          const SizedBox(width: 8),
+          Expanded(child: _buildSummaryItem(
             'TIẾN ĐỘ',
             '${r.percentCompleted.toStringAsFixed(1)}%',
             isComplete ? const Color(0xFF059669) : const Color(0xFFE6845D),
-          ),
+          )),
         ],
       ),
     );
@@ -220,39 +222,47 @@ class _KpiDetailViewState extends ConsumerState<KpiDetailView> {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: const BoxDecoration(
-                      color: Color(0xFFF3F3F3),
-                      shape: BoxShape.circle,
+              Expanded(
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: const BoxDecoration(
+                        color: Color(0xFFF3F3F3),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(Icons.receipt_long, color: Color(0xFF001D4E), size: 20),
                     ),
-                    child: const Icon(Icons.receipt_long, color: Color(0xFF001D4E), size: 20),
-                  ),
-                  const SizedBox(width: 16),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Đơn hàng #$id',
-                        style: const TextStyle(
-                          color: Color(0xFF001D4E),
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                        ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Đơn hàng #$id',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              color: Color(0xFF001D4E),
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            'Cửa hàng #$storeId • $date',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              color: Color(0xFF94A3B8),
+                              fontSize: 12,
+                            ),
+                          ),
+                        ],
                       ),
-                      const SizedBox(height: 4),
-                      Text(
-                        'Cửa hàng #$storeId • $date',
-                        style: const TextStyle(
-                          color: Color(0xFF94A3B8),
-                          fontSize: 12,
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
+                    ),
+                  ],
+                ),
               ),
               Text(
                 total,

@@ -20,7 +20,7 @@ class LeaveData {
     try {
       final response = await _client
           .from('leave_requests')
-          .select()
+          .select('*, users!leave_requests_user_id_fkey (full_name)')
           .eq('user_id', userId)
           .order('created_at', ascending: false);
 
@@ -39,7 +39,7 @@ class LeaveData {
     try {
       final response = await _client
           .from('leave_requests')
-          .select('*, users!leave_requests_user_id_fkey!inner(group_id)')
+          .select('*, users!leave_requests_user_id_fkey!inner(group_id, full_name)')
           .eq('users.group_id', groupId)
           .order('created_at', ascending: false);
 
@@ -56,7 +56,7 @@ class LeaveData {
     try {
       final response = await _client
           .from('leave_requests')
-          .select('*, users!leave_requests_user_id_fkey!inner(group_id)')
+          .select('*, users!leave_requests_user_id_fkey!inner(group_id, full_name)')
           .eq('users.group_id', groupId)
           .eq('status', LeaveStatus.pending.toDbString())
           .order('created_at', ascending: false);
@@ -74,7 +74,7 @@ class LeaveData {
     try {
       final response = await _client
           .from('leave_requests')
-          .select()
+          .select('*, users!leave_requests_user_id_fkey (full_name)')
           .eq('id', id)
           .single();
 
@@ -141,7 +141,7 @@ class LeaveData {
 
       final response = await _client
           .from('leave_requests')
-          .select()
+          .select('*, users!leave_requests_user_id_fkey (full_name)')
           .eq('user_id', userId)
           .gte('start_date', startOfYear)
           .lte('start_date', endOfYear)

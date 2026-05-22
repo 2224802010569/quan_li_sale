@@ -6,6 +6,7 @@ import 'package:core/storage/app_storage.dart';
 import '../../../logic_data/order_data.dart';
 import '../../../entity/order.dart';
 import '../../widgets/order_history_card.dart';
+import 'package:core/theme/theme.dart';
 
 class OrderHistoryView extends StatefulWidget {
   final OrderData orderData;
@@ -40,14 +41,6 @@ class _OrderHistoryViewState extends State<OrderHistoryView> {
   String? _selectedSaleId;
   bool _isInitLoading = true;
 
-  final _currencyFormat = NumberFormat.currency(
-    locale: 'vi_VN',
-    symbol: 'đ',
-    decimalDigits: 0,
-  );
-
-  final _dateFormat = DateFormat('dd/MM/yyyy – HH:mm');
-
   @override
   void initState() {
     super.initState();
@@ -57,7 +50,6 @@ class _OrderHistoryViewState extends State<OrderHistoryView> {
   Future<void> _initData() async {
     String? effectiveGroupId = widget.groupId;
 
-    // Fallback: nếu groupId null, thử lấy từ AppStorage
     if (widget.role == 'Manager' && effectiveGroupId == null) {
       try {
         final user = get<AppStorage>().get<Map<String, dynamic>>('user');
@@ -67,8 +59,6 @@ class _OrderHistoryViewState extends State<OrderHistoryView> {
       }
     }
 
-    debugPrint('[OrderHistoryView] groupId = $effectiveGroupId');
-
     if (widget.role == 'Manager' && effectiveGroupId != null) {
       try {
         _teamSales = await widget.orderData.getSalesInGroup(effectiveGroupId);
@@ -77,9 +67,6 @@ class _OrderHistoryViewState extends State<OrderHistoryView> {
         debugPrint('[OrderHistoryView] Lỗi khi load teamSales: $e');
       }
     }
-
-    debugPrint('[OrderHistoryView] _teamSales.length = ${_teamSales.length}');
-    debugPrint('[OrderHistoryView] _teamSaleIds = $_teamSaleIds');
 
     setState(() {
       _isInitLoading = false;
@@ -93,10 +80,8 @@ class _OrderHistoryViewState extends State<OrderHistoryView> {
       _errorMessage = null;
     });
     try {
-      // Manager: chỉ dùng _selectedSaleId khi chọn cụ thể 1 nhân viên
-      // Không dùng widget.userId làm fallback — sẽ gây filter sai thành manager_id
       final String? filterUserId = widget.role == 'Manager'
-          ? _selectedSaleId  // null = "Tất cả" → dùng userIds
+          ? _selectedSaleId
           : (_selectedSaleId ?? widget.userId);
 
       final response = await widget.orderData.getOrderHistory(
@@ -119,32 +104,22 @@ class _OrderHistoryViewState extends State<OrderHistoryView> {
     }
   }
 
-  Future<void> _openPdf(String url) async {
-    final uri = Uri.parse(url);
-    if (await canLaunchUrl(uri)) {
-      await launchUrl(uri, mode: LaunchMode.externalApplication);
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF9F9F9),
+      backgroundColor: AppColors.background,
       appBar: AppBar(
-        backgroundColor: const Color(0xFFF9F9F9),
+        backgroundColor: AppColors.white,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Color(0xFF172554)),
+          icon: const Icon(Icons.arrow_back_ios_new_rounded, color: AppColors.onSurface, size: 20),
           onPressed: widget.onBack,
         ),
-        title: const Text(
+        title: Text(
           'Lịch sử đơn hàng',
-          style: TextStyle(
-            color: Color(0xFF172554),
-            fontSize: 24,
-            fontFamily: 'Manrope',
+          style: AppTextStyles.headlineSm.copyWith(
+            color: AppColors.primary,
             fontWeight: FontWeight.w700,
-            letterSpacing: -1.20,
           ),
         ),
         centerTitle: false,
@@ -155,10 +130,11 @@ class _OrderHistoryViewState extends State<OrderHistoryView> {
 
   Widget _buildBody() {
     if (_isInitLoading) {
-      return const Center(child: CircularProgressIndicator(color: Color(0xFF003178)));
+      return const Center(child: CircularProgressIndicator(color: AppColors.secondary));
     }
 
     return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         if (widget.role == 'Manager')
           _buildFilterDropdown(),
@@ -178,7 +154,10 @@ class _OrderHistoryViewState extends State<OrderHistoryView> {
 
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.containerMargin,
+        vertical: AppSpacing.md,
+      ),
       child: Row(
         children: months.map((m) {
           final isSelected = _selectedMonth.year == m.year && _selectedMonth.month == m.month;
@@ -187,7 +166,7 @@ class _OrderHistoryViewState extends State<OrderHistoryView> {
               : 'Tháng ${m.month}/${m.year}';
           
           return Padding(
-            padding: const EdgeInsets.only(right: 12),
+            padding: const EdgeInsets.only(right: 8),
             child: GestureDetector(
               onTap: () {
                 setState(() {
@@ -198,15 +177,14 @@ class _OrderHistoryViewState extends State<OrderHistoryView> {
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                 decoration: BoxDecoration(
-                  color: isSelected ? const Color(0xFF001D4E) : Colors.transparent,
-                  borderRadius: BorderRadius.circular(20),
-                  border: isSelected ? null : Border.all(color: const Color(0xFFCBD5E1)),
+                  color: isSelected ? AppColors.primary : AppColors.white,
+                  borderRadius: BorderRadius.circular(AppSpacing.radiusFull),
+                  border: isSelected ? null : Border.all(color: AppColors.outlineVariant, width: 1),
                 ),
                 child: Text(
                   title,
-                  style: TextStyle(
-                    color: isSelected ? Colors.white : const Color(0xFF434651),
-                    fontFamily: 'Manrope',
+                  style: AppTextStyles.labelLg.copyWith(
+                    color: isSelected ? AppColors.white : AppColors.onSurfaceVariant,
                     fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
                   ),
                 ),
@@ -220,55 +198,58 @@ class _OrderHistoryViewState extends State<OrderHistoryView> {
 
   Widget _buildFilterDropdown() {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
-      child: Container(
-        padding: const EdgeInsets.all(16.0),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'LỌC NHÂN VIÊN',
-              style: TextStyle(fontSize: 10, color: Colors.grey, fontWeight: FontWeight.bold),
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.containerMargin,
+        vertical: AppSpacing.md,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'LỌC NHÂN VIÊN',
+            style: AppTextStyles.labelLg.copyWith(
+              color: AppColors.onSurfaceVariant,
+              fontWeight: FontWeight.bold,
             ),
-            const SizedBox(height: 8),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12),
-              decoration: BoxDecoration(
-                color: const Color(0xFFF4F6FA),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: DropdownButtonHideUnderline(
-                child: DropdownButton<String?>(
-                  isExpanded: true,
-                  value: _selectedSaleId,
-                  icon: const Icon(Icons.keyboard_arrow_down, color: Colors.grey),
-                  items: [
-                    const DropdownMenuItem<String?>(
-                      value: null,
-                      child: Text('Tất cả nhân viên', style: TextStyle(fontWeight: FontWeight.w500)),
-                    ),
-                    ..._teamSales.map((sale) {
-                      return DropdownMenuItem<String?>(
-                        value: sale['id'],
-                        child: Text(sale['full_name'] ?? 'Không tên', style: const TextStyle(fontWeight: FontWeight.w500)),
-                      );
-                    }),
-                  ],
-                  onChanged: (val) {
-                    setState(() {
-                      _selectedSaleId = val;
-                    });
-                    _loadHistory();
-                  },
-                ),
+          ),
+          const SizedBox(height: 8),
+          Container(
+            height: 48,
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            decoration: BoxDecoration(
+              color: AppColors.white,
+              borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
+              border: Border.all(color: AppColors.outlineVariant, width: 1),
+            ),
+            child: DropdownButtonHideUnderline(
+              child: DropdownButton<String?>(
+                isExpanded: true,
+                value: _selectedSaleId,
+                icon: const Icon(Icons.keyboard_arrow_down_rounded, color: AppColors.onSurfaceVariant),
+                dropdownColor: AppColors.white,
+                style: AppTextStyles.bodyMd.copyWith(color: AppColors.onSurface),
+                items: [
+                  DropdownMenuItem<String?>(
+                    value: null,
+                    child: Text('Tất cả nhân viên', style: AppTextStyles.bodyMd.copyWith(fontWeight: FontWeight.w500)),
+                  ),
+                  ..._teamSales.map((sale) {
+                    return DropdownMenuItem<String?>(
+                      value: sale['id'],
+                      child: Text(sale['full_name'] ?? 'Không tên', style: AppTextStyles.bodyMd.copyWith(fontWeight: FontWeight.w500)),
+                    );
+                  }),
+                ],
+                onChanged: (val) {
+                  setState(() {
+                    _selectedSaleId = val;
+                  });
+                  _loadHistory();
+                },
               ),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -276,7 +257,7 @@ class _OrderHistoryViewState extends State<OrderHistoryView> {
   Widget _buildContent() {
     if (_isLoading) {
       return const Center(
-        child: CircularProgressIndicator(color: Color(0xFF003178)),
+        child: CircularProgressIndicator(color: AppColors.secondary),
       );
     }
 
@@ -287,25 +268,21 @@ class _OrderHistoryViewState extends State<OrderHistoryView> {
           children: [
             Text(
               _errorMessage!,
-              style: const TextStyle(
-                color: Color(0xFF434651),
-                fontSize: 16,
-                fontFamily: 'Manrope',
-              ),
+              style: AppTextStyles.bodyLg.copyWith(color: AppColors.onSurfaceVariant),
             ),
             const SizedBox(height: 16),
             ElevatedButton(
               onPressed: _loadHistory,
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF003178),
-                foregroundColor: Colors.white,
+                backgroundColor: AppColors.primary,
+                foregroundColor: AppColors.white,
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
+                  borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
                 ),
               ),
-              child: const Text(
+              child: Text(
                 'Thử lại',
-                style: TextStyle(fontFamily: 'Manrope', fontWeight: FontWeight.w600),
+                style: AppTextStyles.labelLg.copyWith(fontWeight: FontWeight.bold, color: AppColors.white),
               ),
             ),
           ],
@@ -322,22 +299,20 @@ class _OrderHistoryViewState extends State<OrderHistoryView> {
               width: 80,
               height: 80,
               decoration: BoxDecoration(
-                color: const Color(0xFFF3F3F3),
+                color: AppColors.surfaceContainerLow,
                 borderRadius: BorderRadius.circular(24),
               ),
               child: const Icon(
                 Icons.receipt_long_outlined,
                 size: 40,
-                color: Color(0xFF94A3B8),
+                color: AppColors.outlineVariant,
               ),
             ),
             const SizedBox(height: 16),
-            const Text(
+            Text(
               'Chưa có đơn hàng nào',
-              style: TextStyle(
-                color: Color(0xFF434651),
-                fontSize: 16,
-                fontFamily: 'Manrope',
+              style: AppTextStyles.bodyLg.copyWith(
+                color: AppColors.onSurfaceVariant,
                 fontWeight: FontWeight.w500,
               ),
             ),
@@ -347,14 +322,17 @@ class _OrderHistoryViewState extends State<OrderHistoryView> {
     }
 
     return RefreshIndicator(
-      color: const Color(0xFF003178),
+      color: AppColors.secondary,
       onRefresh: () async {
         await _loadHistory();
       },
       child: ListView.separated(
-        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.containerMargin,
+          vertical: AppSpacing.lg,
+        ),
         itemCount: _orders.length,
-        separatorBuilder: (_, _) => const SizedBox(height: 12),
+        separatorBuilder: (_, _) => const SizedBox(height: AppSpacing.stackGap),
         itemBuilder: (context, index) => _buildOrderCard(_orders[index]),
       ),
     );

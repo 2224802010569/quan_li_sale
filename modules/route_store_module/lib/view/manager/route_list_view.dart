@@ -8,6 +8,7 @@ import 'package:route_store_module/view/manager/route_detail_view.dart';
 import 'package:route_store_module/view/manager/delete_route_confirm.dart';
 import 'package:core/di/injector.dart';
 import 'package:core/storage/app_storage.dart';
+import 'package:core/theme/theme.dart';
 
 final routeSearchQueryProvider = StateProvider<String>((ref) => '');
 
@@ -15,9 +16,9 @@ class RouteListView extends ConsumerWidget {
   final VoidCallback? onAdd;
   final Function(RouteEntity)? onEdit;
   final Function(RouteEntity)? onView;
+  final VoidCallback? onBack;
 
-  const RouteListView({Key? key, this.onAdd, this.onEdit, this.onView})
-    : super(key: key);
+  const RouteListView({super.key, this.onAdd, this.onEdit, this.onView, this.onBack});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -29,181 +30,136 @@ class RouteListView extends ConsumerWidget {
     final searchQuery = ref.watch(routeSearchQueryProvider);
 
     return Scaffold(
-      backgroundColor: const Color(0xFFFAF8FF),
-      body: Stack(
-        children: [
-          // ==================== LIST CONTENT ====================
-          Positioned.fill(
-            child: Column(
-              children: [
-                const SizedBox(height: 80),
-                Expanded(
-                  child: RefreshIndicator(
-                    onRefresh: () async {
-                      ref.invalidate(realtimeRoutesProvider);
-                      ref.invalidate(realtimeAllAssignmentsProvider);
-                      ref.invalidate(routeListWithInfoProvider);
-                      // Đợi 1 chút để UI kịp rebuild với dữ liệu mới
-                      await Future.delayed(const Duration(milliseconds: 500));
-                    },
-                    child: SingleChildScrollView(
-                      physics: const AlwaysScrollableScrollPhysics(),
-                      padding: const EdgeInsets.all(24),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          // Search bar placeholder
-                          _buildSearchBar(ref),
-                          const SizedBox(height: 24),
+      backgroundColor: AppColors.background,
+      appBar: AppBar(
+        backgroundColor: AppColors.white,
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios_new_rounded, color: AppColors.onSurface, size: 20),
+          onPressed: () {
+            if (onBack != null) {
+              onBack!();
+            } else {
+              Navigator.maybePop(context);
+            }
+          },
+        ),
+        title: Text(
+          'Quản lý tuyến',
+          style: AppTextStyles.headlineSm.copyWith(
+            color: AppColors.primary,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+        centerTitle: false,
+      ),
+      body: RefreshIndicator(
+        color: AppColors.secondary,
+        onRefresh: () async {
+          ref.invalidate(realtimeRoutesProvider);
+          ref.invalidate(realtimeSaleUsersProvider);
+          ref.invalidate(routeListWithInfoProvider);
+        },
+        child: SingleChildScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: const EdgeInsets.fromLTRB(
+            AppSpacing.containerMargin,
+            AppSpacing.lg,
+            AppSpacing.containerMargin,
+            AppSpacing.lg,
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildSearchBar(ref),
+              const SizedBox(height: AppSpacing.lg),
 
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              const Text(
-                                'Tất cả lộ trình',
-                                style: TextStyle(
-                                  color: Color(0xFF1A1B21),
-                                  fontSize: 18,
-                                  fontFamily: 'Manrope',
-                                  fontWeight: FontWeight.w800,
-                                ),
-                              ),
-                              IconButton(
-                                icon: const Icon(Icons.filter_list, size: 20),
-                                onPressed: () {},
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 16),
-
-                          routeInfoAsync.when(
-                            loading: () => const Center(
-                              child: Padding(
-                                padding: EdgeInsets.only(top: 40),
-                                child: CircularProgressIndicator(),
-                              ),
-                            ),
-                            error: (err, _) => Center(child: Text('Lỗi: $err')),
-                            data: (items) {
-                              // Chỉ lọc hiển thị các tuyến do Manager hiện tại tạo
-                              var myRoutes = items
-                                  .where(
-                                    (item) =>
-                                        item.route.createdBy == currentUserId,
-                                  )
-                                  .toList();
-
-                              if (searchQuery.trim().isNotEmpty) {
-                                final query = searchQuery.trim().toLowerCase();
-                                myRoutes = myRoutes
-                                    .where(
-                                      (item) => item.route.routeName
-                                          .toLowerCase()
-                                          .contains(query),
-                                    )
-                                    .toList();
-                              }
-
-                              if (myRoutes.isEmpty) {
-                                return const Center(
-                                  child: Padding(
-                                    padding: EdgeInsets.only(top: 40),
-                                    child: Text('Chưa có lộ trình nào.'),
-                                  ),
-                                );
-                              }
-
-                              return ListView.separated(
-                                shrinkWrap: true,
-                                physics: const NeverScrollableScrollPhysics(),
-                                padding: EdgeInsets.zero,
-                                itemCount: myRoutes.length,
-                                separatorBuilder: (_, __) =>
-                                    const SizedBox(height: 16),
-                                itemBuilder: (context, index) {
-                                  return _RouteCard(
-                                    info: myRoutes[index],
-                                    onView: onView,
-                                    onEdit: onEdit,
-                                  );
-                                },
-                              );
-                            },
-                          ),
-                          const SizedBox(height: 100),
-                        ],
-                      ),
+              // Filter row
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'Tất cả lộ trình',
+                    style: AppTextStyles.labelLg.copyWith(
+                      color: AppColors.onSurface,
+                      fontWeight: FontWeight.w800,
                     ),
                   ),
-                ),
-              ],
-            ),
-          ),
-
-          // ==================== APP BAR ====================
-          Positioned(
-            left: 0,
-            top: 0,
-            right: 0,
-            child: Container(
-              height: 80,
-              decoration: const BoxDecoration(
-                color: Color(0xD8FAF8FF),
-                boxShadow: [
-                  BoxShadow(
-                    color: Color(0x0F1A1B21),
-                    blurRadius: 32,
-                    offset: Offset(0, 12),
-                    spreadRadius: 0,
+                  IconButton(
+                    icon: const Icon(
+                      Icons.filter_list_rounded,
+                      size: 20,
+                      color: AppColors.onSurfaceVariant,
+                    ),
+                    onPressed: () {},
                   ),
                 ],
               ),
-              child: SafeArea(
-                bottom: false,
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 24),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Text(
-                        'Quản lý tuyến',
-                        style: TextStyle(
-                          color: Color(0xFF0D47A1),
-                          fontSize: 22,
-                          fontFamily: 'Manrope',
-                          fontWeight: FontWeight.w700,
-                          letterSpacing: -0.55,
-                        ),
-                      ),
-                      IconButton(
-                        onPressed: () {
-                          ref.invalidate(realtimeRoutesProvider);
-                          ref.invalidate(realtimeSaleUsersProvider);
-                          ref.invalidate(routeListWithInfoProvider);
-                        },
-                        icon: const Icon(
-                          Icons.refresh,
-                          color: Color(0xFF0D47A1),
-                        ),
-                      ),
-                    ],
+              const SizedBox(height: AppSpacing.md),
+
+              routeInfoAsync.when(
+                loading: () => const Center(
+                  child: Padding(
+                    padding: EdgeInsets.only(top: 40),
+                    child: CircularProgressIndicator(color: AppColors.secondary),
                   ),
                 ),
-              ),
-            ),
-          ),
+                error: (err, _) => Center(
+                  child: Text(
+                    'Lỗi: $err',
+                    style: AppTextStyles.bodyLg.copyWith(color: AppColors.error),
+                  ),
+                ),
+                data: (items) {
+                  var myRoutes = items.where((item) => item.route.createdBy == currentUserId).toList();
 
-          // ==================== FAB ====================
-          Positioned(
-            right: 24,
-            bottom: 24,
-            child: FloatingActionButton(
-              onPressed: onAdd,
-              backgroundColor: const Color(0xFF0D47A1),
-              child: const Icon(Icons.add, color: Colors.white),
-            ),
+                  if (searchQuery.trim().isNotEmpty) {
+                    final query = searchQuery.trim().toLowerCase();
+                    myRoutes = myRoutes.where((item) => item.route.routeName.toLowerCase().contains(query)).toList();
+                  }
+
+                  if (myRoutes.isEmpty) {
+                    return _buildEmptyState();
+                  }
+
+                  return Column(
+                    children: [
+                      ...myRoutes.asMap().entries.map((entry) {
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 12),
+                          child: _RouteCard(
+                            info: entry.value,
+                            onView: onView,
+                            onEdit: onEdit,
+                          ),
+                        );
+                      }),
+                    ],
+                  );
+                },
+              ),
+              const SizedBox(height: 100),
+            ],
           ),
-        ],
+        ),
+      ),
+      floatingActionButton: Container(
+        width: 52,
+        height: 52,
+        margin: const EdgeInsets.only(bottom: 16, right: 8),
+        decoration: BoxDecoration(
+          color: AppColors.primary,
+          shape: BoxShape.circle,
+          boxShadow: AppShadows.level3,
+        ),
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            borderRadius: BorderRadius.circular(AppSpacing.radiusFull),
+            onTap: onAdd,
+            child: const Icon(Icons.add_rounded, color: AppColors.white, size: 24),
+          ),
+        ),
       ),
     );
   }
@@ -211,28 +167,58 @@ class RouteListView extends ConsumerWidget {
   Widget _buildSearchBar(WidgetRef ref) {
     return Container(
       width: double.infinity,
-      height: 56,
-      padding: const EdgeInsets.only(left: 48, right: 16),
-      decoration: ShapeDecoration(
-        color: Colors.white,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        shadows: const [
-          BoxShadow(
-            color: Color(0x0C000000),
-            blurRadius: 2,
-            offset: Offset(0, 1),
-            spreadRadius: 0,
-          ),
-        ],
+      height: 48,
+      decoration: BoxDecoration(
+        color: AppColors.white,
+        borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
+        boxShadow: AppShadows.level1,
       ),
       child: TextField(
         onChanged: (value) => ref.read(routeSearchQueryProvider.notifier).state = value,
-        decoration: const InputDecoration(
+        style: AppTextStyles.bodyLg.copyWith(color: AppColors.onSurface),
+        decoration: InputDecoration(
           hintText: 'Tìm kiếm tuyến đường...',
-          hintStyle: TextStyle(color: Color(0x99737783), fontSize: 16),
+          hintStyle: AppTextStyles.bodyLg.copyWith(color: AppColors.onSurfaceVariant),
           border: InputBorder.none,
-          icon: Icon(Icons.search, color: Color(0x99737783)),
+          contentPadding: const EdgeInsets.symmetric(vertical: 12),
+          prefixIcon: const Icon(Icons.search_rounded, color: AppColors.onSurfaceVariant, size: 20),
         ),
+      ),
+    );
+  }
+
+  Widget _buildEmptyState() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceContainerLow,
+        borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
+        border: Border.all(
+          color: AppColors.outlineVariant,
+          width: 1.5,
+        ),
+      ),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const Icon(Icons.alt_route_rounded, size: 40, color: AppColors.outlineVariant),
+          const SizedBox(height: 12),
+          Text(
+            'Chưa có lộ trình nào',
+            style: AppTextStyles.bodyLg.copyWith(
+              color: AppColors.onSurfaceVariant,
+              fontWeight: FontWeight.w500,
+            ),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'Nhấn nút + bên dưới để tạo lộ trình mới',
+            style: AppTextStyles.bodyMd.copyWith(color: AppColors.onSurfaceVariant),
+            textAlign: TextAlign.center,
+          ),
+        ],
       ),
     );
   }
@@ -243,41 +229,20 @@ class _RouteCard extends ConsumerWidget {
   final Function(RouteEntity)? onView;
   final Function(RouteEntity)? onEdit;
 
-  const _RouteCard({Key? key, required this.info, this.onView, this.onEdit})
-    : super(key: key);
-
-  String _formatDateTime(DateTime? dt) {
-    if (dt == null) return 'Không có dữ liệu';
-    final days = [
-      'Thứ 2',
-      'Thứ 3',
-      'Thứ 4',
-      'Thứ 5',
-      'Thứ 6',
-      'Thứ 7',
-      'Chủ nhật',
-    ];
-    final dayStr = days[dt.weekday - 1];
-    final hour = dt.hour;
-    final minute = dt.minute.toString().padLeft(2, '0');
-    final ampm = hour >= 12 ? 'PM' : 'AM';
-    final hour12 = hour > 12 ? hour - 12 : (hour == 0 ? 12 : hour);
-    final hourStr = hour12.toString().padLeft(2, '0');
-    return '$dayStr, $hourStr:$minute $ampm';
-  }
+  const _RouteCard({required this.info, this.onView, this.onEdit});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final route = info.route;
     final assignment = info.assignment;
     final saleUser = info.saleUser;
+    final isAssigned = assignment != null;
 
     return GestureDetector(
       onTap: () {
         if (onView != null) {
           onView!(route);
         } else {
-          // Fallback: push RouteDetailView nội bộ
           Navigator.push(
             context,
             MaterialPageRoute(builder: (_) => RouteDetailView(route: route)),
@@ -285,238 +250,179 @@ class _RouteCard extends ConsumerWidget {
         }
       },
       child: Container(
-        padding: const EdgeInsets.all(20),
-        decoration: ShapeDecoration(
-          color: Colors.white,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(24),
-          ),
-          shadows: const [
-            BoxShadow(
-              color: Color(0x0A1A1B21),
-              blurRadius: 32,
-              offset: Offset(0, 12),
-            ),
-          ],
+        padding: const EdgeInsets.all(AppSpacing.lg),
+        decoration: BoxDecoration(
+          color: AppColors.white,
+          borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
+          boxShadow: AppShadows.level1,
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Route Header
+            // ── Header row: Route name + Badge + Delete ──
             Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        route.routeName,
-                        style: const TextStyle(
-                          color: Color(0xFF0D47A1),
-                          fontSize: 18,
-                          fontFamily: 'Manrope',
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Row(
-                        children: [
-                          const Icon(
-                            Icons.access_time,
-                            size: 14,
-                            color: Color(0xFF434652),
-                          ),
-                          const SizedBox(width: 4),
-                          Text(
-                            _formatDateTime(route.createdAt),
-                            style: const TextStyle(
-                              color: Color(0xFF434652),
-                              fontSize: 12,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
+                  child: Text(
+                    route.routeName,
+                    style: AppTextStyles.bodyLg.copyWith(
+                      color: AppColors.onSurface,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                 ),
-                Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 4,
-                      ),
-                      decoration: BoxDecoration(
-                        color: assignment != null
-                            ? (assignment.isSupport == 2
-                                ? const Color(0xFFBA1A1A) // Màu đỏ cho SUPPORT
-                                : const Color(0xFF0D47A1))
-                            : Colors.grey,
-                        borderRadius: BorderRadius.circular(9999),
-                      ),
-                      child: Text(
-                        assignment != null
-                            ? (assignment.isSupport == 2 ? 'SUPPORT' : 'ASSIGNED')
-                            : 'OPEN',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 10,
-                          fontWeight: FontWeight.w600,
-                          letterSpacing: 0.5,
-                        ),
-                      ),
+                const SizedBox(width: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: isAssigned ? AppColors.surfaceContainer : AppColors.surfaceContainerHigh,
+                    borderRadius: BorderRadius.circular(AppSpacing.radiusFull),
+                  ),
+                  child: Text(
+                    isAssigned ? 'ASSIGNED' : 'OPEN',
+                    style: AppTextStyles.labelMd.copyWith(
+                      color: isAssigned ? AppColors.secondary : AppColors.onSurfaceVariant,
+                      fontWeight: FontWeight.w600,
                     ),
-                    const SizedBox(width: 8),
-                    IconButton(
-                      icon: const Icon(
-                        Icons.delete_outline,
-                        color: Color(0xFFBA1A1A),
-                        size: 20,
+                  ),
+                ),
+                const SizedBox(width: 4),
+                IconButton(
+                  icon: const Icon(Icons.delete_outline_rounded, color: AppColors.error, size: 20),
+                  constraints: const BoxConstraints(),
+                  padding: const EdgeInsets.all(8),
+                  onPressed: () async {
+                    final deleted = await showDialog<bool>(
+                      context: context,
+                      builder: (_) => DeleteConfirmationDialog(
+                        routeId: route.id,
+                        routeName: route.routeName,
                       ),
-                      constraints: const BoxConstraints(),
-                      padding: EdgeInsets.zero,
-                      onPressed: () async {
-                        final deleted = await showDialog<bool>(
-                          context: context,
-                          builder: (_) => DeleteConfirmationDialog(
-                            routeId: route.id,
-                            routeName: route.routeName,
-                          ),
-                        );
-                        if (deleted == true) {
-                          ref.invalidate(realtimeRoutesProvider);
-                          ref.invalidate(routeListWithInfoProvider);
-                        }
-                      },
-                    ),
-                  ],
+                    );
+                    if (deleted == true) {
+                      ref.invalidate(realtimeRoutesProvider);
+                      ref.invalidate(routeListWithInfoProvider);
+                    }
+                  },
                 ),
               ],
             ),
-            const SizedBox(height: 16),
 
-            // Assignment Info
-            if (saleUser != null)
+            const SizedBox(height: AppSpacing.md),
+            const Divider(color: AppColors.outlineVariant, height: 1),
+            const SizedBox(height: AppSpacing.md),
+
+            // ── Agent row ──
+            if (saleUser != null) ...[
               Row(
                 children: [
                   CircleAvatar(
                     radius: 16,
-                    backgroundColor: const Color(0xFFD9E2FF),
+                    backgroundColor: AppColors.surfaceContainerHigh,
                     child: Text(
                       (saleUser['full_name'] ?? 'S')[0].toUpperCase(),
-                      style: const TextStyle(
-                        color: Color(0xFF0D47A1),
-                        fontSize: 12,
-                      ),
+                      style: AppTextStyles.labelLg.copyWith(color: AppColors.secondary),
                     ),
                   ),
-                  const SizedBox(width: 12),
-                  Text(
-                    saleUser['full_name'] ?? 'Unknown',
-                    style: const TextStyle(
-                      color: Color(0xFF1A1B21),
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                    ),
+                  const SizedBox(width: 10),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        saleUser['full_name'] ?? 'Unknown',
+                        style: AppTextStyles.bodyMd.copyWith(
+                          color: AppColors.onSurface,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      Text(
+                        'Nhân viên kinh doanh',
+                        style: AppTextStyles.caption.copyWith(color: AppColors.onSurfaceVariant),
+                      ),
+                    ],
                   ),
                 ],
-              )
-            else
-              const Text(
+              ),
+            ] else ...[
+              Text(
                 'Chưa phân công',
-                style: TextStyle(
-                  color: Colors.grey,
-                  fontSize: 14,
+                style: AppTextStyles.bodyMd.copyWith(
+                  color: AppColors.onSurfaceVariant,
                   fontStyle: FontStyle.italic,
                 ),
               ),
+            ],
 
-            const SizedBox(height: 16),
+            const SizedBox(height: AppSpacing.md),
 
-            // Progress Bar
-            Column(
+            // ── Progress bar ──
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Text(
-                      'Tiến độ hoàn thành',
-                      style: TextStyle(color: Color(0xFF434652), fontSize: 12),
-                    ),
-                    Text(
-                      '${(info.progress * 100).toInt()}%',
-                      style: const TextStyle(
-                        color: Color(0xFF003178),
-                        fontSize: 10,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ],
+                Text(
+                  'Tiến độ viếng thăm',
+                  style: AppTextStyles.labelMd.copyWith(color: AppColors.onSurfaceVariant),
                 ),
-                const SizedBox(height: 8),
-                LinearProgressIndicator(
-                  value: info.progress,
-                  backgroundColor: const Color(0xFFE8E7F0),
-                  color: const Color(0xFF0D47A1),
-                  minHeight: 6,
-                  borderRadius: BorderRadius.circular(9999),
+                Text(
+                  '${(info.progress * 100).toInt()}%',
+                  style: AppTextStyles.labelMd.copyWith(
+                    color: AppColors.secondary,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
               ],
             ),
+            const SizedBox(height: 6),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(3),
+              child: LinearProgressIndicator(
+                value: info.progress,
+                backgroundColor: AppColors.surfaceContainerHigh,
+                color: AppColors.secondary,
+                minHeight: 6,
+              ),
+            ),
 
-            // ==================== ACTION BUTTONS ====================
-            const SizedBox(height: 16),
-            const Divider(height: 1, color: Color(0xFFF0F0F8)),
-            const SizedBox(height: 12),
+            const SizedBox(height: AppSpacing.md),
+
+            // ── Action buttons ──
             Row(
               children: [
-                // Chỉnh sửa / gán cửa hàng
                 Expanded(
-                  child: OutlinedButton(
-                    onPressed: onEdit != null ? () => onEdit!(route) : null,
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: const Color(0xFF0D47A1),
-                      side: const BorderSide(color: Color(0xFF0D47A1)),
-                      padding: const EdgeInsets.symmetric(vertical: 8),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
+                  child: SizedBox(
+                    height: 40,
+                    child: OutlinedButton.icon(
+                      onPressed: onEdit != null ? () => onEdit!(route) : null,
+                      icon: const Icon(Icons.edit_outlined, size: 14),
+                      label: Text('Sửa', style: AppTextStyles.labelMd.copyWith(fontWeight: FontWeight.w600)),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: AppColors.onSurface,
+                        side: const BorderSide(color: AppColors.outlineVariant, width: 1),
+                        padding: EdgeInsets.zero,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
+                        ),
                       ),
-                    ),
-                    child: const Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(Icons.edit, size: 14),
-                        SizedBox(width: 4),
-                        Text('Sửa', style: TextStyle(fontSize: 12)),
-                      ],
                     ),
                   ),
                 ),
-                const SizedBox(width: 12),
-                // Phân công tuyến cho nhân viên trực tiếp
+                const SizedBox(width: 10),
                 Expanded(
-                  child: ElevatedButton(
-                    onPressed: () =>
-                        _showAssignmentBottomSheet(context, ref, info),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF0D47A1),
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 8),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
+                  child: SizedBox(
+                    height: 40,
+                    child: ElevatedButton.icon(
+                      onPressed: () => _showAssignmentBottomSheet(context, ref, info),
+                      icon: const Icon(Icons.person_add_outlined, size: 14),
+                      label: Text('Phân công', style: AppTextStyles.labelMd.copyWith(fontWeight: FontWeight.w600, color: AppColors.white)),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.primary,
+                        foregroundColor: AppColors.white,
+                        elevation: 0,
+                        padding: EdgeInsets.zero,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
+                        ),
                       ),
-                      elevation: 0,
-                    ),
-                    child: const Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(Icons.assignment_ind, size: 14),
-                        SizedBox(width: 4),
-                        Text('Phân công', style: TextStyle(fontSize: 12)),
-                      ],
                     ),
                   ),
                 ),
@@ -528,12 +434,7 @@ class _RouteCard extends ConsumerWidget {
     );
   }
 
-  void _showAssignmentBottomSheet(
-    BuildContext context,
-    WidgetRef ref,
-    RouteWithInfo info,
-  ) {
-    // Invalidate để đảm bảo nhân viên mới thêm được cập nhật ngay lập tức
+  void _showAssignmentBottomSheet(BuildContext context, WidgetRef ref, RouteWithInfo info) {
     ref.invalidate(realtimeSaleUsersProvider);
 
     final storage = get<AppStorage>();
@@ -544,42 +445,51 @@ class _RouteCard extends ConsumerWidget {
     showModalBottomSheet(
       context: context,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(AppSpacing.radiusXl)),
       ),
-      backgroundColor: Colors.white,
+      backgroundColor: AppColors.white,
       builder: (context) {
         return SafeArea(
           child: Container(
-            padding: const EdgeInsets.all(24),
+            padding: const EdgeInsets.all(AppSpacing.containerMargin),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                // Handle
+                Center(
+                  child: Container(
+                    width: 40,
+                    height: 4,
+                    margin: const EdgeInsets.only(bottom: AppSpacing.lg),
+                    decoration: BoxDecoration(
+                      color: AppColors.outlineVariant,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                ),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Text(
+                    Text(
                       'Phân công Nhân viên',
-                      style: TextStyle(
-                        fontSize: 20,
+                      style: AppTextStyles.headlineSm.copyWith(
+                        color: AppColors.primary,
                         fontWeight: FontWeight.bold,
-                        color: Color(0xFF1A1B21),
                       ),
                     ),
                     IconButton(
-                      icon: const Icon(Icons.close),
+                      icon: const Icon(Icons.close_rounded, color: AppColors.onSurface),
                       onPressed: () => Navigator.pop(context),
                     ),
                   ],
                 ),
+                const SizedBox(height: 4),
                 Text(
-                  'Chọn nhân viên phụ trách tuyến: ${info.route.routeName}',
-                  style: const TextStyle(
-                    color: Color(0xFF434652),
-                    fontSize: 14,
-                  ),
+                  'Tuyến: ${info.route.routeName}',
+                  style: AppTextStyles.bodyMd.copyWith(color: AppColors.onSurfaceVariant),
                 ),
-                const SizedBox(height: 20),
+                const SizedBox(height: AppSpacing.lg),
                 Flexible(
                   child: Consumer(
                     builder: (context, ref, child) {
@@ -588,12 +498,13 @@ class _RouteCard extends ConsumerWidget {
                         loading: () => const Center(
                           child: Padding(
                             padding: EdgeInsets.all(24.0),
-                            child: CircularProgressIndicator(),
+                            child: CircularProgressIndicator(color: AppColors.secondary),
                           ),
                         ),
-                        error: (err, _) => Center(child: Text('Lỗi: $err')),
+                        error: (err, _) => Center(
+                          child: Text('Lỗi: $err', style: AppTextStyles.bodyMd.copyWith(color: AppColors.error)),
+                        ),
                         data: (users) {
-                          // Lọc danh sách nhân viên Sale có cùng group_id với Manager
                           final filteredUsers = users.where((u) {
                             final userGroupId =
                                 (u['group_id'] ?? u['groupId'] ?? '')
@@ -603,11 +514,13 @@ class _RouteCard extends ConsumerWidget {
                           }).toList();
 
                           if (filteredUsers.isEmpty) {
-                            return const Center(
+                            return Center(
                               child: Padding(
-                                padding: EdgeInsets.all(24.0),
+                                padding: const EdgeInsets.all(24.0),
                                 child: Text(
                                   'Không tìm thấy nhân viên Sale nào thuộc nhóm của bạn',
+                                  style: AppTextStyles.bodyMd.copyWith(color: AppColors.onSurfaceVariant),
+                                  textAlign: TextAlign.center,
                                 ),
                               ),
                             );
@@ -618,25 +531,17 @@ class _RouteCard extends ConsumerWidget {
                             itemBuilder: (context, index) {
                               final user = filteredUsers[index];
                               final userId = user['id']?.toString() ?? '';
-                              final fullName =
-                                  user['full_name']?.toString() ?? 'Nhân viên';
-                              final employeeCode =
-                                  user['employee_code']?.toString() ?? '';
-
-                              final isCurrent =
-                                  info.assignment?.userId == userId;
+                              final fullName = user['full_name']?.toString() ?? 'Nhân viên';
+                              final employeeCode = user['employee_code']?.toString() ?? '';
+                              final isCurrent = info.assignment?.userId == userId;
 
                               return Container(
                                 margin: const EdgeInsets.only(bottom: 8),
                                 decoration: BoxDecoration(
-                                  color: isCurrent
-                                      ? const Color(0xFFF0F4FF)
-                                      : Colors.transparent,
-                                  borderRadius: BorderRadius.circular(16),
+                                  color: isCurrent ? AppColors.surfaceContainerLow : Colors.transparent,
+                                  borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
                                   border: Border.all(
-                                    color: isCurrent
-                                        ? const Color(0xFF0D47A1)
-                                        : const Color(0xFFE2E8F0),
+                                    color: isCurrent ? AppColors.secondary : AppColors.outlineVariant,
                                     width: isCurrent ? 2 : 1,
                                   ),
                                 ),
@@ -646,44 +551,33 @@ class _RouteCard extends ConsumerWidget {
                                     vertical: 4,
                                   ),
                                   leading: CircleAvatar(
-                                    backgroundColor: isCurrent
-                                        ? const Color(0xFF0D47A1)
-                                        : const Color(0xFFE2E8F0),
+                                    backgroundColor: isCurrent ? AppColors.secondary : AppColors.surfaceContainerHigh,
                                     child: Text(
                                       fullName[0].toUpperCase(),
-                                      style: TextStyle(
-                                        color: isCurrent
-                                            ? Colors.white
-                                            : const Color(0xFF434652),
+                                      style: AppTextStyles.labelLg.copyWith(
+                                        color: isCurrent ? AppColors.white : AppColors.onSurfaceVariant,
                                         fontWeight: FontWeight.bold,
                                       ),
                                     ),
                                   ),
                                   title: Text(
                                     fullName,
-                                    style: TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                      color: isCurrent
-                                          ? const Color(0xFF0D47A1)
-                                          : const Color(0xFF1A1B21),
+                                    style: AppTextStyles.bodyLg.copyWith(
+                                      fontWeight: FontWeight.w600,
+                                      color: isCurrent ? AppColors.secondary : AppColors.onSurface,
                                     ),
                                   ),
                                   subtitle: employeeCode.isNotEmpty
-                                      ? Text('Mã NV: $employeeCode')
+                                      ? Text(
+                                          'Mã NV: $employeeCode',
+                                          style: AppTextStyles.bodyMd.copyWith(color: AppColors.onSurfaceVariant),
+                                        )
                                       : null,
                                   trailing: isCurrent
-                                      ? const Icon(
-                                          Icons.check_circle,
-                                          color: Color(0xFF0D47A1),
-                                        )
-                                      : const Icon(
-                                          Icons.chevron_right,
-                                          color: Color(0xFF434652),
-                                        ),
+                                      ? const Icon(Icons.check_circle_rounded, color: AppColors.secondary)
+                                      : const Icon(Icons.chevron_right_rounded, color: AppColors.onSurfaceVariant),
                                   onTap: () async {
-                                    final assignmentData = ref.read(
-                                      assignmentDataProvider,
-                                    );
+                                    final assignmentData = ref.read(assignmentDataProvider);
 
                                     final newAssignment = AssignmentEntity(
                                       assignmentId:
@@ -695,13 +589,9 @@ class _RouteCard extends ConsumerWidget {
                                     );
 
                                     try {
-                                      await assignmentData.upsertAssignment(
-                                        newAssignment,
-                                      );
+                                      await assignmentData.upsertAssignment(newAssignment);
 
-                                      ref.invalidate(
-                                        realtimeAllAssignmentsProvider,
-                                      );
+                                      ref.invalidate(realtimeAllAssignmentsProvider);
                                       ref.invalidate(routeListWithInfoProvider);
 
                                       if (context.mounted) {

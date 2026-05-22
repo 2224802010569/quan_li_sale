@@ -8,6 +8,7 @@ import '../../widgets/product_item_card.dart';
 import '../../widgets/order_summary_panel.dart';
 import '../../widgets/camera_capture_box.dart';
 import '../../../output/order_output.dart';
+import 'package:core/theme/theme.dart';
 
 class CreateOrderView extends StatefulWidget {
   final CreateOrderUC createOrderUC;
@@ -194,28 +195,25 @@ class _CreateOrderViewState extends State<CreateOrderView> {
     final cart = widget.createOrderUC.cart;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF9F9F9),
+      backgroundColor: AppColors.background,
       appBar: AppBar(
-        backgroundColor: const Color(0xFFF9F9F9),
+        backgroundColor: AppColors.white,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Color(0xFF172554)),
+          icon: const Icon(Icons.arrow_back_ios_new_rounded, color: AppColors.onSurface, size: 20),
           onPressed: widget.onBack,
         ),
-        title: const Text(
+        title: Text(
           'Lên đơn hàng',
-          style: TextStyle(
-            color: Color(0xFF172554),
-            fontSize: 24,
-            fontFamily: 'Manrope',
+          style: AppTextStyles.headlineSm.copyWith(
+            color: AppColors.primary,
             fontWeight: FontWeight.w700,
-            letterSpacing: -1.20,
           ),
         ),
         centerTitle: false,
       ),
       body: _isLoading
-          ? const Center(child: CircularProgressIndicator(color: Color(0xFF003178)))
+          ? const Center(child: CircularProgressIndicator(color: AppColors.secondary))
           : _errorMessage != null
               ? Center(
                   child: Column(
@@ -223,11 +221,7 @@ class _CreateOrderViewState extends State<CreateOrderView> {
                     children: [
                       Text(
                         _errorMessage!,
-                        style: const TextStyle(
-                          color: Color(0xFF434651),
-                          fontSize: 16,
-                          fontFamily: 'Manrope',
-                        ),
+                        style: AppTextStyles.bodyLg.copyWith(color: AppColors.onSurfaceVariant),
                       ),
                       const SizedBox(height: 16),
                       ElevatedButton(
@@ -238,13 +232,26 @@ class _CreateOrderViewState extends State<CreateOrderView> {
                           });
                           _loadProducts();
                         },
-                        child: const Text('Thử lại'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.primary,
+                          foregroundColor: AppColors.white,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
+                          ),
+                        ),
+                        child: Text(
+                          'Thử lại',
+                          style: AppTextStyles.labelLg.copyWith(fontWeight: FontWeight.bold, color: AppColors.white),
+                        ),
                       ),
                     ],
                   ),
                 )
               : SingleChildScrollView(
-                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.containerMargin,
+                    vertical: AppSpacing.lg,
+                  ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -253,12 +260,12 @@ class _CreateOrderViewState extends State<CreateOrderView> {
                         actionLabel: 'Thêm sản phẩm',
                         onAction: _showProductPicker,
                       ),
-                      const SizedBox(height: 16),
+                      const SizedBox(height: AppSpacing.md),
                       if (cart.isEmpty)
                         _buildEmptyCartPlaceholder()
                       else
                         ...cart.values.map((cartItem) => Padding(
-                              padding: const EdgeInsets.only(bottom: 16),
+                              padding: const EdgeInsets.only(bottom: AppSpacing.stackGap),
                               child: ProductItemCard(
                                 product: cartItem.product,
                                 quantity: cartItem.quantity,
@@ -267,17 +274,17 @@ class _CreateOrderViewState extends State<CreateOrderView> {
                                 onUpdateQuantity: (val) => _onUpdateQuantity(cartItem.product.id, val),
                               ),
                             )),
-                      const SizedBox(height: 32),
+                      const SizedBox(height: AppSpacing.xxl),
                       _buildPrintDraftButton(),
-                      const SizedBox(height: 32),
+                      const SizedBox(height: AppSpacing.xxl),
                       _buildSectionLabel('CHỤP HÌNH ĐƠN HÀNG'),
-                      const SizedBox(height: 16),
+                      const SizedBox(height: AppSpacing.md),
                       CameraCaptureBox(
                         imagePath: _capturedImagePath,
                         onCapture: _onCapture,
                         onRemove: _onRemoveImage,
                       ),
-                      const SizedBox(height: 32),
+                      const SizedBox(height: AppSpacing.xxl),
                       OrderSummaryPanel(
                         productCount: cart.length,
                         totalQuantity: widget.createOrderUC.totalItems,
@@ -287,7 +294,7 @@ class _CreateOrderViewState extends State<CreateOrderView> {
                         onSubmit: _onSubmitOrder,
                         isSubmitting: _isSubmitting,
                       ),
-                      const SizedBox(height: 48),
+                      const SizedBox(height: 24),
                     ],
                   ),
                 ),
@@ -306,13 +313,10 @@ class _CreateOrderViewState extends State<CreateOrderView> {
         children: [
           Text(
             title,
-            style: const TextStyle(
-              color: Color(0xFF434651),
-              fontSize: 14,
-              fontFamily: 'Manrope',
-              fontWeight: FontWeight.w700,
-              height: 1.43,
-              letterSpacing: 1.40,
+            style: AppTextStyles.labelLg.copyWith(
+              color: AppColors.onSurfaceVariant,
+              fontWeight: FontWeight.bold,
+              letterSpacing: 1.2,
             ),
           ),
           GestureDetector(
@@ -320,16 +324,13 @@ class _CreateOrderViewState extends State<CreateOrderView> {
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Icon(Icons.add_circle_outline, size: 18, color: Color(0xFF001D4E)),
-                const SizedBox(width: 4),
+                const Icon(Icons.add_circle_outline_rounded, size: 18, color: AppColors.secondary),
+                const SizedBox(width: 6),
                 Text(
                   actionLabel,
-                  style: const TextStyle(
-                    color: Color(0xFF001D4E),
-                    fontSize: 14,
-                    fontFamily: 'Manrope',
-                    fontWeight: FontWeight.w700,
-                    height: 1.43,
+                  style: AppTextStyles.labelLg.copyWith(
+                    color: AppColors.secondary,
+                    fontWeight: FontWeight.bold,
                   ),
                 ),
               ],
@@ -345,13 +346,10 @@ class _CreateOrderViewState extends State<CreateOrderView> {
       padding: const EdgeInsets.symmetric(horizontal: 4),
       child: Text(
         title,
-        style: const TextStyle(
-          color: Color(0xFF434651),
-          fontSize: 14,
-          fontFamily: 'Manrope',
-          fontWeight: FontWeight.w700,
-          height: 1.43,
-          letterSpacing: 1.40,
+        style: AppTextStyles.labelLg.copyWith(
+          color: AppColors.onSurfaceVariant,
+          fontWeight: FontWeight.bold,
+          letterSpacing: 1.2,
         ),
       ),
     );
@@ -382,26 +380,30 @@ class _CreateOrderViewState extends State<CreateOrderView> {
   }
 
   Widget _buildPrintDraftButton() {
-    return SizedBox(
-      width: double.infinity,
-      height: 52,
-      child: OutlinedButton.icon(
-        onPressed: _onPrintDraft,
-        icon: const Icon(Icons.print, size: 20),
-        label: const Text(
-          'In hóa đơn tạm tính',
-          style: TextStyle(
-            fontSize: 16,
-            fontFamily: 'Manrope',
-            fontWeight: FontWeight.w700,
-          ),
+    return InkWell(
+      onTap: _onPrintDraft,
+      borderRadius: BorderRadius.circular(32),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(vertical: 20),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(32),
+          border: Border.all(color: const Color(0x4CC4C6D2), width: 2),
         ),
-        style: OutlinedButton.styleFrom(
-          foregroundColor: const Color(0xFF003178),
-          side: const BorderSide(width: 1.5, color: Color(0xFF003178)),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(9999),
-          ),
+        child: const Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.print_outlined, color: Color(0xFF434651)),
+            SizedBox(width: 8),
+            Text(
+              'In hóa đơn tạm tính',
+              style: TextStyle(
+                color: Color(0xFF434651),
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -410,24 +412,23 @@ class _CreateOrderViewState extends State<CreateOrderView> {
   Widget _buildEmptyCartPlaceholder() {
     return Container(
       width: double.infinity,
-      height: 128,
-      decoration: ShapeDecoration(
-        color: const Color(0x7FF3F3F3),
-        shape: RoundedRectangleBorder(
-          side: const BorderSide(width: 2, color: Color(0x4CC4C6D2)),
-          borderRadius: BorderRadius.circular(32),
+      padding: const EdgeInsets.symmetric(vertical: 36, horizontal: 24),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceContainerLow,
+        border: Border.all(
+          width: 1.5,
+          color: AppColors.outlineVariant,
+          style: BorderStyle.solid, // Flutter doesn't natively support dashed border in BoxBorder, so solid is fine or we custom paint. Standard solid border is very clean.
         ),
+        borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
       ),
-      child: const Center(
+      child: Center(
         child: Text(
           'Nhấn vào "Thêm sản phẩm" để\nbổ sung hàng hóa',
           textAlign: TextAlign.center,
-          style: TextStyle(
-            color: Color(0xFF434651),
-            fontSize: 16,
-            fontFamily: 'Manrope',
-            fontWeight: FontWeight.w400,
-            height: 1.50,
+          style: AppTextStyles.bodyLg.copyWith(
+            color: AppColors.onSurfaceVariant,
+            height: 1.5,
           ),
         ),
       ),
@@ -486,8 +487,8 @@ class _ProductPickerSheetState extends State<_ProductPickerSheet> {
         bottom: MediaQuery.of(context).viewInsets.bottom,
       ),
       decoration: const BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
+        color: AppColors.white,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(AppSpacing.radiusXl)),
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -497,57 +498,54 @@ class _ProductPickerSheetState extends State<_ProductPickerSheet> {
             width: 40,
             height: 4,
             decoration: BoxDecoration(
-              color: const Color(0xFFE8E8E8),
+              color: AppColors.outlineVariant,
               borderRadius: BorderRadius.circular(2),
             ),
           ),
           const SizedBox(height: 16),
-          const Text(
+          Text(
             'Chọn sản phẩm',
-            style: TextStyle(
-              color: Color(0xFF172554),
-              fontSize: 20,
-              fontFamily: 'Manrope',
-              fontWeight: FontWeight.w800,
-              letterSpacing: -0.50,
+            style: AppTextStyles.headlineSm.copyWith(
+              color: AppColors.primary,
+              fontWeight: FontWeight.bold,
             ),
           ),
           const SizedBox(height: 12),
           // Search bar
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
-            child: TextField(
-              controller: _searchController,
-              onChanged: (val) {
-                setState(() {
-                  _searchQuery = val;
-                });
-              },
-              decoration: InputDecoration(
-                hintText: 'Tìm kiếm sản phẩm...',
-                hintStyle: const TextStyle(color: Color(0xFF94A3B8), fontSize: 14),
-                prefixIcon: const Icon(Icons.search, color: Color(0xFF94A3B8)),
-                suffixIcon: _searchQuery.isNotEmpty
-                    ? IconButton(
-                        icon: const Icon(Icons.clear, color: Color(0xFF94A3B8)),
-                        onPressed: () {
-                          _searchController.clear();
-                          setState(() {
-                            _searchQuery = '';
-                          });
-                        },
-                      )
-                    : null,
-                contentPadding: const EdgeInsets.symmetric(vertical: 8),
-                filled: true,
-                fillColor: const Color(0xFFF8FAFC),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(16),
-                  borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(16),
-                  borderSide: const BorderSide(color: Color(0xFF003178), width: 1.5),
+            child: Container(
+              height: 48,
+              decoration: BoxDecoration(
+                color: AppColors.white,
+                borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
+                boxShadow: AppShadows.level1,
+              ),
+              child: TextField(
+                controller: _searchController,
+                onChanged: (val) {
+                  setState(() {
+                    _searchQuery = val;
+                  });
+                },
+                style: AppTextStyles.bodyLg.copyWith(color: AppColors.onSurface),
+                decoration: InputDecoration(
+                  hintText: 'Tìm kiếm sản phẩm...',
+                  hintStyle: AppTextStyles.bodyLg.copyWith(color: AppColors.onSurfaceVariant),
+                  prefixIcon: const Icon(Icons.search_rounded, color: AppColors.onSurfaceVariant, size: 20),
+                  suffixIcon: _searchQuery.isNotEmpty
+                      ? IconButton(
+                          icon: const Icon(Icons.clear_rounded, color: AppColors.onSurfaceVariant, size: 20),
+                          onPressed: () {
+                            _searchController.clear();
+                            setState(() {
+                              _searchQuery = '';
+                            });
+                          },
+                        )
+                      : null,
+                  contentPadding: const EdgeInsets.symmetric(vertical: 12),
+                  border: InputBorder.none,
                 ),
               ),
             ),
@@ -561,14 +559,12 @@ class _ProductPickerSheetState extends State<_ProductPickerSheet> {
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          const Icon(Icons.search_off, size: 48, color: Color(0xFF94A3B8)),
+                          const Icon(Icons.search_off_rounded, size: 48, color: AppColors.outlineVariant),
                           const SizedBox(height: 12),
-                          const Text(
+                          Text(
                             'Không tìm thấy sản phẩm phù hợp',
-                            style: TextStyle(
-                              color: Color(0xFF94A3B8),
-                              fontSize: 15,
-                              fontFamily: 'Manrope',
+                            style: AppTextStyles.bodyLg.copyWith(
+                              color: AppColors.onSurfaceVariant,
                               fontWeight: FontWeight.w500,
                             ),
                             textAlign: TextAlign.center,
@@ -583,7 +579,7 @@ class _ProductPickerSheetState extends State<_ProductPickerSheet> {
                     itemCount: filteredProducts.length,
                     separatorBuilder: (_, i) => const Divider(
                       height: 1,
-                      color: Color(0xFFF3F3F3),
+                      color: AppColors.outlineVariant,
                     ),
                     itemBuilder: (context, index) {
                       final product = filteredProducts[index];
@@ -593,38 +589,33 @@ class _ProductPickerSheetState extends State<_ProductPickerSheet> {
                           width: 48,
                           height: 48,
                           decoration: BoxDecoration(
-                            color: const Color(0xFFF3F3F3),
-                            borderRadius: BorderRadius.circular(12),
+                            color: AppColors.surfaceContainer,
+                            borderRadius: BorderRadius.circular(AppSpacing.radius),
                           ),
                           child: const Center(
                             child: Icon(
                               Icons.inventory_2_outlined,
-                              color: Color(0xFF94A3B8),
+                              color: AppColors.onSurfaceVariant,
                               size: 24,
                             ),
                           ),
                         ),
                         title: Text(
                           product.productName,
-                          style: const TextStyle(
-                            color: Color(0xFF172554),
-                            fontSize: 16,
-                            fontFamily: 'Manrope',
+                          style: AppTextStyles.bodyLg.copyWith(
+                            color: AppColors.onSurface,
                             fontWeight: FontWeight.w600,
                           ),
                         ),
                         subtitle: Text(
                           _currencyFormat.format(product.price),
-                          style: const TextStyle(
-                            color: Color(0xFF94A3B8),
-                            fontSize: 14,
-                            fontFamily: 'Manrope',
-                            fontWeight: FontWeight.w500,
+                          style: AppTextStyles.bodyMd.copyWith(
+                            color: AppColors.onSurfaceVariant,
                           ),
                         ),
                         trailing: const Icon(
-                          Icons.add_circle,
-                          color: Color(0xFF003178),
+                          Icons.add_circle_rounded,
+                          color: AppColors.secondary,
                           size: 28,
                         ),
                         onTap: () => widget.onSelect(product),

@@ -2,7 +2,7 @@ import 'dart:io';
 
 void main() async {
   const name = "leave_module";
-  const version = "0.0.1";
+  const version = "0.0.2";
   final rootDir = Directory(Platform.script.resolve('../').toFilePath());
 
   if (!await rootDir.exists()) {

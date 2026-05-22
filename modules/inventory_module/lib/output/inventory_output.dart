@@ -4,6 +4,9 @@ class InventoryOutput {
   final String from;
   final String to;
   final String view;
+  final Map<String, int>? actualStocks;
+  final Map<String, int>? previousStocks;
+  final List<dynamic>? products;
 
   InventoryOutput({
     required this.success,
@@ -11,14 +14,24 @@ class InventoryOutput {
     required this.from,
     required this.to,
     required this.view,
+    this.actualStocks,
+    this.previousStocks,
+    this.products,
   });
 
-  factory InventoryOutput.success() {
+  factory InventoryOutput.success({
+    Map<String, int>? actualStocks,
+    Map<String, int>? previousStocks,
+    List<dynamic>? products,
+  }) {
     return InventoryOutput(
       success: true,
       from: 'INVENTORY',
-      to: 'ROUTE_STORE', // Trở về danh sách tuyến hoặc cửa hàng
-      view: 'HOME',
+      to: 'INVENTORY_SUMMARY',
+      view: 'SUMMARY',
+      actualStocks: actualStocks,
+      previousStocks: previousStocks,
+      products: products,
     );
   }
 

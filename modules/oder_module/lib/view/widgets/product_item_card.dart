@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../../entity/product.dart';
+import 'package:core/theme/theme.dart';
 
 class ProductItemCard extends StatelessWidget {
   final Product product;
@@ -30,126 +31,108 @@ class ProductItemCard extends StatelessWidget {
 
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(24),
-      decoration: ShapeDecoration(
-        color: Colors.white,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(32),
-        ),
-        shadows: const [
-          BoxShadow(
-            color: Color(0x0A0D47A1),
-            blurRadius: 24,
-            offset: Offset(0, 8),
-          ),
-        ],
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.white,
+        borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
+        boxShadow: AppShadows.level1,
       ),
       child: Column(
-        mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            width: 80,
-            height: 80,
-            padding: const EdgeInsets.all(8),
-            decoration: const BoxDecoration(color: Color(0xFFF3F3F3)),
-            child: Center(
-              child: Icon(
-                Icons.inventory_2_outlined,
-                size: 40,
-                color: const Color(0xFF94A3B8),
+          Row(
+            children: [
+              Container(
+                width: 48,
+                height: 48,
+                decoration: BoxDecoration(
+                  color: AppColors.surfaceContainer,
+                  borderRadius: BorderRadius.circular(AppSpacing.radius),
+                ),
+                child: const Center(
+                  child: Icon(
+                    Icons.inventory_2_outlined,
+                    size: 24,
+                    color: AppColors.onSurfaceVariant,
+                  ),
+                ),
               ),
-            ),
+              const SizedBox(width: AppSpacing.md),
+              Expanded(
+                child: Text(
+                  product.productName,
+                  style: AppTextStyles.bodyLg.copyWith(
+                    color: AppColors.onSurface,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ],
           ),
-          const SizedBox(height: 24),
-          Text(
-            product.productName,
-            style: const TextStyle(
-              color: Color(0xFF172554),
-              fontSize: 18,
-              fontFamily: 'Manrope',
-              fontWeight: FontWeight.w700,
-              height: 1.25,
-            ),
-          ),
-          const SizedBox(height: 24),
+          const SizedBox(height: AppSpacing.lg),
+          const Divider(color: AppColors.outlineVariant, height: 1),
+          const SizedBox(height: AppSpacing.lg),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                decoration: ShapeDecoration(
-                  color: const Color(0xFFF3F3F3),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(9999),
-                  ),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                decoration: BoxDecoration(
+                  color: AppColors.surfaceContainerLow,
+                  borderRadius: BorderRadius.circular(AppSpacing.radiusFull),
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     _QuantityButton(
-                      icon: Icons.remove,
+                      icon: Icons.remove_rounded,
                       onTap: onDecrement,
                     ),
-                    const SizedBox(width: 16),
+                    const SizedBox(width: 8),
                     GestureDetector(
                       onTap: () {
                         _showQuantityDialog(context, quantity, onUpdateQuantity);
                       },
-                      child: SizedBox(
-                        width: 48,
+                      child: Container(
+                        width: 44,
+                        alignment: Alignment.center,
                         child: Text(
                           '$quantity',
-                          textAlign: TextAlign.center,
-                          style: const TextStyle(
-                            color: Color(0xFF1E3A8A),
-                            fontSize: 16,
-                            fontFamily: 'Manrope',
-                            fontWeight: FontWeight.w900,
-                            height: 1.50,
+                          style: AppTextStyles.bodyLg.copyWith(
+                            color: AppColors.secondary,
+                            fontWeight: FontWeight.w700,
                             decoration: TextDecoration.underline,
+                            decorationColor: AppColors.secondary,
                           ),
                         ),
                       ),
                     ),
-                    const SizedBox(width: 16),
+                    const SizedBox(width: 8),
                     _QuantityButton(
-                      icon: Icons.add,
+                      icon: Icons.add_rounded,
                       onTap: onIncrement,
                     ),
                   ],
                 ),
               ),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    Text(
-                      'Đơn giá: ${_currencyFormat.format(product.price)}',
-                      textAlign: TextAlign.right,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        color: Color(0xFF94A3B8),
-                        fontSize: 14,
-                        fontFamily: 'Manrope',
-                        fontWeight: FontWeight.w500,
-                        height: 1.43,
-                      ),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Text(
+                    'Đơn giá: ${_currencyFormat.format(product.price)}',
+                    style: AppTextStyles.bodyMd.copyWith(
+                      color: AppColors.onSurfaceVariant,
                     ),
-                    Text(
-                      _currencyFormat.format(lineTotal),
-                      textAlign: TextAlign.right,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        color: Color(0xFF172554),
-                        fontSize: 18,
-                        fontFamily: 'Manrope',
-                        fontWeight: FontWeight.w900,
-                        height: 1.56,
-                      ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    _currencyFormat.format(lineTotal),
+                    style: AppTextStyles.bodyLg.copyWith(
+                      color: AppColors.primary,
+                      fontWeight: FontWeight.w700,
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
             ],
           ),
@@ -164,20 +147,38 @@ class ProductItemCard extends StatelessWidget {
       context: context,
       builder: (ctx) {
         return AlertDialog(
-          title: const Text('Nhập số lượng'),
+          backgroundColor: AppColors.white,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
+          ),
+          title: Text(
+            'Nhập số lượng',
+            style: AppTextStyles.headlineSm.copyWith(
+              color: AppColors.primary,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
           content: TextField(
             controller: controller,
             keyboardType: TextInputType.number,
             autofocus: true,
-            decoration: const InputDecoration(
-              border: OutlineInputBorder(),
+            style: AppTextStyles.bodyLg.copyWith(color: AppColors.onSurface),
+            decoration: InputDecoration(
+              border: const OutlineInputBorder(),
+              focusedBorder: const OutlineInputBorder(
+                borderSide: BorderSide(color: AppColors.secondary, width: 2),
+              ),
               labelText: 'Số lượng',
+              labelStyle: AppTextStyles.bodyMd.copyWith(color: AppColors.onSurfaceVariant),
             ),
           ),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(ctx),
-              child: const Text('Hủy'),
+              child: Text(
+                'Hủy',
+                style: AppTextStyles.labelLg.copyWith(color: AppColors.onSurfaceVariant),
+              ),
             ),
             ElevatedButton(
               onPressed: () {
@@ -185,7 +186,17 @@ class ProductItemCard extends StatelessWidget {
                 onSaved(val);
                 Navigator.pop(ctx);
               },
-              child: const Text('Xác nhận'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.secondary,
+                foregroundColor: AppColors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(AppSpacing.radius),
+                ),
+              ),
+              child: Text(
+                'Xác nhận',
+                style: AppTextStyles.labelLg.copyWith(fontWeight: FontWeight.bold, color: AppColors.white),
+              ),
             ),
           ],
         );
@@ -208,18 +219,18 @@ class _QuantityButton extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        width: 32,
-        height: 32,
-        decoration: ShapeDecoration(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(9999),
-          ),
+        width: 36,
+        height: 36,
+        decoration: BoxDecoration(
+          color: AppColors.white,
+          shape: BoxShape.circle,
+          boxShadow: AppShadows.level1,
         ),
         child: Center(
           child: Icon(
             icon,
             size: 20,
-            color: const Color(0xFF1E3A8A),
+            color: AppColors.secondary,
           ),
         ),
       ),

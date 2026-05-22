@@ -126,29 +126,29 @@ class AttendanceUseCase {
     required CameraController cameraController,
     required double destLat,
     required double destLng,
+    bool isCheckIn = true,
   }) async {
-    bool serviceEnabled;
-    LocationPermission permission;
-
-    serviceEnabled = await Geolocator.isLocationServiceEnabled();
+    bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
     if (!serviceEnabled) {
       throw Exception('Dịch vụ định vị đang bị tắt.');
     }
 
-    permission = await Geolocator.checkPermission();
+    LocationPermission permission = await Geolocator.checkPermission();
     if (permission == LocationPermission.denied) {
       permission = await Geolocator.requestPermission();
       if (permission == LocationPermission.denied) {
         throw Exception('Quyền truy cập vị trí bị từ chối.');
       }
     }
-    
+
     if (permission == LocationPermission.deniedForever) {
       throw Exception('Quyền truy cập vị trí bị từ chối vĩnh viễn.');
-    } 
+    }
 
-    final position = await Geolocator.getCurrentPosition(desiredAccuracy: LocationAccuracy.high);
-    
+    final position = await Geolocator.getCurrentPosition(
+      desiredAccuracy: LocationAccuracy.high,
+    );
+
     final distance = Geolocator.distanceBetween(
       position.latitude,
       position.longitude,
@@ -156,12 +156,11 @@ class AttendanceUseCase {
       destLng,
     );
 
-    if (distance > 20.0) {
-      // Để hỗ trợ kiểm thử dễ dàng trong môi trường phát triển (giả lập hoặc dev test tại nhà/văn phòng)
-      // Nếu khoảng cách lớn hơn 1000 mét (1km), hệ thống sẽ cho phép bypass qua để kiểm thử thành công.
-      if (distance <= 1000.0) {
-        throw Exception('Ngoài phạm vi chấm công (Cần cách cửa hàng dưới 20m. Khoảng cách hiện tại: ${distance.toStringAsFixed(1)} m)');
-      }
+    if (distance > 15.0) {
+      throw Exception(
+        'Ngoài phạm vi chấm công. Cần cách cửa hàng dưới 15m.\n'
+        'Khoảng cách hiện tại: ${distance.toStringAsFixed(1)} m',
+      );
     }
 
     final XFile file = await cameraController.takePicture();

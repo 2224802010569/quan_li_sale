@@ -3,10 +3,13 @@ import 'package:app/partial/menu/menu.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:core/di/injector.dart';
 import 'package:core/error/global_error_reporter.dart';
 import 'package:core/storage/app_storage.dart';
 import 'package:test_module/test_module.dart';
+import 'package:route_store_module/logic_data/realtime_data.dart';
+import 'package:inventory_module/view/inventory_summary_screen.dart';
 import 'root/user_root.dart';
 import 'root/attendance_root.dart';
 import 'root/inventory_root.dart';
@@ -14,6 +17,7 @@ import 'root/order_root.dart';
 import 'root/route_store_root.dart';
 import 'root/leave_root.dart';
 import 'root/kpi_root.dart';
+import 'core/theme/app_theme.dart';
 
 class AppState {
   final String module;
@@ -26,14 +30,14 @@ void recoverFromGlobalError(GlobalErrorInfo info) {
   appKey.currentState?.recoverFromGlobalError(info);
 }
 
-class MyApp extends StatefulWidget {
+class MyApp extends ConsumerStatefulWidget {
   const MyApp({super.key});
 
   @override
-  State<MyApp> createState() => MyAppState();
+  ConsumerState<MyApp> createState() => MyAppState();
 }
 
-class MyAppState extends State<MyApp> {
+class MyAppState extends ConsumerState<MyApp> {
   final storage = get<AppStorage>();
   final List<AppState> moduleStack = [];
   final _navigatorKey = GlobalKey<NavigatorState>();
@@ -70,7 +74,7 @@ class MyAppState extends State<MyApp> {
         return UserRoot().buildProfile(handleOutput);
 
       case 'USER_MANAGER_VIEW':
-        return UserRoot().buildManager(handleOutput);
+        return UserRoot().buildManager(handleOutput, handleBack);
 
       case 'ATTENDANCE':
         return AttendanceRoot().build(handleOutput);
@@ -78,13 +82,27 @@ class MyAppState extends State<MyApp> {
       case 'INVENTORY':
         return InventoryRoot().build(handleOutput);
 
+      case 'INVENTORY_SUMMARY':
+        final actual = storage.get<Map<String, dynamic>>('inventory_actual');
+        final previous = storage.get<Map<String, dynamic>>('inventory_previous');
+        final products = storage.get<List<dynamic>>('inventory_products') ?? [];
+        final actualStocks = (actual ?? {}).map((k, v) => MapEntry(k, (v as num).toInt()));
+        final previousStocks = (previous ?? {}).map((k, v) => MapEntry(k, (v as num).toInt()));
+        return InventorySummaryScreen(
+          actualStocks: actualStocks,
+          previousStocks: previousStocks,
+          products: products,
+          onDone: () => handleOutput(AppOutput(toModule: 'STORE_HOME')),
+          onCreateOrder: () => handleOutput(AppOutput(toModule: 'CREATE_ORDER')),
+        );
+
       case 'ORDER':
         return OrderRoot().build(handleOutput);
 
       case 'CREATE_ORDER':
         return OrderRoot().buildCreate(handleOutput);
       case 'ROUTE_STORE_MANAGER':
-        return RouteStoreRoot().buildRouteManager(handleOutput);
+        return RouteStoreRoot().buildRouteManager(handleOutput, handleBack);
 
       case 'CREATE_ROUTE':
         return RouteStoreRoot().buildCreateRoute(handleOutput, handleBack);
@@ -94,7 +112,7 @@ class MyAppState extends State<MyApp> {
 
 
       case 'STORE_MANAGER':
-        return RouteStoreRoot().buildStoreManager(handleOutput);
+        return RouteStoreRoot().buildStoreManager(handleOutput, handleBack);
 
       case 'CREATE_STORE':
         return RouteStoreRoot().buildCreateStore(handleOutput, handleBack);
@@ -109,19 +127,26 @@ class MyAppState extends State<MyApp> {
         return AttendanceRoot().buildCheckout(handleOutput);
 
       case 'ROUTE_STORE':
-        return RouteStoreRoot().build(handleOutput);
+        {
+          // Nếu đang check-in vào cửa hàng (chưa checkout) → vào thẳng STORE_HOME
+          final activeStoreId = storage.get<int>('current_store_id');
+          if (activeStoreId != null && activeStoreId > 0) {
+            return RouteStoreRoot().buildStoreHome(handleOutput);
+          }
+          return RouteStoreRoot().build(handleOutput);
+        }
 
       case 'LEAVE':
-        return LeaveRoot().build(handleOutput);
+        return LeaveRoot().build(handleOutput, onBack: handleBack);
 
       case 'LEAVE_FORM':
-        return LeaveRoot().buildForm(handleOutput);
+        return LeaveRoot().buildForm(handleOutput, onBack: handleBack);
 
       case 'LEAVE_MANAGER_PENDING':
-        return LeaveRoot().buildManagerPending(handleOutput);
+        return LeaveRoot().buildManagerPending(handleOutput, onBack: handleBack);
 
       case 'LEAVE_MANAGER_HISTORY':
-        return LeaveRoot().buildManagerHistory(handleOutput);
+        return LeaveRoot().buildManagerHistory(handleOutput, onBack: handleBack);
 
       case 'KPI_MANAGER':
         return KpiRoot().buildManagerDashboard(handleOutput);
@@ -153,7 +178,20 @@ class MyAppState extends State<MyApp> {
           ..add(AppState(output.toModule));
         return;
       }
-
+      // Invalidate assignments khi quay về ROUTE_STORE để force re-fetch
+      if (output.toModule == 'ROUTE_STORE') {
+        final user = storage.get<Map<String, dynamic>>('user');
+        final userId = user?['id']?.toString() ?? '';
+        if (userId.isNotEmpty) {
+          ref.invalidate(realtimeUserAssignmentsProvider(userId));
+        }
+      }
+      // Nếu module đích đã tồn tại trong stack → pop về đó, không push mới
+      final existingIndex = moduleStack.indexWhere((s) => s.module == output.toModule);
+      if (existingIndex != -1) {
+        moduleStack.removeRange(existingIndex + 1, moduleStack.length);
+        return;
+      }
       moduleStack.add(AppState(output.toModule));
     });
   }
@@ -286,6 +324,7 @@ class MyAppState extends State<MyApp> {
       navigatorKey: _navigatorKey,
       scaffoldMessengerKey: _scaffoldMessengerKey,
       debugShowCheckedModeBanner: false,
+      theme: AppTheme.light,
       localizationsDelegates: const [
         GlobalMaterialLocalizations.delegate,
         GlobalWidgetsLocalizations.delegate,
@@ -299,7 +338,21 @@ class MyAppState extends State<MyApp> {
           drawer: Drawer(
             child: Menu(onOutput: handleOutput, currentModule: current),
           ),
-          appBar: AppBar(title: const Text('App')),
+          appBar: AppBar(
+            backgroundColor: Colors.white,
+            elevation: 0,
+            iconTheme: const IconThemeData(color: Color(0xFF0B1C30)),
+            centerTitle: true,
+            title: const Text(
+              'Ska Milk',
+              style: TextStyle(
+                fontWeight: FontWeight.w700,
+                fontSize: 20,
+                color: Color(0xFF002556), // AppColors.primary
+                fontFamily: 'BeVietnamPro',
+              ),
+            ),
+          ),
           body: getScreen(current),
         ),
       ),

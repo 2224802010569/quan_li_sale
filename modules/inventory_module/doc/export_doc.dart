@@ -2,7 +2,7 @@ import 'dart:io';
 
 void main() async { 
   const name = "inventory";
-  const version = "0.0.2";
+  const version = "0.0.3";
 
   final libDir = Directory(Platform.script.resolve('../lib').toFilePath());
 

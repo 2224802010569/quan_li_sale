@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:core/theme/theme.dart';
 
-import '../../logic_data/leave_data.dart';
 import '../../logic_uc/submit_leave_uc.dart';
 
 // ---------------------------------------------------------------------------
@@ -144,11 +144,11 @@ class _LeaveFormViewState extends ConsumerState<LeaveFormView> {
       locale: const Locale('vi', 'VN'),
       builder: (context, child) => Theme(
         data: Theme.of(context).copyWith(
-          colorScheme: const ColorScheme.light(
-            primary: Color(0xFF0F3c8f),
-            onPrimary: Colors.white,
-            surface: Colors.white,
-            onSurface: Color(0xFF1A1C1C),
+          colorScheme: ColorScheme.light(
+            primary: AppColors.primary,
+            onPrimary: AppColors.white,
+            surface: AppColors.white,
+            onSurface: AppColors.onSurface,
           ),
         ),
         child: child!,
@@ -194,15 +194,14 @@ class _LeaveFormViewState extends ConsumerState<LeaveFormView> {
       SnackBar(
         content: Text(
           message,
-          style: const TextStyle(
-            fontFamily: 'Manrope',
+          style: AppTextStyles.bodyMd.copyWith(
             fontWeight: FontWeight.w600,
           ),
         ),
-        backgroundColor: isError ? const Color(0xFFEF4444) : const Color(0xFF22C55E),
+        backgroundColor: isError ? AppColors.error : const Color(0xFF22C55E),
         behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        margin: const EdgeInsets.all(16),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppSpacing.radius)),
+        margin: const EdgeInsets.all(AppSpacing.containerMargin),
       ),
     );
   }
@@ -214,119 +213,96 @@ class _LeaveFormViewState extends ConsumerState<LeaveFormView> {
     final formState = ref.watch(leaveFormNotifierProvider);
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF4F6FA),
-      body: SafeArea(
-        child: GestureDetector(
-          onTap: () => FocusScope.of(context).unfocus(),
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.only(top: 24, left: 24, right: 24, bottom: 40),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // ── Header ────────────────────────────────────────────────
-                _buildHeader(formState),
-                const SizedBox(height: 32),
-
-                // ── Form Card ─────────────────────────────────────────────
-                _buildFormCard(formState),
-                const SizedBox(height: 32),
-
-                // ── Info + Days Remaining row ─────────────────────────────
-                _buildBottomRow(),
-              ],
+      backgroundColor: AppColors.background,
+      appBar: AppBar(
+        backgroundColor: AppColors.white,
+        elevation: 0,
+        leading: widget.onBack != null
+            ? IconButton(
+                icon: const Icon(Icons.arrow_back_ios_new_rounded, color: AppColors.onSurface, size: 20),
+                onPressed: widget.onBack,
+              )
+            : null,
+        title: Text(
+          'Đăng ký nghỉ phép',
+          style: AppTextStyles.headlineSm.copyWith(
+            color: AppColors.primary,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+        centerTitle: false,
+        actions: [
+          Padding(
+            padding: const EdgeInsets.only(right: 16),
+            child: Center(
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(
+                  color: AppColors.surfaceContainerLow,
+                  borderRadius: BorderRadius.circular(AppSpacing.radiusFull),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      width: 7,
+                      height: 7,
+                      decoration: const BoxDecoration(
+                        color: Color(0xFFF59E0B),
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      'Đang chờ',
+                      style: AppTextStyles.labelMd.copyWith(
+                        color: AppColors.onSurfaceVariant,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ),
+          ),
+        ],
+      ),
+      body: GestureDetector(
+        onTap: () => FocusScope.of(context).unfocus(),
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(
+            AppSpacing.containerMargin,
+            AppSpacing.lg,
+            AppSpacing.containerMargin,
+            AppSpacing.xxl,
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // ── Form Card ─────────────────────────────────────────────
+              _buildFormCard(formState),
+              const SizedBox(height: AppSpacing.xxl),
+
+              // ── Info + Days Remaining row ─────────────────────────────
+              _buildBottomRow(),
+            ],
           ),
         ),
       ),
     );
   }
 
-  // ── Header ──────────────────────────────────────────────────────────────────
-
-  Widget _buildHeader(LeaveFormState state) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      crossAxisAlignment: CrossAxisAlignment.center,
-      children: [
-        // Title block
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            
-            const SizedBox(height: 4),
-            const Text(
-              'Đăng ký\nnghỉ phép',
-              style: TextStyle(
-                color: Color(0xFF0F3c8f),
-                fontSize: 30,
-                fontFamily: 'Manrope',
-                fontWeight: FontWeight.w800,
-                letterSpacing: -0.75,
-                height: 1.20,
-              ),
-            ),
-          ],
-        ),
-
-        // Status badge (pending)
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          decoration: ShapeDecoration(
-            color: const Color(0xFFE8E8E8),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(9999),
-            ),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              Container(
-                width: 8,
-                height: 8,
-                decoration: ShapeDecoration(
-                  color: const Color(0xFFF59E0B),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 8),
-              const Text(
-                'Đang\nchờ',
-                style: TextStyle(
-                  color: Color(0xFF434651),
-                  fontSize: 12,
-                  fontFamily: 'Manrope',
-                  fontWeight: FontWeight.w600,
-                  height: 1.33,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-
   // ── Form Card ────────────────────────────────────────────────────────────────
+
 
   Widget _buildFormCard(LeaveFormState state) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.only(top: 32, left: 32, right: 32, bottom: 48),
-      decoration: ShapeDecoration(
-        color: Colors.white,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-        ),
-        shadows: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
+      padding: const EdgeInsets.all(AppSpacing.cardPadding),
+      decoration: BoxDecoration(
+        color: AppColors.white,
+        borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
+        boxShadow: AppShadows.level1,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -335,7 +311,7 @@ class _LeaveFormViewState extends ConsumerState<LeaveFormView> {
           _buildSectionLabel('LÝ DO NGHỈ'),
           const SizedBox(height: 8),
           _buildReasonField(),
-          const SizedBox(height: 32),
+          const SizedBox(height: 24),
 
           // NGÀY BẮT ĐẦU
           _buildSectionLabel('NGÀY BẮT ĐẦU'),
@@ -367,13 +343,10 @@ class _LeaveFormViewState extends ConsumerState<LeaveFormView> {
   Widget _buildSectionLabel(String text) {
     return Text(
       text,
-      style: const TextStyle(
-        color: Color(0xFF434651),
-        fontSize: 12,
-        fontFamily: 'Manrope',
-        fontWeight: FontWeight.w700,
+      style: AppTextStyles.labelLg.copyWith(
+        color: AppColors.onSurfaceVariant,
+        fontWeight: FontWeight.bold,
         letterSpacing: 1.20,
-        height: 1.33,
       ),
     );
   }
@@ -382,30 +355,20 @@ class _LeaveFormViewState extends ConsumerState<LeaveFormView> {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(16),
-      decoration: const BoxDecoration(
-        color: Color(0xFFE8E8E8),
-        borderRadius: BorderRadius.all(Radius.circular(12)),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceContainerLow,
+        borderRadius: BorderRadius.circular(AppSpacing.radius),
+        border: Border.all(color: AppColors.outlineVariant, width: 1),
       ),
       child: TextField(
         key: const Key('reason_text_field'),
         controller: _reasonController,
         focusNode: _reasonFocusNode,
         maxLines: 4,
-        style: const TextStyle(
-          color: Color(0xFF1A1C1C),
-          fontSize: 16,
-          fontFamily: 'Manrope',
-          fontWeight: FontWeight.w400,
-          height: 1.50,
-        ),
-        decoration: const InputDecoration(
+        style: AppTextStyles.bodyLg.copyWith(color: AppColors.onSurface),
+        decoration: InputDecoration(
           hintText: 'Nhập lý do chi tiết...',
-          hintStyle: TextStyle(
-            color: Color(0x7F747782),
-            fontSize: 16,
-            fontFamily: 'Manrope',
-            fontWeight: FontWeight.w400,
-          ),
+          hintStyle: AppTextStyles.bodyLg.copyWith(color: AppColors.onSurfaceVariant.withValues(alpha: 0.5)),
           border: InputBorder.none,
           isDense: true,
           contentPadding: EdgeInsets.zero,
@@ -424,28 +387,23 @@ class _LeaveFormViewState extends ConsumerState<LeaveFormView> {
       child: Container(
         key: Key(id),
         width: double.infinity,
-        padding: const EdgeInsets.only(top: 16, left: 16, right: 16, bottom: 16),
-        decoration: const BoxDecoration(
-          color: Color(0xFFE8E8E8),
-          borderRadius: BorderRadius.all(Radius.circular(12)),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: AppColors.surfaceContainerLow,
+          borderRadius: BorderRadius.circular(AppSpacing.radius),
+          border: Border.all(color: AppColors.outlineVariant, width: 1),
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Text(
               value,
-              style: const TextStyle(
-                color: Color(0xFF1A1C1C),
-                fontSize: 16,
-                fontFamily: 'Manrope',
-                fontWeight: FontWeight.w400,
-                height: 1.50,
-              ),
+              style: AppTextStyles.bodyLg.copyWith(color: AppColors.onSurface),
             ),
             const Icon(
-              Icons.calendar_today_outlined,
+              Icons.calendar_today_rounded,
               size: 20,
-              color: Color(0xFF434651),
+              color: AppColors.secondary,
             ),
           ],
         ),
@@ -454,50 +412,38 @@ class _LeaveFormViewState extends ConsumerState<LeaveFormView> {
   }
 
   Widget _buildSubmitButton(LeaveFormState state) {
-    return GestureDetector(
-      onTap: state.isLoading ? null : _handleSubmit,
-      child: Container(
-        key: const Key('submit_leave_button'),
-        width: double.infinity,
-        padding: const EdgeInsets.symmetric(vertical: 16),
-        decoration: ShapeDecoration(
-          gradient: const LinearGradient(
-            begin: Alignment(0.20, -0.99),
-            end: Alignment(0.80, 1.99),
-            colors: [Color(0xFF0F3c8f), Color(0xFF003178)],
-          ),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-          shadows: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.05),
-              blurRadius: 10,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
-        child: Center(
-          child: state.isLoading
-              ? const SizedBox(
-                  width: 20,
-                  height: 20,
-                  child: CircularProgressIndicator(
-                    color: Colors.white,
-                    strokeWidth: 2.5,
+    return Container(
+      width: double.infinity,
+      height: 52,
+      decoration: BoxDecoration(
+        color: AppColors.primary,
+        borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
+        boxShadow: AppShadows.level2,
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
+          onTap: state.isLoading ? null : _handleSubmit,
+          child: Center(
+            child: state.isLoading
+                ? const SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(
+                      color: Colors.white,
+                      strokeWidth: 2.5,
+                    ),
+                  )
+                : Text(
+                    'Gửi đơn',
+                    textAlign: TextAlign.center,
+                    style: AppTextStyles.labelLg.copyWith(
+                      color: AppColors.white,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
-                )
-              : const Text(
-                  'Gửi đơn',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 16,
-                    fontFamily: 'Manrope',
-                    fontWeight: FontWeight.w700,
-                    height: 1.50,
-                  ),
-                ),
+          ),
         ),
       ),
     );
@@ -513,98 +459,80 @@ class _LeaveFormViewState extends ConsumerState<LeaveFormView> {
         Expanded(
           flex: 2,
           child: Container(
-            padding: const EdgeInsets.all(24),
-            decoration: ShapeDecoration(
-              color: const Color(0xFF003178),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(32),
-              ),
+            padding: const EdgeInsets.all(AppSpacing.cardPadding),
+            decoration: BoxDecoration(
+              color: AppColors.primaryContainer,
+              borderRadius: BorderRadius.circular(AppSpacing.radiusXl),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
+                Text(
                   'Quy định nghỉ phép',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 18,
-                    fontFamily: 'Manrope',
-                    fontWeight: FontWeight.w700,
-                    height: 1.56,
+                  style: AppTextStyles.headlineSm.copyWith(
+                    color: AppColors.white,
+                    fontWeight: FontWeight.bold,
                   ),
                 ),
-                const SizedBox(height: 7),
-                const Text(
+                const SizedBox(height: 8),
+                Text(
                   'Bộ phận Kinh doanh (Sale) cần đăng ký trước ít nhất 48h để sắp xếp bàn giao khách hàng.',
-                  style: TextStyle(
-                    color: Color(0xFF7C9CE9),
-                    fontSize: 14,
-                    fontFamily: 'Manrope',
-                    fontWeight: FontWeight.w400,
-                    height: 1.63,
+                  style: AppTextStyles.bodyMd.copyWith(
+                    color: AppColors.inversePrimary,
+                    height: 1.5,
                   ),
                 ),
                 const SizedBox(height: 16),
-                Opacity(
-                  opacity: 0.80,
-                  child: Row(
-                    children: const [
-                      Icon(Icons.open_in_new, color: Colors.white, size: 14),
-                      SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          'Chi tiết chính sách nhân sự 2024',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 12,
-                            fontFamily: 'Manrope',
-                            fontWeight: FontWeight.w600,
-                            height: 1.33,
-                          ),
+                Row(
+                  children: [
+                    const Icon(Icons.open_in_new_rounded, color: AppColors.white, size: 14),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Chi tiết chính sách nhân sự 2024',
+                        style: AppTextStyles.labelMd.copyWith(
+                          color: AppColors.white,
+                          fontWeight: FontWeight.w600,
+                          decoration: TextDecoration.underline,
                         ),
                       ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
               ],
             ),
           ),
         ),
-        const SizedBox(width: 16),
+        const SizedBox(width: 12),
         // Days remaining card
         Container(
-          padding: const EdgeInsets.all(24),
-          decoration: ShapeDecoration(
-            color: const Color(0xFFF3F3F3),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+          decoration: BoxDecoration(
+            color: AppColors.surfaceContainer,
+            borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
           ),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
-            children: const [
+            children: [
               Text(
                 '12',
                 textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: Color(0xFF0F3c8f),
+                style: const TextStyle(
+                  color: AppColors.secondary,
                   fontSize: 36,
-                  fontFamily: 'Manrope',
                   fontWeight: FontWeight.w900,
-                  height: 1.11,
+                  height: 1.1,
+                  fontFamily: 'BeVietnamPro',
                 ),
               ),
-              SizedBox(height: 4),
+              const SizedBox(height: 8),
               Text(
                 'NGÀY PHÉP\nCÒN LẠI',
                 textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: Color(0xFF434651),
-                  fontSize: 10,
-                  fontFamily: 'Manrope',
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: 1,
-                  height: 1.50,
+                style: AppTextStyles.labelMd.copyWith(
+                  color: AppColors.onSurfaceVariant,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 0.5,
                 ),
               ),
             ],

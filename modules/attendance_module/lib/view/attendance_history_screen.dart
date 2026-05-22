@@ -4,10 +4,11 @@ import '../../entity/user.dart';
 import '../../logic_uc/attendance_uc.dart';
 import 'widgets/employee_info_card.dart';
 import 'widgets/history_card.dart';
+import 'package:core/theme/theme.dart';
 
 class AttendanceHistoryScreen extends StatefulWidget {
   final VoidCallback onBack;
-  const AttendanceHistoryScreen({Key? key, required this.onBack}) : super(key: key);
+  const AttendanceHistoryScreen({super.key, required this.onBack});
 
   @override
   State<AttendanceHistoryScreen> createState() => _AttendanceHistoryScreenState();
@@ -31,11 +32,10 @@ class _AttendanceHistoryScreenState extends State<AttendanceHistoryScreen> {
   Future<void> _loadData() async {
     try {
       final user = await _useCase.getCurrentUser();
-      
+
       List<User> users = [];
       if (user.role == 'Manager' && user.groupId != null) {
         users = await _useCase.getUsersByGroup(user.groupId!, user.id);
-        // Add a dummy 'All' user at the beginning
         final allRecord = User(
           id: 'all',
           name: 'Tất cả nhân viên',
@@ -57,32 +57,24 @@ class _AttendanceHistoryScreenState extends State<AttendanceHistoryScreen> {
         setState(() {
           _loggedInUser = user;
           _allUsers = users;
-          
-          if (_allUsers.isNotEmpty) {
-            _currentUser = _allUsers.first;
-          } else {
-            _currentUser = null;
-          }
+          _currentUser = _allUsers.isNotEmpty ? _allUsers.first : null;
           _history = history;
           _isLoading = false;
         });
       }
     } catch (e) {
       if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
+        setState(() => _isLoading = false);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Lỗi tải dữ liệu: ${e.toString().replaceAll("Exception: ", "")}'),
-            backgroundColor: Colors.red,
+            backgroundColor: AppColors.error,
           ),
         );
       }
     }
   }
 
-  /// Chỉ reload lịch sử theo tháng + nhân viên hiện tại — KHÔNG reset dropdown
   Future<void> _reloadHistory() async {
     if (!mounted) return;
     setState(() => _isLoading = true);
@@ -105,7 +97,7 @@ class _AttendanceHistoryScreenState extends State<AttendanceHistoryScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Lỗi tải lịch sử: ${e.toString().replaceAll("Exception: ", "")}'),
-            backgroundColor: Colors.red,
+            backgroundColor: AppColors.error,
           ),
         );
       }
@@ -125,37 +117,30 @@ class _AttendanceHistoryScreenState extends State<AttendanceHistoryScreen> {
       padding: const EdgeInsets.symmetric(vertical: 8),
       child: Row(
         children: months.map((m) {
-          final isSelected =
-              _selectedMonth.year == m.year && _selectedMonth.month == m.month;
+          final isSelected = _selectedMonth.year == m.year && _selectedMonth.month == m.month;
           final title = m.year == currentMonth.year && m.month == currentMonth.month
               ? 'Tháng hiện tại'
               : 'Tháng ${m.month}/${m.year}';
 
           return Padding(
-            padding: const EdgeInsets.only(right: 12),
+            padding: const EdgeInsets.only(right: 8),
             child: GestureDetector(
               onTap: () {
-                setState(() {
-                  _selectedMonth = m;
-                });
-                _reloadHistory(); // Giữ nguyên nhân viên đồ lọc
+                setState(() => _selectedMonth = m);
+                _reloadHistory();
               },
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                 decoration: BoxDecoration(
-                  color: isSelected ? const Color(0xFF001D4E) : Colors.transparent,
-                  borderRadius: BorderRadius.circular(20),
-                  border: isSelected
-                      ? null
-                      : Border.all(color: const Color(0xFFCBD5E1)),
+                  color: isSelected ? AppColors.primary : AppColors.white,
+                  borderRadius: BorderRadius.circular(AppSpacing.radiusFull),
+                  border: isSelected ? null : Border.all(color: AppColors.outlineVariant, width: 1),
                 ),
                 child: Text(
                   title,
-                  style: TextStyle(
-                    color: isSelected ? Colors.white : const Color(0xFF434651),
-                    fontFamily: 'Manrope',
-                    fontWeight:
-                        isSelected ? FontWeight.w700 : FontWeight.w500,
+                  style: AppTextStyles.labelLg.copyWith(
+                    color: isSelected ? AppColors.white : AppColors.onSurfaceVariant,
+                    fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
                   ),
                 ),
               ),
@@ -169,150 +154,141 @@ class _AttendanceHistoryScreenState extends State<AttendanceHistoryScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF4F6FA), // Light greyish blue
+      backgroundColor: AppColors.background,
       appBar: AppBar(
-        backgroundColor: Colors.white,
+        backgroundColor: AppColors.white,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Color(0xFF1A1A1A)),
+          icon: const Icon(Icons.arrow_back_ios_new_rounded, color: AppColors.onSurface, size: 20),
           onPressed: widget.onBack,
         ),
-        title: const Text(
+        title: Text(
           'Quản lý công việc',
-          style: TextStyle(
-            color: Color(0xFF0F3c8f), // Navy
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
+          style: AppTextStyles.headlineSm.copyWith(
+            color: AppColors.primary,
+            fontWeight: FontWeight.w700,
           ),
         ),
+        centerTitle: false,
       ),
       body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
+          ? const Center(child: CircularProgressIndicator(color: AppColors.secondary))
           : RefreshIndicator(
+              color: AppColors.secondary,
               onRefresh: _loadData,
               child: SingleChildScrollView(
-                padding: const EdgeInsets.all(16.0),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppSpacing.containerMargin,
+                  vertical: AppSpacing.lg,
+                ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Filter dropdown (Only hidden if explicitly NOT manager, though allUsers will be empty/single if Sale)
-                    if (_loggedInUser?.role == 'Manager')
+                    // ── Filter Dropdown (Manager only) ──
+                    if (_loggedInUser?.role == 'Manager') ...[
+                      Text(
+                        'LỌC NHÂN VIÊN',
+                        style: AppTextStyles.labelLg.copyWith(
+                          color: AppColors.onSurfaceVariant,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
                       Container(
-                        padding: const EdgeInsets.all(16.0),
+                        height: 48,
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
                         decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(12),
+                          color: AppColors.white,
+                          borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
+                          border: Border.all(color: AppColors.outlineVariant, width: 1),
                         ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text(
-                              'LỌC NHÂN VIÊN',
-                              style: TextStyle(fontSize: 10, color: Colors.grey, fontWeight: FontWeight.bold),
-                            ),
-                            const SizedBox(height: 8),
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 12),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFFF4F6FA),
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: _allUsers.isEmpty 
-                                ? const SizedBox()
-                                : DropdownButtonHideUnderline(
-                                    child: DropdownButton<User>(
-                                      isExpanded: true,
-                                      value: _currentUser,
-                                      icon: const Icon(Icons.keyboard_arrow_down, color: Colors.grey),
-                                      items: _allUsers.map((user) {
-                                        return DropdownMenuItem<User>(
-                                          value: user,
-                                          child: Text(user.name, style: const TextStyle(fontWeight: FontWeight.w500)),
+                        child: _allUsers.isEmpty
+                            ? const SizedBox()
+                            : DropdownButtonHideUnderline(
+                                child: DropdownButton<User>(
+                                  isExpanded: true,
+                                  value: _currentUser,
+                                  icon: const Icon(Icons.keyboard_arrow_down_rounded, color: AppColors.onSurfaceVariant),
+                                  dropdownColor: AppColors.white,
+                                  style: AppTextStyles.bodyMd.copyWith(color: AppColors.onSurface),
+                                  items: _allUsers.map((user) {
+                                    return DropdownMenuItem<User>(
+                                      value: user,
+                                      child: Text(user.name, style: AppTextStyles.bodyMd.copyWith(fontWeight: FontWeight.w500)),
+                                    );
+                                  }).toList(),
+                                  onChanged: (User? newValue) async {
+                                    if (newValue != null && newValue.id != _currentUser?.id) {
+                                      setState(() {
+                                        _currentUser = newValue;
+                                        _isLoading = true;
+                                      });
+                                      try {
+                                        final updatedHistory = await _useCase.getAttendanceHistory(
+                                          userId: newValue.id == 'all' ? null : newValue.id,
+                                          month: _selectedMonth,
                                         );
-                                      }).toList(),
-                                      onChanged: (User? newValue) async {
-                                        if (newValue != null && newValue.id != _currentUser?.id) {
+                                        if (mounted) {
                                           setState(() {
-                                            _currentUser = newValue;
-                                            _isLoading = true;
+                                            _history = updatedHistory;
+                                            _isLoading = false;
                                           });
-                                          
-                                          // Reload history based on selected user
-                                          try {
-                                            final updatedHistory = await _useCase.getAttendanceHistory(
-                                              userId: newValue.id == 'all' ? null : newValue.id,
-                                              month: _selectedMonth,
-                                            );
-                                            if (mounted) {
-                                              setState(() {
-                                                _history = updatedHistory;
-                                                _isLoading = false;
-                                              });
-                                            }
-                                          } catch (e) {
-                                            if (mounted) {
-                                              setState(() { _isLoading = false; });
-                                              ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Lỗi tải lịch sử')));
-                                            }
-                                          }
                                         }
-                                      },
-                                    ),
-                                  ),
-                            ),
-                          ],
-                        ),
+                                      } catch (e) {
+                                        if (mounted) {
+                                          setState(() => _isLoading = false);
+                                          ScaffoldMessenger.of(context).showSnackBar(
+                                            const SnackBar(content: Text('Lỗi tải lịch sử')),
+                                          );
+                                        }
+                                      }
+                                    }
+                                  },
+                                ),
+                              ),
                       ),
-                    if (_loggedInUser?.role == 'Manager')
-                      const SizedBox(height: 16),
-                    _buildMonthFilterRow(),
-                    const SizedBox(height: 8),
+                      const SizedBox(height: AppSpacing.lg),
+                    ],
 
-                    // Employee Info (only show for a specific employee, not 'All')
-                    if (_currentUser != null && _currentUser!.id != 'all') 
-                      EmployeeInfoCard(user: _currentUser!)
-                    else if (_currentUser != null && _currentUser!.id == 'all')
-                      Container(
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12)),
-                        child: Row(
-                          children: [
-                            const Icon(Icons.group, color: Color(0xFF0F3c8f), size: 40),
-                            const SizedBox(width: 16),
-                            const Text('Đang xem lịch sử toàn đội', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Color(0xFF0F3c8f))),
-                          ],
-                        ),
-                      ),
-                    const SizedBox(height: 24),
-                    
-                    // History List Header
+                    // ── Month Period Filter Chips ──
+                    _buildMonthFilterRow(),
+                    const SizedBox(height: AppSpacing.lg),
+
+
+
+                    // ── History List Header ──
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        const Text(
+                        Text(
                           'Lịch sử',
-                          style: TextStyle(
-                            fontSize: 18,
+                          style: AppTextStyles.headlineSm.copyWith(
+                            color: AppColors.primary,
                             fontWeight: FontWeight.bold,
-                            color: Color(0xFF0F3c8f), // Navy
                           ),
                         ),
                         Text(
-                          '${_history.length} bản ghi được tìm thấy',
-                          style: const TextStyle(fontSize: 12, color: Colors.grey),
+                          '${_history.length} bản ghi',
+                          style: AppTextStyles.bodyMd.copyWith(color: AppColors.onSurfaceVariant),
                         ),
                       ],
                     ),
-                    const SizedBox(height: 16),
-                    
-                    // History Items
+                    const SizedBox(height: AppSpacing.md),
+
+                    // ── History Items ──
                     if (_history.isEmpty)
-                      const Center(
+                      Center(
                         child: Padding(
-                          padding: EdgeInsets.symmetric(vertical: 32.0),
-                          child: Text(
-                            'Chưa có dữ liệu chấm công hôm nay',
-                            style: TextStyle(color: Colors.grey, fontSize: 14),
+                          padding: const EdgeInsets.symmetric(vertical: 48),
+                          child: Column(
+                            children: [
+                              const Icon(Icons.history_rounded, size: 48, color: AppColors.outlineVariant),
+                              const SizedBox(height: 12),
+                              Text(
+                                'Chưa có dữ liệu chấm công',
+                                style: AppTextStyles.bodyLg.copyWith(color: AppColors.onSurfaceVariant),
+                              ),
+                            ],
                           ),
                         ),
                       )

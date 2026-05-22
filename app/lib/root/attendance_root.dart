@@ -26,7 +26,16 @@ class AttendanceRoot {
         }
         // Nếu Manager xem lịch sử thì không cần navigate
       },
-      onBack: () => onNavigate(AppOutput(toModule: 'ROUTE_STORE')),
+      onBack: () {
+        final storage = get<AppStorage>();
+        storage.remove('current_store_id');
+        storage.remove('current_store_name');
+        storage.remove('current_store_lat');
+        storage.remove('current_store_lng');
+        storage.remove('current_route_id');
+        storage.remove('current_route_name');
+        onNavigate(AppOutput(toModule: 'ROUTE_STORE'));
+      },
     );
   }
 
@@ -44,7 +53,14 @@ class AttendanceRoot {
       ),
       onOutput: (output) {
         if (output.success) {
-          onNavigate(AppOutput(toModule: 'STORE_HOME'));
+          // Xoá session cửa hàng hiện tại để cho phép Sale chọn cửa hàng mới
+          storage.remove('current_store_id');
+          storage.remove('current_store_name');
+          storage.remove('current_store_lat');
+          storage.remove('current_store_lng');
+          storage.remove('current_route_id');
+          storage.remove('current_route_name');
+          onNavigate(AppOutput(toModule: 'ROUTE_STORE'));
         }
       },
       onBack: () => onNavigate(AppOutput(toModule: 'STORE_HOME')),

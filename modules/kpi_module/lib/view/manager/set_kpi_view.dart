@@ -114,13 +114,16 @@ class _SetKpiViewState extends ConsumerState<SetKpiView> {
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
-        iconTheme: const IconThemeData(color: Color(0xFF001D4E)),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: Color(0xFF0B1C30)),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
       ),
       body: _isLoading && _salesUsers.isEmpty
           ? const Center(child: CircularProgressIndicator())
           : SingleChildScrollView(
               child: Padding(
-                padding: const EdgeInsets.only(top: 16, left: 24, right: 24, bottom: 64),
+                padding: const EdgeInsets.only(top: 16, left: 16, right: 16, bottom: 64),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -145,21 +148,21 @@ class _SetKpiViewState extends ConsumerState<SetKpiView> {
         const Text(
           'Thiết lập chỉ tiêu',
           style: TextStyle(
-            color: Color(0xFF001D4E),
-            fontSize: 30,
-            fontWeight: FontWeight.w800,
-            height: 1.20,
-            letterSpacing: -0.75,
+            color: Color(0xFF002556),
+            fontSize: 24,
+            fontWeight: FontWeight.w700,
+            fontFamily: 'BeVietnamPro',
           ),
         ),
         const SizedBox(height: 8),
         const Text(
           'Phân bổ mục tiêu kinh doanh cho đội ngũ nhân sự. Dữ liệu sẽ được đồng bộ hóa với hệ thống báo cáo hiệu suất thời gian thực.',
           style: TextStyle(
-            color: Color(0xFF434651),
-            fontSize: 16,
+            color: Color(0xFF434750), // onSurfaceVariant
+            fontSize: 14, // body-md
             fontWeight: FontWeight.w400,
-            height: 1.63,
+            height: 1.5,
+            fontFamily: 'BeVietnamPro',
           ),
         ),
       ],
@@ -169,15 +172,15 @@ class _SetKpiViewState extends ConsumerState<SetKpiView> {
   Widget _buildFormCard() {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(32),
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(32),
+        borderRadius: BorderRadius.circular(16),
         boxShadow: const [
           BoxShadow(
-            color: Color(0x140D47A1),
-            blurRadius: 24,
-            offset: Offset(0, 8),
+            color: Color(0x100D3B7A),
+            blurRadius: 12,
+            offset: Offset(0, 4),
           )
         ],
       ),
@@ -185,43 +188,58 @@ class _SetKpiViewState extends ConsumerState<SetKpiView> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               Container(
-                width: 4,
-                height: 32,
-                decoration: BoxDecoration(
-                  color: const Color(0xFF001D4E),
-                  borderRadius: BorderRadius.circular(9999),
-                ),
+                width: 3,
+                height: 24,
+                color: const Color(0xFF0051D5),
               ),
-              const SizedBox(width: 16),
-              const Text(
-                'Thông tin nhân viên & Thời gian',
-                style: TextStyle(
-                  color: Color(0xFF001D4E),
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  letterSpacing: -0.45,
+              const SizedBox(width: 12),
+              const Expanded(
+                child: Text(
+                  'Thông tin nhân viên & Thời gian',
+                  style: TextStyle(
+                    color: Color(0xFF002556),
+                    fontSize: 18,
+                    fontWeight: FontWeight.w600,
+                    fontFamily: 'BeVietnamPro',
+                  ),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 32),
+          const SizedBox(height: 24),
           _buildLabel('NHÂN VIÊN'),
           const SizedBox(height: 8),
           Container(
             width: double.infinity,
-            padding: const EdgeInsets.symmetric(horizontal: 20),
-            height: 56,
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            height: 52,
             decoration: BoxDecoration(
-              color: const Color(0xFFE8E8E8),
-              borderRadius: BorderRadius.circular(16), // Rounded slightly for better look
+              color: const Color(0xFFEFF4FF),
+              border: Border.all(color: const Color(0xFFC3C6D2)),
+              borderRadius: BorderRadius.circular(16),
             ),
             child: DropdownButtonHideUnderline(
               child: DropdownButton<String>(
                 isExpanded: true,
                 value: _selectedUserId,
-                hint: const Text('Chọn nhân viên', style: TextStyle(color: Color(0xFF94A3B8))),
+                icon: const Icon(Icons.keyboard_arrow_down, color: Color(0xFF434750)),
+                hint: const Text(
+                  'Chọn nhân viên', 
+                  style: TextStyle(
+                    color: Color(0xFF434750),
+                    fontSize: 16,
+                    fontFamily: 'BeVietnamPro',
+                  )
+                ),
+                style: const TextStyle(
+                  color: Color(0xFF0B1C30),
+                  fontSize: 16,
+                  fontWeight: FontWeight.w400,
+                  fontFamily: 'BeVietnamPro',
+                ),
                 items: _salesUsers.map((user) {
                   return DropdownMenuItem<String>(
                     value: user['id'].toString(),
@@ -236,23 +254,31 @@ class _SetKpiViewState extends ConsumerState<SetKpiView> {
               ),
             ),
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 20),
           _buildLabel('THÁNG/NĂM'),
           const SizedBox(height: 8),
           Row(
             children: [
               Expanded(
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
-                  height: 56,
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  height: 52,
                   decoration: BoxDecoration(
-                    color: const Color(0xFFE8E8E8),
+                    color: const Color(0xFFEFF4FF),
+                    border: Border.all(color: const Color(0xFFC3C6D2)),
                     borderRadius: BorderRadius.circular(16),
                   ),
                   child: DropdownButtonHideUnderline(
                     child: DropdownButton<int>(
                       isExpanded: true,
                       value: _selectedMonth,
+                      icon: const Icon(Icons.keyboard_arrow_down, color: Color(0xFF434750)),
+                      style: const TextStyle(
+                        color: Color(0xFF0B1C30),
+                        fontSize: 16,
+                        fontWeight: FontWeight.w400,
+                        fontFamily: 'BeVietnamPro',
+                      ),
                       items: List.generate(12, (index) => index + 1).map((m) {
                         return DropdownMenuItem<int>(
                           value: m,
@@ -264,19 +290,27 @@ class _SetKpiViewState extends ConsumerState<SetKpiView> {
                   ),
                 ),
               ),
-              const SizedBox(width: 16),
+              const SizedBox(width: 12),
               Expanded(
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
-                  height: 56,
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  height: 52,
                   decoration: BoxDecoration(
-                    color: const Color(0xFFE8E8E8),
+                    color: const Color(0xFFEFF4FF),
+                    border: Border.all(color: const Color(0xFFC3C6D2)),
                     borderRadius: BorderRadius.circular(16),
                   ),
                   child: DropdownButtonHideUnderline(
                     child: DropdownButton<int>(
                       isExpanded: true,
                       value: _selectedYear,
+                      icon: const Icon(Icons.keyboard_arrow_down, color: Color(0xFF434750)),
+                      style: const TextStyle(
+                        color: Color(0xFF0B1C30),
+                        fontSize: 16,
+                        fontWeight: FontWeight.w400,
+                        fontFamily: 'BeVietnamPro',
+                      ),
                       items: [DateTime.now().year, DateTime.now().year + 1].map((y) {
                         return DropdownMenuItem<int>(
                           value: y,
@@ -290,14 +324,15 @@ class _SetKpiViewState extends ConsumerState<SetKpiView> {
               ),
             ],
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 20),
           _buildLabel('DOANH SỐ MỤC TIÊU'),
           const SizedBox(height: 8),
           Container(
-            height: 64,
-            padding: const EdgeInsets.symmetric(horizontal: 20),
+            height: 52,
+            padding: const EdgeInsets.symmetric(horizontal: 16),
             decoration: BoxDecoration(
-              color: const Color(0xFFE8E8E8),
+              color: const Color(0xFFEFF4FF),
+              border: Border.all(color: const Color(0xFFC3C6D2)),
               borderRadius: BorderRadius.circular(16),
             ),
             child: Row(
@@ -307,21 +342,22 @@ class _SetKpiViewState extends ConsumerState<SetKpiView> {
                     controller: _targetRevenueController,
                     keyboardType: TextInputType.number,
                     style: const TextStyle(
-                      color: Color(0xFF6B7280),
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF0B1C30),
+                      fontSize: 16,
+                      fontWeight: FontWeight.w400,
+                      fontFamily: 'BeVietnamPro',
                     ),
                     decoration: const InputDecoration(
                       border: InputBorder.none,
                       hintText: '0',
                       hintStyle: TextStyle(
-                        color: Color(0xFF6B7280),
-                        fontSize: 24,
-                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF94A3B8),
+                        fontSize: 16,
+                        fontWeight: FontWeight.w400,
+                        fontFamily: 'BeVietnamPro',
                       ),
                     ),
                     onChanged: (val) {
-                      // Formatting raw input with commas
                       final rawNum = val.replaceAll(RegExp(r'[^0-9]'), '');
                       if (rawNum.isNotEmpty) {
                         final formatted = NumberFormat.decimalPattern('vi_VN').format(int.parse(rawNum));
@@ -337,33 +373,31 @@ class _SetKpiViewState extends ConsumerState<SetKpiView> {
                 const Text(
                   'VND',
                   style: TextStyle(
-                    color: Color(0xFF434651),
-                    fontSize: 16,
-                    fontWeight: FontWeight.w500,
+                    color: Color(0xFF434750),
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: 0.05,
+                    fontFamily: 'BeVietnamPro',
                   ),
                 ),
               ],
             ),
           ),
-          const SizedBox(height: 40),
+          const SizedBox(height: 32),
           InkWell(
             onTap: _isLoading ? null : _submitKpi,
-            borderRadius: BorderRadius.circular(9999),
+            borderRadius: BorderRadius.circular(24),
             child: Container(
               width: double.infinity,
-              padding: const EdgeInsets.symmetric(vertical: 16),
+              height: 52,
               decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [Color(0xFF001D4E), Color(0xFF003178)],
-                ),
-                borderRadius: BorderRadius.circular(9999),
+                color: const Color(0xFF002556),
+                borderRadius: BorderRadius.circular(24),
                 boxShadow: const [
                   BoxShadow(
-                    color: Color(0x33000000),
-                    blurRadius: 15,
-                    offset: Offset(0, 10),
+                    color: Color(0x1F0D3B7A),
+                    blurRadius: 16,
+                    offset: Offset(0, 6),
                   )
                 ],
               ),
@@ -379,7 +413,8 @@ class _SetKpiViewState extends ConsumerState<SetKpiView> {
                         style: TextStyle(
                           color: Colors.white,
                           fontSize: 16,
-                          fontWeight: FontWeight.bold,
+                          fontWeight: FontWeight.w600,
+                          fontFamily: 'BeVietnamPro',
                         ),
                       ),
               ),
@@ -392,12 +427,13 @@ class _SetKpiViewState extends ConsumerState<SetKpiView> {
 
   Widget _buildLabel(String text) {
     return Text(
-      text,
+      text.toUpperCase(),
       style: const TextStyle(
-        color: Color(0xFF434651),
-        fontSize: 12,
-        fontWeight: FontWeight.bold,
-        letterSpacing: 1.20,
+        color: Color(0xFF434750), // onSurfaceVariant
+        fontSize: 14, // label-lg
+        fontWeight: FontWeight.w600,
+        letterSpacing: 0.05,
+        fontFamily: 'BeVietnamPro',
       ),
     );
   }
@@ -494,22 +530,20 @@ class _SetKpiViewState extends ConsumerState<SetKpiView> {
         borderRadius: BorderRadius.circular(16),
       ),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Row(
-            children: [
-              const Icon(Icons.analytics_outlined, color: Color(0xFF1A1C1C), size: 20),
-              const SizedBox(width: 12),
-              Text(
-                label,
-                style: const TextStyle(
-                  color: Color(0xFF1A1C1C),
-                  fontSize: 14,
-                  fontWeight: FontWeight.w500,
-                ),
+          const Icon(Icons.analytics_outlined, color: Color(0xFF1A1C1C), size: 20),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              label,
+              style: const TextStyle(
+                color: Color(0xFF1A1C1C),
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
               ),
-            ],
+            ),
           ),
+          const SizedBox(width: 12),
           Text(
             value,
             style: const TextStyle(

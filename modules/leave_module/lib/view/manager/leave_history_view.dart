@@ -1,5 +1,7 @@
+import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:core/theme/theme.dart';
 
 import '../../logic_data/leave_data.dart';
 import '../../logic_uc/leave_history_uc.dart';
@@ -9,7 +11,7 @@ import '../../logic_uc/leave_history_uc.dart';
 // ---------------------------------------------------------------------------
 
 class LeaveHistoryViewState {
-  final List<Map<String, dynamic>> employees; // [{id, name}]
+  final List<Map<String, dynamic>> employees;
   final String? selectedEmployeeId;
   final int selectedYear;
   final bool isLoading;
@@ -65,14 +67,11 @@ class LeaveHistoryViewNotifier extends StateNotifier<LeaveHistoryViewState> {
     _loadEmployees();
   }
 
-  /// Load danh sách nhân viên trong nhóm để populate dropdown.
   Future<void> _loadEmployees() async {
     try {
       final list = await _leaveData.getUsersInGroup(groupId);
       state = state.copyWith(employees: list);
-    } catch (_) {
-      // Không block UI nếu load employee list fail
-    }
+    } catch (_) {}
   }
 
   void selectEmployee(String employeeId) {
@@ -124,8 +123,6 @@ final leaveHistoryViewNotifierProvider = StateNotifierProvider.autoDispose<
 // View
 // ---------------------------------------------------------------------------
 
-/// Màn hình thống kê lịch sử nghỉ phép của nhân viên — dành cho Manager.
-/// Layout: header + selectors (nhân viên + năm) + stats cards + leave list.
 class LeaveHistoryView extends ConsumerWidget {
   final VoidCallback? onBack;
 
@@ -138,23 +135,44 @@ class LeaveHistoryView extends ConsumerWidget {
     final currentYear = DateTime.now().year;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF4F6FA),
+      backgroundColor: AppColors.background,
+      appBar: AppBar(
+        backgroundColor: AppColors.white,
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios_new_rounded, color: AppColors.onSurface, size: 20),
+          onPressed: () {
+            if (onBack != null) {
+              onBack!();
+            } else {
+              Navigator.maybePop(context);
+            }
+          },
+        ),
+        title: Text(
+          'Báo cáo nghỉ phép nhân viên',
+          style: AppTextStyles.headlineSm.copyWith(
+            color: AppColors.primary,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+        centerTitle: false,
+      ),
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.only(
-              top: 24, left: 24, right: 24, bottom: 40),
+          padding: const EdgeInsets.fromLTRB(
+            AppSpacing.containerMargin,
+            AppSpacing.md,
+            AppSpacing.containerMargin,
+            AppSpacing.xxl,
+          ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // ── Header ──────────────────────────────────────────────
               _buildHeader(),
-              const SizedBox(height: 32),
-
-              // ── Selectors ───────────────────────────────────────────
+              const SizedBox(height: AppSpacing.xxl),
               _buildSelectors(state, notifier, currentYear),
-              const SizedBox(height: 32),
-
-              // ── Body ────────────────────────────────────────────────
+              const SizedBox(height: AppSpacing.xxl),
               _buildBody(state),
             ],
           ),
@@ -163,44 +181,16 @@ class LeaveHistoryView extends ConsumerWidget {
     );
   }
 
-  // ── Header ────────────────────────────────────────────────────────────────────
+  // ── Header ─────────────────────────────────────────────────────────────────
 
   Widget _buildHeader() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: const [
-        
-        SizedBox(height: 4),
-        Text(
-          'Báo cáo nghỉ phép\nnhân viên',
-          style: TextStyle(
-            color: Color(0xFF0F3c8f),
-            fontSize: 30,
-            fontFamily: 'Manrope',
-            fontWeight: FontWeight.w800,
-            letterSpacing: -0.75,
-            height: 1.20,
-          ),
-        ),
-        SizedBox(height: 4),
-        Opacity(
-          opacity: 0.80,
-          child: Text(
-            'Chọn nhân viên và năm để xem thống kê',
-            style: TextStyle(
-              color: Color(0xFF434651),
-              fontSize: 14,
-              fontFamily: 'Manrope',
-              fontWeight: FontWeight.w500,
-              height: 1.50,
-            ),
-          ),
-        ),
-      ],
+    return Text(
+      'Chọn nhân viên và năm để xem thống kê',
+      style: AppTextStyles.bodyMd.copyWith(color: AppColors.onSurfaceVariant),
     );
   }
 
-  // ── Selectors ─────────────────────────────────────────────────────────────────
+  // ── Selectors ──────────────────────────────────────────────────────────────
 
   Widget _buildSelectors(
     LeaveHistoryViewState state,
@@ -210,59 +200,64 @@ class LeaveHistoryView extends ConsumerWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Employee dropdown
-        const Text(
+        // Employee dropdown label
+        Text(
           'NHÂN VIÊN',
-          style: TextStyle(
-            color: Color(0xFF434651),
-            fontSize: 12,
-            fontFamily: 'Manrope',
-            fontWeight: FontWeight.w700,
-            letterSpacing: 1.20,
+          style: AppTextStyles.labelLg.copyWith(
+            color: AppColors.onSurfaceVariant,
+            fontWeight: FontWeight.bold,
           ),
         ),
         const SizedBox(height: 8),
-        _buildDropdownField(
+        // Employee dropdown container
+        Container(
           key: const Key('employee_dropdown'),
-          hint: 'Chọn nhân viên...',
-          value: state.selectedEmployeeId,
-          items: state.employees.map((e) {
-            final id = e['id'] as String;
-            final name = e['name'] as String? ?? id.substring(0, 8);
-            return DropdownMenuItem<String>(
-              value: id,
-              child: Text(
-                name,
-                style: const TextStyle(
-                  color: Color(0xFF1A1C1C),
-                  fontSize: 16,
-                  fontFamily: 'Manrope',
-                  fontWeight: FontWeight.w400,
-                ),
+          height: 52,
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          decoration: BoxDecoration(
+            color: AppColors.white,
+            borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
+            border: Border.all(color: AppColors.outlineVariant, width: 1),
+          ),
+          child: DropdownButtonHideUnderline(
+            child: DropdownButton<String>(
+              value: state.selectedEmployeeId,
+              hint: Text(
+                'Chọn nhân viên...',
+                style: AppTextStyles.bodyLg.copyWith(color: AppColors.onSurfaceVariant),
               ),
-            );
-          }).toList(),
-          onChanged: (v) {
-            if (v != null) notifier.selectEmployee(v);
-          },
+              isExpanded: true,
+              dropdownColor: AppColors.white,
+              style: AppTextStyles.bodyLg.copyWith(color: AppColors.onSurface),
+              icon: const Icon(Icons.keyboard_arrow_down_rounded, color: AppColors.onSurfaceVariant),
+              items: state.employees.map((e) {
+                final id = e['id'] as String;
+                final name = e['name'] as String? ?? id.substring(0, 8);
+                return DropdownMenuItem<String>(
+                  value: id,
+                  child: Text(name, style: AppTextStyles.bodyLg.copyWith(color: AppColors.onSurface)),
+                );
+              }).toList(),
+              onChanged: (v) {
+                if (v != null) notifier.selectEmployee(v);
+              },
+            ),
+          ),
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: AppSpacing.lg),
 
-        // Year tabs
-        const Text(
+        // Year selector label
+        Text(
           'NĂM',
-          style: TextStyle(
-            color: Color(0xFF434651),
-            fontSize: 12,
-            fontFamily: 'Manrope',
-            fontWeight: FontWeight.w700,
-            letterSpacing: 1.20,
+          style: AppTextStyles.labelLg.copyWith(
+            color: AppColors.onSurfaceVariant,
+            fontWeight: FontWeight.bold,
           ),
         ),
         const SizedBox(height: 8),
+        // Year pill tabs
         Row(
-          children: [currentYear, currentYear - 1, currentYear - 2]
-              .map((year) {
+          children: [currentYear, currentYear - 1, currentYear - 2].map((year) {
             final isSelected = state.selectedYear == year;
             return Padding(
               padding: const EdgeInsets.only(right: 8),
@@ -270,27 +265,17 @@ class LeaveHistoryView extends ConsumerWidget {
                 key: Key('year_tab_$year'),
                 onTap: () => notifier.selectYear(year),
                 child: Container(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 20, vertical: 10),
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
                   decoration: BoxDecoration(
-                    color: isSelected
-                        ? const Color(0xFF001D4E)
-                        : Colors.transparent,
-                    borderRadius: BorderRadius.circular(20),
-                    border: isSelected
-                        ? null
-                        : Border.all(color: const Color(0xFFCBD5E1)),
+                    color: isSelected ? AppColors.primary : AppColors.white,
+                    borderRadius: BorderRadius.circular(AppSpacing.radiusFull),
+                    border: isSelected ? null : Border.all(color: AppColors.outlineVariant, width: 1),
                   ),
                   child: Text(
                     '$year',
-                    style: TextStyle(
-                      color: isSelected
-                          ? Colors.white
-                          : const Color(0xFF434651),
-                      fontSize: 14,
-                      fontFamily: 'Manrope',
+                    style: AppTextStyles.labelLg.copyWith(
+                      color: isSelected ? AppColors.white : AppColors.onSurface,
                       fontWeight: FontWeight.w700,
-                      height: 1.43,
                     ),
                   ),
                 ),
@@ -302,49 +287,7 @@ class LeaveHistoryView extends ConsumerWidget {
     );
   }
 
-  Widget _buildDropdownField({
-    required Key key,
-    required String hint,
-    required String? value,
-    required List<DropdownMenuItem<String>> items,
-    required ValueChanged<String?> onChanged,
-  }) {
-    return Container(
-      key: key,
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      decoration: const BoxDecoration(
-        color: Color(0xFFE8E8E8),
-        borderRadius: BorderRadius.all(Radius.circular(12)),
-      ),
-      child: DropdownButtonHideUnderline(
-        child: DropdownButton<String>(
-          value: value,
-          hint: Text(
-            hint,
-            style: const TextStyle(
-              color: Color(0x7F747782),
-              fontSize: 16,
-              fontFamily: 'Manrope',
-            ),
-          ),
-          items: items,
-          onChanged: onChanged,
-          isExpanded: true,
-          dropdownColor: Colors.white,
-          style: const TextStyle(
-            color: Color(0xFF1A1C1C),
-            fontSize: 16,
-            fontFamily: 'Manrope',
-          ),
-          icon: const Icon(Icons.keyboard_arrow_down,
-              color: Color(0xFF434651)),
-        ),
-      ),
-    );
-  }
-
-  // ── Body ──────────────────────────────────────────────────────────────────────
+  // ── Body ───────────────────────────────────────────────────────────────────
 
   Widget _buildBody(LeaveHistoryViewState state) {
     if (state.selectedEmployeeId == null) {
@@ -354,9 +297,7 @@ class LeaveHistoryView extends ConsumerWidget {
     if (state.isLoading) {
       return const Padding(
         padding: EdgeInsets.only(top: 48),
-        child: Center(
-          child: CircularProgressIndicator(color: Color(0xFF0F3c8f)),
-        ),
+        child: Center(child: CircularProgressIndicator(color: AppColors.secondary)),
       );
     }
 
@@ -366,24 +307,18 @@ class LeaveHistoryView extends ConsumerWidget {
         child: Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: const Color(0xFFEF4444).withOpacity(0.1),
-            borderRadius: BorderRadius.circular(16),
+            color: AppColors.error.withValues(alpha: 0.08),
+            borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
           ),
           child: Text(
             state.errorMessage!,
-            style: const TextStyle(
-              color: Color(0xFFEF4444),
-              fontSize: 14,
-              fontFamily: 'Manrope',
-              fontWeight: FontWeight.w500,
-            ),
+            style: AppTextStyles.bodyMd.copyWith(color: AppColors.error),
           ),
         ),
       );
     }
 
     if (state.result == null) return const SizedBox();
-
     return _buildResults(state.result!);
   }
 
@@ -392,19 +327,15 @@ class LeaveHistoryView extends ConsumerWidget {
       padding: const EdgeInsets.only(top: 48),
       child: Center(
         child: Column(
-          children: const [
-            Icon(Icons.person_search_outlined,
-                size: 56, color: Color(0xFF434651)),
-            SizedBox(height: 12),
+          children: [
+            const Icon(Icons.person_search_outlined, size: 56, color: AppColors.outlineVariant),
+            const SizedBox(height: 12),
             Text(
               'Chọn nhân viên để xem\nthống kê nghỉ phép.',
               textAlign: TextAlign.center,
-              style: TextStyle(
-                color: Color(0xFF434651),
-                fontSize: 16,
-                fontFamily: 'Manrope',
-                fontWeight: FontWeight.w500,
-                height: 1.63,
+              style: AppTextStyles.bodyLg.copyWith(
+                color: AppColors.onSurfaceVariant,
+                height: 1.6,
               ),
             ),
           ],
@@ -413,13 +344,13 @@ class LeaveHistoryView extends ConsumerWidget {
     );
   }
 
-  // ── Results ───────────────────────────────────────────────────────────────────
+  // ── Results ────────────────────────────────────────────────────────────────
 
   Widget _buildResults(LeaveHistoryResult result) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // ── Stats cards row ──
+        // ── Stats Row (3 columns) ──
         Row(
           children: [
             Expanded(
@@ -427,7 +358,7 @@ class LeaveHistoryView extends ConsumerWidget {
                 label: 'NGÀY ĐÃ NGHỈ',
                 value: '${result.totalApprovedDays}',
                 unit: 'ngày',
-                color: const Color(0xFF0F3c8f),
+                valueColor: AppColors.onSurface,
               ),
             ),
             const SizedBox(width: 8),
@@ -436,7 +367,7 @@ class LeaveHistoryView extends ConsumerWidget {
                 label: 'ĐANG CHỜ',
                 value: '${result.pendingCount}',
                 unit: 'đơn',
-                color: const Color(0xFFF59E0B),
+                valueColor: AppColors.secondary,
               ),
             ),
             const SizedBox(width: 8),
@@ -445,126 +376,95 @@ class LeaveHistoryView extends ConsumerWidget {
                 label: 'TỪ CHỐI',
                 value: '${result.rejectedCount}',
                 unit: 'đơn',
-                color: const Color(0xFFEF4444),
+                valueColor: AppColors.error,
               ),
             ),
           ],
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 12),
 
-        // ── Approved count card ──
+        // ── Total days card ──
         Container(
           width: double.infinity,
-          padding: const EdgeInsets.only(top: 31, left: 32, right: 32, bottom: 32),
-          decoration: ShapeDecoration(
-            color: Colors.white,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
-            shadows: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.05),
-                blurRadius: 10,
-                offset: const Offset(0, 4),
-              ),
-            ],
+          padding: const EdgeInsets.all(AppSpacing.lg),
+          decoration: BoxDecoration(
+            color: AppColors.white,
+            borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
+            boxShadow: AppShadows.level1,
           ),
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              const Text(
+              Text(
                 'TỔNG NGÀY NGHỈ ĐƯỢC DUYỆT',
-                style: TextStyle(
-                  color: Color(0x99434651),
-                  fontSize: 11,
-                  fontFamily: 'Manrope',
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: 1.10,
-                  height: 1.50,
+                style: AppTextStyles.labelLg.copyWith(
+                  color: AppColors.onSurfaceVariant,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 0.8,
                 ),
+                textAlign: TextAlign.center,
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 16),
               Row(
-                crossAxisAlignment: CrossAxisAlignment.baseline,
-                textBaseline: TextBaseline.alphabetic,
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  Text(
-                    '${result.totalApprovedDays} ',
-                    style: const TextStyle(
-                      color: Color(0xFF0F3c8f),
-                      fontSize: 48,
-                      fontFamily: 'Manrope',
-                      fontWeight: FontWeight.w800,
-                      height: 1,
+                  // Circle chart
+                  SizedBox(
+                    width: 64,
+                    height: 64,
+                    child: CustomPaint(
+                      painter: _CircleProgressPainter(
+                        progress: (result.totalApprovedDays / 12).clamp(0.0, 1.0),
+                      ),
+                      child: Center(
+                        child: Text(
+                          '${result.totalApprovedDays}',
+                          style: AppTextStyles.headlineSm.copyWith(
+                            color: AppColors.primary,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
                     ),
                   ),
-                  const Text(
-                    'Ngày',
-                    style: TextStyle(
-                      color: Color(0xFF434651),
-                      fontSize: 20,
-                      fontFamily: 'Manrope',
-                      fontWeight: FontWeight.w500,
-                      height: 1.40,
-                    ),
+                  const SizedBox(width: 16),
+                  // Right side text
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Ngày',
+                        style: AppTextStyles.headlineMd.copyWith(
+                          color: AppColors.onSurface,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        'Năm ${result.year} • ${result.approvedCount} đơn đã duyệt',
+                        style: AppTextStyles.bodyMd.copyWith(color: AppColors.onSurfaceVariant),
+                      ),
+                    ],
                   ),
                 ],
               ),
-              const SizedBox(height: 4),
-              Text(
-                'Năm ${result.year} • ${result.approvedCount} đơn đã duyệt',
-                style: const TextStyle(
-                  color: Color(0xFF434651),
-                  fontSize: 14,
-                  fontFamily: 'Manrope',
-                  fontWeight: FontWeight.w400,
-                  height: 1.50,
-                ),
-              ),
-              // Progress bar (tỷ lệ so với 12 ngày phép/năm)
-              if (result.totalApprovedDays > 0) ...[
-                const SizedBox(height: 16),
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(9999),
-                  child: LinearProgressIndicator(
-                    value: (result.totalApprovedDays / 12).clamp(0.0, 1.0),
-                    minHeight: 6,
-                    backgroundColor: const Color(0xFFE8E8E8),
-                    valueColor: const AlwaysStoppedAnimation<Color>(
-                      Color(0xFF0F3c8f),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  '${result.totalApprovedDays}/12 ngày phép năm đã sử dụng',
-                  style: const TextStyle(
-                    color: Color(0x99434651),
-                    fontSize: 12,
-                    fontFamily: 'Manrope',
-                    fontWeight: FontWeight.w400,
-                  ),
-                ),
-              ],
+              const SizedBox(height: AppSpacing.sm),
             ],
           ),
         ),
-        const SizedBox(height: 24),
+        const SizedBox(height: AppSpacing.xxl),
 
         // ── Approved leave list ──
         if (result.approvedLeaves.isNotEmpty) ...[
-          const Text(
+          Text(
             'Chi tiết đơn đã duyệt',
-            style: TextStyle(
-              color: Color(0xFF0F3c8f),
-              fontSize: 24,
-              fontFamily: 'Manrope',
+            style: AppTextStyles.headlineSm.copyWith(
+              color: AppColors.primary,
               fontWeight: FontWeight.w700,
-              letterSpacing: -0.60,
-              height: 1.33,
             ),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: AppSpacing.md),
           ...result.approvedLeaves.map((leave) {
             final start =
                 '${leave.startDate.day.toString().padLeft(2, '0')}/${leave.startDate.month.toString().padLeft(2, '0')}';
@@ -572,60 +472,47 @@ class LeaveHistoryView extends ConsumerWidget {
                 '${leave.endDate.day.toString().padLeft(2, '0')}/${leave.endDate.month.toString().padLeft(2, '0')}';
 
             return Padding(
-              padding: const EdgeInsets.only(bottom: 4),
+              padding: const EdgeInsets.only(bottom: AppSpacing.stackGap),
               child: Container(
                 key: Key('history_card_${leave.id}'),
-                padding: const EdgeInsets.all(24),
-                decoration: ShapeDecoration(
-                  color: Colors.white,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  shadows: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.05),
-                      blurRadius: 10,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
+                padding: const EdgeInsets.all(AppSpacing.lg),
+                decoration: BoxDecoration(
+                  color: AppColors.white,
+                  borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
+                  boxShadow: AppShadows.level1,
                 ),
                 child: Row(
                   children: [
                     // Date box
                     Container(
-                      width: 64,
-                      height: 64,
-                      decoration: ShapeDecoration(
-                        color: const Color(0xFFF3F3F3),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
+                      width: 56,
+                      height: 56,
+                      decoration: BoxDecoration(
+                        color: AppColors.surfaceContainerLow,
+                        borderRadius: BorderRadius.circular(AppSpacing.radius),
                       ),
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           Text(
                             '${leave.startDate.day}',
-                            style: const TextStyle(
-                              color: Color(0xFF0F3c8f),
-                              fontSize: 18,
-                              fontFamily: 'Manrope',
+                            style: AppTextStyles.headlineSm.copyWith(
+                              color: AppColors.primary,
                               fontWeight: FontWeight.w800,
                             ),
                           ),
                           Text(
                             'TH${leave.startDate.month.toString().padLeft(2, '0')}',
-                            style: const TextStyle(
-                              color: Color(0xFF0F3c8f),
-                              fontSize: 10,
-                              fontFamily: 'Manrope',
+                            style: AppTextStyles.caption.copyWith(
+                              color: AppColors.secondary,
                               fontWeight: FontWeight.w700,
                             ),
                           ),
                         ],
                       ),
                     ),
-                    const SizedBox(width: 16),
+                    const SizedBox(width: AppSpacing.md),
+                    // Reason + duration
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -634,55 +521,39 @@ class LeaveHistoryView extends ConsumerWidget {
                             leave.reason.length > 30
                                 ? '${leave.reason.substring(0, 30)}…'
                                 : leave.reason,
-                            style: const TextStyle(
-                              color: Color(0xFF0F3c8f),
-                              fontSize: 16,
-                              fontFamily: 'Manrope',
-                              fontWeight: FontWeight.w700,
-                              height: 1.40,
+                            style: AppTextStyles.bodyLg.copyWith(
+                              color: AppColors.onSurface,
+                              fontWeight: FontWeight.w600,
                             ),
                           ),
                           const SizedBox(height: 2),
                           Text(
                             '${leave.totalDays} ngày ($start – $end)',
-                            style: const TextStyle(
-                              color: Color(0xFF434651),
-                              fontSize: 14,
-                              fontFamily: 'Manrope',
-                              fontWeight: FontWeight.w400,
-                            ),
+                            style: AppTextStyles.bodyMd.copyWith(color: AppColors.onSurfaceVariant),
                           ),
                         ],
                       ),
                     ),
-                    Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Container(
-                          width: 6,
-                          height: 6,
-                          decoration: const BoxDecoration(
-                            color: Color(0xFF22C55E),
-                            shape: BoxShape.circle,
-                          ),
+                    // Status badge
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFdcfce7),
+                        borderRadius: BorderRadius.circular(AppSpacing.radiusFull),
+                      ),
+                      child: Text(
+                        'Đã duyệt',
+                        style: AppTextStyles.labelMd.copyWith(
+                          color: const Color(0xFF16a34a),
+                          fontWeight: FontWeight.bold,
                         ),
-                        const SizedBox(width: 4),
-                        const Text(
-                          'Đã duyệt',
-                          style: TextStyle(
-                            color: Color(0xFF22C55E),
-                            fontSize: 12,
-                            fontFamily: 'Manrope',
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                      ],
+                      ),
                     ),
                   ],
                 ),
               ),
             );
-          }).toList(),
+          }),
         ],
       ],
     );
@@ -692,59 +563,85 @@ class LeaveHistoryView extends ConsumerWidget {
     required String label,
     required String value,
     required String unit,
-    required Color color,
+    required Color valueColor,
   }) {
     return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: ShapeDecoration(
-        color: const Color(0xFFF3F3F3),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-        ),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: AppColors.white,
+        borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
+        boxShadow: AppShadows.level1,
       ),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           Text(
             label,
-            style: const TextStyle(
-              color: Color(0x99434651),
-              fontSize: 9,
-              fontFamily: 'Manrope',
+            style: AppTextStyles.caption.copyWith(
+              color: AppColors.onSurfaceVariant,
+              fontWeight: FontWeight.bold,
+              letterSpacing: 0.6,
+            ),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 6),
+          Text(
+            value,
+            style: AppTextStyles.headlineSm.copyWith(
+              color: valueColor,
               fontWeight: FontWeight.w700,
-              letterSpacing: 0.80,
-              height: 1.50,
             ),
           ),
-          const SizedBox(height: 4),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.baseline,
-            textBaseline: TextBaseline.alphabetic,
-            children: [
-              Text(
-                value,
-                style: TextStyle(
-                  color: color,
-                  fontSize: 28,
-                  fontFamily: 'Manrope',
-                  fontWeight: FontWeight.w800,
-                  height: 1,
-                ),
-              ),
-              const SizedBox(width: 3),
-              Text(
-                unit,
-                style: const TextStyle(
-                  color: Color(0xFF434651),
-                  fontSize: 12,
-                  fontFamily: 'Manrope',
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ],
+          Text(
+            unit,
+            style: AppTextStyles.caption.copyWith(color: AppColors.onSurfaceVariant),
           ),
         ],
       ),
     );
   }
+}
+
+// ---------------------------------------------------------------------------
+// Circle Progress Painter
+// ---------------------------------------------------------------------------
+
+class _CircleProgressPainter extends CustomPainter {
+  final double progress;
+
+  const _CircleProgressPainter({required this.progress});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final center = Offset(size.width / 2, size.height / 2);
+    final radius = (size.width - 6) / 2;
+    const strokeWidth = 6.0;
+
+    final trackPaint = Paint()
+      ..color = AppColors.surfaceContainerHigh
+      ..strokeWidth = strokeWidth
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round;
+
+    final fillPaint = Paint()
+      ..color = AppColors.secondary
+      ..strokeWidth = strokeWidth
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round;
+
+    // Track
+    canvas.drawCircle(center, radius, trackPaint);
+
+    // Fill
+    canvas.drawArc(
+      Rect.fromCircle(center: center, radius: radius),
+      -pi / 2,
+      2 * pi * progress,
+      false,
+      fillPaint,
+    );
+  }
+
+  @override
+  bool shouldRepaint(_CircleProgressPainter oldDelegate) => oldDelegate.progress != progress;
 }

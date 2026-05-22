@@ -30,6 +30,9 @@ class _CameraActionScreenState extends State<CameraActionScreen> {
   bool _isCameraInitialized = false;
   String? _cameraError;
 
+  List<CameraDescription> _cameras = [];
+  int _selectedCameraIndex = 0;
+
   bool _isCheckIn = true; // default before checking DB
 
   double? _currentDistance;
@@ -75,13 +78,13 @@ class _CameraActionScreenState extends State<CameraActionScreen> {
 
   Future<void> _initCamera() async {
     try {
-      final cameras = await availableCameras();
-      if (cameras.isEmpty) {
+      _cameras = await availableCameras();
+      if (_cameras.isEmpty) {
         setState(() => _cameraError = 'Không tìm thấy camera trên thiết bị.');
         return;
       }
       _cameraController = CameraController(
-        cameras.first,
+        _cameras[_selectedCameraIndex],
         ResolutionPreset.high,
         enableAudio: false,
       );
@@ -97,6 +100,45 @@ class _CameraActionScreenState extends State<CameraActionScreen> {
         setState(() {
           _cameraError =
               'Tạm thời không thể truy cập camera. Vui lòng cấp quyền hoặc khởi động lại ứng dụng.';
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _flipCamera() async {
+    if (_cameras.length < 2) return;
+    
+    final oldController = _cameraController;
+    setState(() {
+      _isLoading = true;
+      _isCameraInitialized = false;
+      _cameraController = null;
+    });
+    
+    if (oldController != null) {
+      await oldController.dispose();
+    }
+    
+    _selectedCameraIndex = (_selectedCameraIndex + 1) % _cameras.length;
+    _cameraController = CameraController(
+      _cameras[_selectedCameraIndex],
+      ResolutionPreset.high,
+      enableAudio: false,
+    );
+    
+    try {
+      await _cameraController!.initialize();
+      if (mounted) {
+        setState(() {
+          _isCameraInitialized = true;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _cameraError = 'Lỗi khi chuyển camera.';
           _isLoading = false;
         });
       }
@@ -204,6 +246,7 @@ class _CameraActionScreenState extends State<CameraActionScreen> {
         cameraController: _cameraController!,
         destLat: _currentStore.latitude ?? 0,
         destLng: _currentStore.longitude ?? 0,
+        isCheckIn: _isCheckIn,
       );
 
       bool success;
@@ -303,17 +346,14 @@ class _CameraActionScreenState extends State<CameraActionScreen> {
                         ),
                       ),
                       const Spacer(),
-                      IconButton(
-                        icon: const Icon(Icons.flash_off, color: Colors.white),
-                        onPressed: () {},
-                      ),
-                      IconButton(
-                        icon: const Icon(
-                          Icons.help_outline,
-                          color: Colors.white,
+                      if (_cameras.length > 1)
+                        IconButton(
+                          icon: const Icon(
+                            Icons.flip_camera_ios,
+                            color: Colors.white,
+                          ),
+                          onPressed: _flipCamera,
                         ),
-                        onPressed: () {},
-                      ),
                     ],
                   ),
                 ),

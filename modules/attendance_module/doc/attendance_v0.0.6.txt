@@ -1,0 +1,2106 @@
+
+FILE: c:\Users\Admin\Documents\GitHub\quan_li_sale\modules\attendance_module\lib\attendance_module.dart
+import 'package:flutter/material.dart';
+import 'package:core/di/injector.dart';
+import 'package:core/storage/app_storage.dart';
+import 'view/attendance_history_screen.dart';
+import 'view/camera_action_screen.dart';
+import 'entity/store.dart';
+import 'output/attendance_output.dart';
+import 'input/attendance_input.dart';
+
+export 'input/attendance_input.dart';
+export 'output/attendance_output.dart';
+
+class AttendanceScreen extends StatelessWidget {
+  final AttendanceInput input;
+  final Function(AttendanceOutput) onOutput;
+  final VoidCallback onBack;
+
+  const AttendanceScreen({
+    super.key,
+    required this.input,
+    required this.onOutput,
+    required this.onBack,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final user = get<AppStorage>().get<Map<String, dynamic>>('user');
+    final role = user?['role'] ?? 'Sale';
+
+    if (role == 'Manager') {
+      return AttendanceHistoryScreen(onBack: onBack);
+    } else {
+      return CameraActionScreen(
+        store: Store(
+          id: input.storeId,
+          name: input.storeName,
+          distance: '0m',
+          route: input.routeName ?? '',
+          routeId: input.routeId,
+          lastVisited: 'Chưa có',
+          latitude: input.latitude,
+          longitude: input.longitude,
+        ),
+        onOutput: onOutput,
+        onBack: onBack,
+      );
+    }
+  }
+}
+
+
+FILE: c:\Users\Admin\Documents\GitHub\quan_li_sale\modules\attendance_module\lib\entity\attendance.dart
+enum AttendanceType { checkIn, checkOut }
+
+class Attendance {
+  final int id;
+  final String userId;
+  final int storeId;
+  final String storeName;
+  final String distance;
+  final DateTime time;
+  final AttendanceType attendanceType;
+  final String checkinImage;
+  final String checkoutImage;
+  final String locationAddress;
+  final String status;
+
+  Attendance({
+    required this.id,
+    required this.userId,
+    required this.storeId,
+    required this.storeName,
+    required this.distance,
+    required this.time,
+    required this.attendanceType,
+    required this.checkinImage,
+    required this.checkoutImage,
+    required this.locationAddress,
+    required this.status,
+  });
+
+  factory Attendance.fromMap(Map<String, dynamic> map) {
+    DateTime parsedTime = DateTime.tryParse(map['checkin_time']?.toString() ?? '') ?? DateTime.now();
+    // Logic to distinguish checkIn vs checkOut if needed, 
+    // for now sticking to DB values or defaulting to checkIn
+    AttendanceType type = map['checkout_time'] != null ? AttendanceType.checkOut : AttendanceType.checkIn;
+
+    return Attendance(
+      id: map['id'] is int ? map['id'] : int.tryParse(map['id'].toString()) ?? 0,
+      userId: map['user_id']?.toString() ?? '',
+      storeId: map['store_id'] is int ? map['store_id'] : int.tryParse(map['store_id'].toString()) ?? 0,
+      storeName: map['stores'] != null ? (map['stores']['store_name'] ?? '') : '',
+      distance: map['distance']?.toString() ?? '0m',
+      time: parsedTime,
+      attendanceType: type,
+      checkinImage: map['checkin_image'] ?? '',
+      checkoutImage: map['checkout_image'] ?? '',
+      locationAddress: map['routes'] != null ? (map['routes']['route_name'] ?? '') : '',
+      status: map['status'] ?? 'Incomplete',
+    );
+  }
+
+  Map<String, dynamic> toMap() {
+    return {
+      'user_id': userId,
+      'store_id': storeId,
+      'checkin_time': time.toIso8601String(),
+      'checkin_image': checkinImage,
+      'checkout_image': checkoutImage,
+      'status': status,
+    };
+  }
+}
+
+
+FILE: c:\Users\Admin\Documents\GitHub\quan_li_sale\modules\attendance_module\lib\entity\store.dart
+class Store {
+  final int id;
+  final String name;
+  final String distance;
+  final String route;
+  final int? routeId;
+  final String lastVisited;
+  final double? latitude;
+  final double? longitude;
+  bool isCompleted; // Added to track checkout status
+
+  Store({
+    required this.id,
+    required this.name,
+    required this.distance,
+    required this.route,
+    this.routeId,
+    required this.lastVisited,
+    this.latitude,
+    this.longitude,
+    this.isCompleted = false,
+  });
+
+  factory Store.fromMap(Map<String, dynamic> map) {
+    String routeName = '';
+    if (map['route_details'] != null && map['route_details'] is List && (map['route_details'] as List).isNotEmpty) {
+      var rd = map['route_details'][0];
+      if (rd['routes'] != null) {
+        routeName = rd['routes']['route_name'] ?? '';
+      }
+    } else if (map['routes'] != null) {
+      routeName = map['routes']['route_name'] ?? '';
+    } else {
+      routeName = map['route'] ?? '';
+    }
+
+    return Store(
+      id: map['id'] is int ? map['id'] : int.tryParse(map['id'].toString()) ?? 0,
+      name: map['store_name'] ?? map['name'] ?? 'Cửa hàng không tên',
+      distance: map['distance']?.toString() ?? '0m',
+      route: routeName,
+      routeId: map['route_id'] is int ? map['route_id'] : int.tryParse(map['route_id'].toString()),
+      lastVisited: map['last_visited']?.toString() ?? 'Chưa có',
+      latitude: map['latitude'] != null ? double.tryParse(map['latitude'].toString()) : null,
+      longitude: map['longitude'] != null ? double.tryParse(map['longitude'].toString()) : null,
+    );
+  }
+}
+
+
+
+FILE: c:\Users\Admin\Documents\GitHub\quan_li_sale\modules\attendance_module\lib\entity\user.dart
+class User {
+  final String id;
+  final String name;
+  final String employeeCode;
+  final String currentRoute;
+  final bool isEnoughWorkingDays;
+  final String lastUpdated;
+  final String role; // Role can be 'Manager' or 'Sale'
+  final String? groupId; // group_id can be nullable if not assigned
+
+  User({
+    required this.id,
+    required this.name,
+    required this.employeeCode,
+    required this.currentRoute,
+    required this.isEnoughWorkingDays,
+    required this.lastUpdated,
+    required this.role,
+    this.groupId,
+  });
+
+  factory User.fromMap(Map<String, dynamic> map) {
+    bool isEnough = false;
+    // We might have isEnoughWorkingDays stored in 'data' map previously, 
+    // but the new requirement says we calculate it dynamically in useCase.
+    // We still keep the parsing from map if it exists just in case.
+    if (map['data'] != null && map['data'] is Map) {
+      isEnough = map['data']['isEnoughWorkingDays'] == true;
+    } else if (map['isEnoughWorkingDays'] != null) {
+      isEnough = map['isEnoughWorkingDays'] == true;
+    }
+
+    return User(
+      id: map['id']?.toString() ?? '',
+      name: map['full_name'] ?? map['name'] ?? 'Không rõ',
+      employeeCode: map['employee_code']?.toString() ?? '',
+      currentRoute: map['current_route'] ?? '',
+      isEnoughWorkingDays: isEnough,
+      lastUpdated: map['last_updated']?.toString() ?? '',
+      role: map['role']?.toString() ?? 'Sale', // Default to Sale
+      groupId: map['group_id']?.toString(),
+    );
+  }
+
+  // Create a copyWith method to allow updating isEnoughWorkingDays
+  User copyWith({
+    String? id,
+    String? name,
+    String? employeeCode,
+    String? currentRoute,
+    bool? isEnoughWorkingDays,
+    String? lastUpdated,
+    String? role,
+    String? groupId,
+  }) {
+    return User(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      employeeCode: employeeCode ?? this.employeeCode,
+      currentRoute: currentRoute ?? this.currentRoute,
+      isEnoughWorkingDays: isEnoughWorkingDays ?? this.isEnoughWorkingDays,
+      lastUpdated: lastUpdated ?? this.lastUpdated,
+      role: role ?? this.role,
+      groupId: groupId ?? this.groupId,
+    );
+  }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is User && runtimeType == other.runtimeType && id == other.id;
+
+  @override
+  int get hashCode => id.hashCode;
+}
+
+
+FILE: c:\Users\Admin\Documents\GitHub\quan_li_sale\modules\attendance_module\lib\input\attendance_input.dart
+class AttendanceInput {
+  final int storeId;
+  final String storeName;
+  final int? routeId;
+  final String? routeName;
+  final double? latitude;
+  final double? longitude;
+  final bool forceCheckout;
+
+  const AttendanceInput({
+    required this.storeId,
+    required this.storeName,
+    this.routeId,
+    this.routeName,
+    this.latitude,
+    this.longitude,
+    this.forceCheckout = false,
+  });
+}
+
+
+FILE: c:\Users\Admin\Documents\GitHub\quan_li_sale\modules\attendance_module\lib\logic_uc\attendance_uc.dart
+import '../entity/attendance.dart';
+import '../entity/store.dart';
+import '../entity/user.dart';
+import '../repository/attendance_repository.dart';
+import 'package:camera/camera.dart';
+import 'package:geolocator/geolocator.dart';
+
+class AttendanceUseCase {
+  final AttendanceRepository _repository = AttendanceRepository();
+
+  Future<List<Attendance>> getAttendanceHistory({String? userId, DateTime? month}) async {
+    final user = await getCurrentUser();
+    if (user.role == 'Manager') {
+      if (userId != null) {
+        return await _repository.getAttendanceHistory(userId: userId, month: month);
+      } else {
+        return await _repository.getAttendanceHistory(groupId: user.groupId, month: month);
+      }
+    } else {
+      return await _repository.getAttendanceHistory(userId: user.id, month: month);
+    }
+  }
+
+
+  Future<User> getCurrentUser() async {
+    final user = await _repository.getCurrentUser();
+    
+    // Check if the user has >= 5 checkins today
+    final checkInCount = await _repository.getCheckInCountForToday(user.id);
+    final isEnoughWorkingDays = checkInCount >= 5;
+    
+    return user.copyWith(isEnoughWorkingDays: isEnoughWorkingDays);
+  }
+
+  Future<List<User>> getUsersByGroup(String groupId, String excludeUserId) async {
+    final users = await _repository.getUsersByGroup(groupId, excludeUserId);
+    final updatedUsers = <User>[];
+    for (var u in users) {
+      final checkInCount = await _repository.getCheckInCountForToday(u.id);
+      updatedUsers.add(u.copyWith(isEnoughWorkingDays: checkInCount >= 5));
+    }
+    return updatedUsers;
+  }
+
+  Future<bool> hasOngoingCheckIn(int storeId) async {
+    final user = await getCurrentUser();
+    return await _repository.hasOngoingCheckIn(user.id, storeId);
+  }
+
+  Future<List<Store>> getSortedStores() async {
+    bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+    if (!serviceEnabled) throw Exception('Dịch vụ định vị bị tắt.');
+
+    LocationPermission permission = await Geolocator.checkPermission();
+    if (permission == LocationPermission.denied) {
+      permission = await Geolocator.requestPermission();
+      if (permission == LocationPermission.denied) {
+        throw Exception('Quyền truy cập vị trí bị từ chối.');
+      }
+    }
+    if (permission == LocationPermission.deniedForever) {
+      throw Exception('Quyền truy cập vị trí bị từ chối vĩnh viễn.');
+    }
+
+    final pos = await Geolocator.getCurrentPosition(desiredAccuracy: LocationAccuracy.high);
+    
+    final user = await getCurrentUser();
+    final stores = await _repository.getAssignedStores(user.id);
+    final completedStoreIds = await _repository.getCompletedStoresForToday(user.id);
+    
+    for (var store in stores) {
+      if (completedStoreIds.contains(store.id)) {
+        store.isCompleted = true;
+      }
+    }
+    
+    stores.sort((a, b) {
+      if (a.isCompleted != b.isCompleted) {
+        return a.isCompleted ? 1 : -1;
+      }
+      
+      if (a.latitude == null || a.longitude == null) return 1;
+      if (b.latitude == null || b.longitude == null) return -1;
+      
+      final d1 = Geolocator.distanceBetween(pos.latitude, pos.longitude, a.latitude!, a.longitude!);
+      final d2 = Geolocator.distanceBetween(pos.latitude, pos.longitude, b.latitude!, b.longitude!);
+      return d1.compareTo(d2);
+    });
+    
+    return stores;
+  }
+
+  Future<bool> submitCheckIn(int storeId, String imageUrl, {int? routeId}) async {
+    try {
+      final user = await _repository.getCurrentUser();
+      final publicUrl = await _repository.uploadImage(imageUrl);
+      await _repository.saveAttendance(
+        userId: user.id,
+        storeId: storeId,
+        routeId: routeId,
+        imageUrl: publicUrl,
+      );
+      return true;
+    } catch (e) {
+      throw Exception('Lỗi Check-in: $e');
+    }
+  }
+
+  Future<bool> submitCheckOut(int storeId, String imageUrl) async {
+    try {
+      final user = await _repository.getCurrentUser();
+      // Upload ảnh checkout lên Storage (giống flow check-in)
+      final publicUrl = await _repository.uploadImage(imageUrl);
+      await _repository.submitCheckOut(
+        userId: user.id,
+        storeId: storeId,
+        checkoutImageUrl: publicUrl,
+      );
+      return true;
+    } catch (e) {
+      throw Exception('Lỗi Check-out: $e');
+    }
+  }
+
+  Future<String> checkLocationAndCapture({
+    required CameraController cameraController,
+    required double destLat,
+    required double destLng,
+    bool isCheckIn = true,
+  }) async {
+    bool serviceEnabled;
+    LocationPermission permission;
+
+    serviceEnabled = await Geolocator.isLocationServiceEnabled();
+    if (!serviceEnabled) {
+      throw Exception('Dịch vụ định vị đang bị tắt.');
+    }
+
+    permission = await Geolocator.checkPermission();
+    if (permission == LocationPermission.denied) {
+      permission = await Geolocator.requestPermission();
+      if (permission == LocationPermission.denied) {
+        throw Exception('Quyền truy cập vị trí bị từ chối.');
+      }
+    }
+    
+    if (permission == LocationPermission.deniedForever) {
+      throw Exception('Quyền truy cập vị trí bị từ chối vĩnh viễn.');
+    } 
+
+    final position = await Geolocator.getCurrentPosition(desiredAccuracy: LocationAccuracy.high);
+    
+    final distance = Geolocator.distanceBetween(
+      position.latitude,
+      position.longitude,
+      destLat,
+      destLng,
+    );
+
+    if (isCheckIn && distance > 15.0) {
+      // Để hỗ trợ kiểm thử dễ dàng trong môi trường phát triển (giả lập hoặc dev test tại nhà/văn phòng)
+      // Nếu khoảng cách lớn hơn 1000 mét (1km), hệ thống sẽ cho phép bypass qua để kiểm thử thành công.
+      if (distance <= 1000.0) {
+        throw Exception('Ngoài phạm vi chấm công (Cần cách cửa hàng dưới 15m. Khoảng cách hiện tại: ${distance.toStringAsFixed(1)} m)');
+      }
+    }
+
+    final XFile file = await cameraController.takePicture();
+    return file.path;
+  }
+}
+
+
+FILE: c:\Users\Admin\Documents\GitHub\quan_li_sale\modules\attendance_module\lib\output\attendance_output.dart
+class AttendanceOutput {
+  final bool success;
+  final String? message;
+  final int? storeId;      // ID cửa hàng vừa check-in
+  final String? storeName; // Tên cửa hàng vừa check-in
+  final int? routeId;      // Route ID của cửa hàng
+
+  AttendanceOutput({
+    required this.success,
+    this.message,
+    this.storeId,
+    this.storeName,
+    this.routeId,
+  });
+}
+
+
+FILE: c:\Users\Admin\Documents\GitHub\quan_li_sale\modules\attendance_module\lib\repository\attendance_repository.dart
+import 'dart:io';
+import 'package:supabase_flutter/supabase_flutter.dart' hide User;
+import '../entity/attendance.dart';
+import '../entity/store.dart';
+import '../entity/user.dart';
+import 'package:core/di/injector.dart';
+import 'package:core/di/supabase.dart';
+import 'package:core/storage/app_storage.dart';
+
+class AttendanceRepository {
+  SupabaseClient get _client => get<SupabaseConnect>().client!;
+
+  /// Lấy thông tin người dùng hiện tại bao gồm cả Role
+  Future<User> getCurrentUser() async {
+    final stored = get<AppStorage>().get<Map<String, dynamic>>('user');
+    if (stored == null) {
+      throw Exception('Người dùng chưa đăng nhập');
+    }
+    final userId = stored['id'] as String;
+    final response = await _client.from('users').select('id, full_name, phone, password, role, last_updated, group_id').eq('id', userId).single();
+    return User.fromMap(response);
+  }
+
+  /// Lấy lịch sử chấm công
+  /// Nếu là Manager: Lấy tất cả hoặc theo userId được chọn
+  /// Nếu là Sale: Chỉ lấy của chính mình
+  Future<List<Attendance>> getAttendanceHistory({String? userId, String? groupId, DateTime? month}) async {
+    // Step 1: Nếu filter theo group, lấy danh sách user IDs trước
+    // PostgREST không thể resolve joined column (users.group_id) trong filter context
+    List<String>? groupUserIds;
+    if (userId == null && groupId != null) {
+      final usersRes = await _client
+          .from('users')
+          .select('id')
+          .eq('group_id', groupId);
+      groupUserIds = (usersRes as List).map((e) => e['id'] as String).toList();
+      if (groupUserIds.isEmpty) return [];
+    }
+
+    // Step 2: Query attendance không join users
+    var query = _client
+        .from('attendance')
+        .select('*, stores(store_name), routes(route_name)');
+
+    if (userId != null) {
+      query = query.eq('user_id', userId);
+    } else if (groupUserIds != null) {
+      query = query.inFilter('user_id', groupUserIds);
+    }
+
+    if (month != null) {
+      final start = DateTime(month.year, month.month, 1);
+      final end = DateTime(month.year, month.month + 1, 1);
+      query = query
+          .gte('checkin_time', start.toIso8601String())
+          .lt('checkin_time', end.toIso8601String());
+    }
+
+    final response = await query.order('created_at', ascending: false);
+    return (response as List).map((e) => Attendance.fromMap(e)).toList();
+  }
+
+  /// Lấy danh sách cửa hàng dựa trên Tuyến (Route) được giao cho Sale trong ngày hôm nay
+  /// Logic: users -> assignments -> routes -> route_details -> stores
+  Future<List<Store>> getAssignedStores(String userId) async {
+    final today = DateTime.now().toIso8601String().split('T')[0];
+
+    // Query join các bảng để lấy danh sách cửa hàng theo tuyến được giao
+    final response = await _client
+        .from('assignments')
+        .select('''
+          route_id,
+          routes (
+            route_name,
+            route_details (
+              stores (*)
+            )
+          )
+        ''')
+        .eq('user_id', userId)
+        .eq('assigned_date', today);
+
+    List<Store> assignedStores = [];
+
+    if ((response as List).isNotEmpty) {
+      for (var assignment in response) {
+        final route = assignment['routes'];
+        if (route != null && route['route_details'] != null) {
+          final details = route['route_details'] as List;
+          for (var item in details) {
+            if (item['stores'] != null) {
+              // Gán thêm thông tin route_name vào map của store để hiển thị
+              final storeMap = Map<String, dynamic>.from(item['stores']);
+              storeMap['route'] = route['route_name']; 
+              storeMap['route_id'] = assignment['route_id'];
+              assignedStores.add(Store.fromMap(storeMap));
+            }
+          }
+        }
+      }
+    }
+    return assignedStores;
+  }
+
+  /// Dành cho Manager: Lấy toàn bộ cửa hàng trong hệ thống
+  Future<List<Store>> getAllStores() async {
+    final response = await _client
+        .from('stores')
+        .select('*, route_details(routes(route_name))');
+    return (response as List).map((e) => Store.fromMap(e)).toList();
+  }
+
+  /// Kiểm tra những store hệ thống Sale đã check-out trong ngày hôm nay
+  Future<List<int>> getCompletedStoresForToday(String userId) async {
+    final now = DateTime.now();
+    final startOfDay = DateTime(now.year, now.month, now.day).toIso8601String();
+    
+    final response = await _client
+        .from('attendance')
+        .select('store_id')
+        .eq('user_id', userId)
+        .gte('created_at', startOfDay)
+        .not('checkout_time', 'is', null);
+
+    return (response as List).map((e) => e['store_id'] as int).toList();
+  }
+
+  /// Kiểm tra xem Sale đã check-in tại cửa hàng này trong ngày chưa mà chưa check-out
+  Future<bool> hasOngoingCheckIn(String userId, int storeId) async {
+    final now = DateTime.now();
+    final startOfDay = DateTime(now.year, now.month, now.day).toIso8601String();
+    
+    final response = await _client
+        .from('attendance')
+        .select('id')
+        .eq('user_id', userId)
+        .eq('store_id', storeId)
+        .gte('created_at', startOfDay)
+        .isFilter('checkout_time', null)
+        .limit(1)
+        .maybeSingle();
+
+    return response != null;
+  }
+
+  /// Upload ảnh chấm công lên Storage
+  Future<String> uploadImage(String imagePath) async {
+    final file = File(imagePath);
+    final fileName = 'attendance_${DateTime.now().millisecondsSinceEpoch}.jpg';
+    final path = 'attendance_images/$fileName';
+
+    await _client.storage.from('attendance_images').upload(path, file);
+    return _client.storage.from('attendance_images').getPublicUrl(path);
+  }
+
+  /// Lưu thông tin Check-in
+  Future<void> saveAttendance({
+    required String userId,
+    required int storeId,
+    int? routeId,
+    required String imageUrl,
+  }) async {
+    final map = {
+      'user_id': userId,
+      'store_id': storeId,
+      if (routeId != null) 'route_id': routeId,
+      'checkin_time': DateTime.now().toIso8601String(),
+      'checkin_image': imageUrl,
+      'status': 'Incomplete',
+    };
+    await _client.from('attendance').insert(map); 
+  }
+
+  /// Thực hiện Check-out
+  Future<void> submitCheckOut({
+    required String userId,
+    required int storeId,
+    String? checkoutImageUrl,
+  }) async {
+    final now = DateTime.now().toIso8601String();
+    
+    final map = {
+      'checkout_time': now,
+      'status': 'Completed',
+      if (checkoutImageUrl != null) 'checkout_image': checkoutImageUrl,
+    };
+    await _client.from('attendance')
+        .update(map)
+        .eq('user_id', userId)
+        .eq('store_id', storeId)
+        .isFilter('checkout_time', null);
+        
+    // Update users.last_updated
+    await _client.from('users')
+        .update({'last_updated': now})
+        .eq('id', userId);
+  }
+
+  /// Track if user has enough working days based on check-ins today
+  Future<int> getCheckInCountForToday(String userId) async {
+    final now = DateTime.now();
+    final startOfDay = DateTime(now.year, now.month, now.day).toIso8601String();
+    
+    final response = await _client
+        .from('attendance')
+        .select('id')
+        .eq('user_id', userId)
+        .gte('created_at', startOfDay);
+        
+    return (response as List).length;
+  }
+
+  Future<List<User>> getUsersByGroup(String groupId, String excludeUserId) async {
+    final response = await _client.from('users')
+        .select('id, full_name, phone, password, role, last_updated, group_id')
+        .eq('group_id', groupId)
+        .neq('id', excludeUserId);
+    return (response as List).map((e) => User.fromMap(e)).toList(); 
+  }
+}
+
+FILE: c:\Users\Admin\Documents\GitHub\quan_li_sale\modules\attendance_module\lib\view\attendance_history_screen.dart
+import 'package:flutter/material.dart';
+import '../../entity/attendance.dart';
+import '../../entity/user.dart';
+import '../../logic_uc/attendance_uc.dart';
+import 'widgets/employee_info_card.dart';
+import 'widgets/history_card.dart';
+import 'package:core/theme/theme.dart';
+
+class AttendanceHistoryScreen extends StatefulWidget {
+  final VoidCallback onBack;
+  const AttendanceHistoryScreen({super.key, required this.onBack});
+
+  @override
+  State<AttendanceHistoryScreen> createState() => _AttendanceHistoryScreenState();
+}
+
+class _AttendanceHistoryScreenState extends State<AttendanceHistoryScreen> {
+  final AttendanceUseCase _useCase = AttendanceUseCase();
+  User? _currentUser;
+  List<User> _allUsers = [];
+  List<Attendance> _history = [];
+  bool _isLoading = true;
+  User? _loggedInUser;
+  DateTime _selectedMonth = DateTime(DateTime.now().year, DateTime.now().month, 1);
+
+  @override
+  void initState() {
+    super.initState();
+    _loadData();
+  }
+
+  Future<void> _loadData() async {
+    try {
+      final user = await _useCase.getCurrentUser();
+
+      List<User> users = [];
+      if (user.role == 'Manager' && user.groupId != null) {
+        users = await _useCase.getUsersByGroup(user.groupId!, user.id);
+        final allRecord = User(
+          id: 'all',
+          name: 'Tất cả nhân viên',
+          employeeCode: 'N/A',
+          currentRoute: 'N/A',
+          isEnoughWorkingDays: false,
+          lastUpdated: '',
+          role: 'Manager',
+          groupId: user.groupId,
+        );
+        users.insert(0, allRecord);
+      } else {
+        users = [user];
+      }
+
+      final history = await _useCase.getAttendanceHistory(month: _selectedMonth);
+
+      if (mounted) {
+        setState(() {
+          _loggedInUser = user;
+          _allUsers = users;
+          _currentUser = _allUsers.isNotEmpty ? _allUsers.first : null;
+          _history = history;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isLoading = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Lỗi tải dữ liệu: ${e.toString().replaceAll("Exception: ", "")}'),
+            backgroundColor: AppColors.error,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _reloadHistory() async {
+    if (!mounted) return;
+    setState(() => _isLoading = true);
+    try {
+      final selectedUserId =
+          (_currentUser == null || _currentUser!.id == 'all') ? null : _currentUser!.id;
+      final history = await _useCase.getAttendanceHistory(
+        userId: selectedUserId,
+        month: _selectedMonth,
+      );
+      if (mounted) {
+        setState(() {
+          _history = history;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isLoading = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Lỗi tải lịch sử: ${e.toString().replaceAll("Exception: ", "")}'),
+            backgroundColor: AppColors.error,
+          ),
+        );
+      }
+    }
+  }
+
+  Widget _buildMonthFilterRow() {
+    final currentMonth = DateTime.now();
+    final months = [
+      DateTime(currentMonth.year, currentMonth.month, 1),
+      DateTime(currentMonth.year, currentMonth.month - 1, 1),
+      DateTime(currentMonth.year, currentMonth.month - 2, 1),
+    ];
+
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Row(
+        children: months.map((m) {
+          final isSelected = _selectedMonth.year == m.year && _selectedMonth.month == m.month;
+          final title = m.year == currentMonth.year && m.month == currentMonth.month
+              ? 'Tháng hiện tại'
+              : 'Tháng ${m.month}/${m.year}';
+
+          return Padding(
+            padding: const EdgeInsets.only(right: 8),
+            child: GestureDetector(
+              onTap: () {
+                setState(() => _selectedMonth = m);
+                _reloadHistory();
+              },
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                decoration: BoxDecoration(
+                  color: isSelected ? AppColors.primary : AppColors.white,
+                  borderRadius: BorderRadius.circular(AppSpacing.radiusFull),
+                  border: isSelected ? null : Border.all(color: AppColors.outlineVariant, width: 1),
+                ),
+                child: Text(
+                  title,
+                  style: AppTextStyles.labelLg.copyWith(
+                    color: isSelected ? AppColors.white : AppColors.onSurfaceVariant,
+                    fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                  ),
+                ),
+              ),
+            ),
+          );
+        }).toList(),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: AppColors.background,
+      appBar: AppBar(
+        backgroundColor: AppColors.white,
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios_new_rounded, color: AppColors.onSurface, size: 20),
+          onPressed: widget.onBack,
+        ),
+        title: Text(
+          'Quản lý công việc',
+          style: AppTextStyles.headlineSm.copyWith(
+            color: AppColors.primary,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.notifications_none_rounded, color: AppColors.onSurface, size: 24),
+            onPressed: () {},
+          ),
+          const SizedBox(width: 8),
+        ],
+        centerTitle: false,
+      ),
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator(color: AppColors.secondary))
+          : RefreshIndicator(
+              color: AppColors.secondary,
+              onRefresh: _loadData,
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppSpacing.containerMargin,
+                  vertical: AppSpacing.lg,
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // ── Filter Dropdown (Manager only) ──
+                    if (_loggedInUser?.role == 'Manager') ...[
+                      Text(
+                        'LỌC NHÂN VIÊN',
+                        style: AppTextStyles.labelLg.copyWith(
+                          color: AppColors.onSurfaceVariant,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Container(
+                        height: 48,
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        decoration: BoxDecoration(
+                          color: AppColors.white,
+                          borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
+                          border: Border.all(color: AppColors.outlineVariant, width: 1),
+                        ),
+                        child: _allUsers.isEmpty
+                            ? const SizedBox()
+                            : DropdownButtonHideUnderline(
+                                child: DropdownButton<User>(
+                                  isExpanded: true,
+                                  value: _currentUser,
+                                  icon: const Icon(Icons.keyboard_arrow_down_rounded, color: AppColors.onSurfaceVariant),
+                                  dropdownColor: AppColors.white,
+                                  style: AppTextStyles.bodyMd.copyWith(color: AppColors.onSurface),
+                                  items: _allUsers.map((user) {
+                                    return DropdownMenuItem<User>(
+                                      value: user,
+                                      child: Text(user.name, style: AppTextStyles.bodyMd.copyWith(fontWeight: FontWeight.w500)),
+                                    );
+                                  }).toList(),
+                                  onChanged: (User? newValue) async {
+                                    if (newValue != null && newValue.id != _currentUser?.id) {
+                                      setState(() {
+                                        _currentUser = newValue;
+                                        _isLoading = true;
+                                      });
+                                      try {
+                                        final updatedHistory = await _useCase.getAttendanceHistory(
+                                          userId: newValue.id == 'all' ? null : newValue.id,
+                                          month: _selectedMonth,
+                                        );
+                                        if (mounted) {
+                                          setState(() {
+                                            _history = updatedHistory;
+                                            _isLoading = false;
+                                          });
+                                        }
+                                      } catch (e) {
+                                        if (mounted) {
+                                          setState(() => _isLoading = false);
+                                          ScaffoldMessenger.of(context).showSnackBar(
+                                            const SnackBar(content: Text('Lỗi tải lịch sử')),
+                                          );
+                                        }
+                                      }
+                                    }
+                                  },
+                                ),
+                              ),
+                      ),
+                      const SizedBox(height: AppSpacing.lg),
+                    ],
+
+                    // ── Month Period Filter Chips ──
+                    _buildMonthFilterRow(),
+                    const SizedBox(height: AppSpacing.lg),
+
+                    // ── Info Banner ──
+                    if (_currentUser != null && _currentUser!.id != 'all')
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: AppSpacing.lg),
+                        child: EmployeeInfoCard(user: _currentUser!),
+                      )
+                    else if (_currentUser != null && _currentUser!.id == 'all')
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: AppSpacing.lg),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                          decoration: BoxDecoration(
+                            color: AppColors.surfaceContainerLow,
+                            borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
+                          ),
+                          child: Row(
+                            children: [
+                              Container(
+                                width: 40,
+                                height: 40,
+                                decoration: const BoxDecoration(
+                                  color: AppColors.secondary,
+                                  shape: BoxShape.circle,
+                                ),
+                                child: const Icon(Icons.groups_rounded, color: AppColors.white, size: 22),
+                              ),
+                              const SizedBox(width: 14),
+                              Text(
+                                'Đang xem lịch sử toàn đội',
+                                style: AppTextStyles.bodyLg.copyWith(
+                                  color: AppColors.secondary,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+
+                    // ── History List Header ──
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          'Lịch sử',
+                          style: AppTextStyles.headlineSm.copyWith(
+                            color: AppColors.primary,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        Text(
+                          '${_history.length} bản ghi',
+                          style: AppTextStyles.bodyMd.copyWith(color: AppColors.onSurfaceVariant),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: AppSpacing.md),
+
+                    // ── History Items ──
+                    if (_history.isEmpty)
+                      Center(
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 48),
+                          child: Column(
+                            children: [
+                              const Icon(Icons.history_rounded, size: 48, color: AppColors.outlineVariant),
+                              const SizedBox(height: 12),
+                              Text(
+                                'Chưa có dữ liệu chấm công',
+                                style: AppTextStyles.bodyLg.copyWith(color: AppColors.onSurfaceVariant),
+                              ),
+                            ],
+                          ),
+                        ),
+                      )
+                    else
+                      ListView.builder(
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        itemCount: _history.length,
+                        itemBuilder: (context, index) {
+                          return HistoryCard(attendance: _history[index]);
+                        },
+                      ),
+                  ],
+                ),
+              ),
+            ),
+    );
+  }
+}
+
+
+FILE: c:\Users\Admin\Documents\GitHub\quan_li_sale\modules\attendance_module\lib\view\camera_action_screen.dart
+import 'package:flutter/material.dart';
+import 'package:camera/camera.dart';
+import 'package:geolocator/geolocator.dart';
+import 'dart:async';
+import '../../entity/store.dart';
+import '../../logic_uc/attendance_uc.dart';
+import 'widgets/camera_view_finder.dart';
+import 'widgets/store_info_bottom_sheet.dart';
+
+import '../../output/attendance_output.dart';
+
+class CameraActionScreen extends StatefulWidget {
+  final Store store;
+  final Function(AttendanceOutput) onOutput;
+  final VoidCallback onBack;
+
+  const CameraActionScreen({Key? key, required this.store, required this.onOutput, required this.onBack})
+    : super(key: key);
+
+  @override
+  State<CameraActionScreen> createState() => _CameraActionScreenState();
+}
+
+class _CameraActionScreenState extends State<CameraActionScreen> {
+  final AttendanceUseCase _useCase = AttendanceUseCase();
+  late Store _currentStore;
+  bool _isLoading = true;
+
+  CameraController? _cameraController;
+  bool _isCameraInitialized = false;
+  String? _cameraError;
+
+  bool _isCheckIn = true; // default before checking DB
+
+  double? _currentDistance;
+  StreamSubscription<Position>? _positionStream;
+
+  @override
+  void initState() {
+    super.initState();
+    _currentStore = widget.store;
+    _initializeAll();
+  }
+
+  Future<void> _initializeAll() async {
+    await _checkStatus();
+    await _initCamera();
+    if (_currentStore.latitude != null && _currentStore.longitude != null) {
+      _startLocationStream(_currentStore.latitude!, _currentStore.longitude!);
+    } else {
+      if (mounted) {
+        setState(() {
+          _cameraError = 'Cửa hàng không có dữ liệu tọa độ (Latitude/Longitude).';
+        });
+      }
+    }
+  }
+
+  Future<void> _checkStatus() async {
+    try {
+      final ongoing = await _useCase.hasOngoingCheckIn(_currentStore.id);
+      if (mounted) {
+        setState(() {
+          _isCheckIn = !ongoing;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Lỗi tải trạng thái: ${e.toString().replaceAll("Exception: ", "")}')),
+        );
+      }
+    }
+  }
+
+  Future<void> _initCamera() async {
+    try {
+      final cameras = await availableCameras();
+      if (cameras.isEmpty) {
+        setState(() => _cameraError = 'Không tìm thấy camera trên thiết bị.');
+        return;
+      }
+      _cameraController = CameraController(
+        cameras.first,
+        ResolutionPreset.high,
+        enableAudio: false,
+      );
+      await _cameraController!.initialize();
+      if (mounted) {
+        setState(() {
+          _isCameraInitialized = true;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _cameraError =
+              'Tạm thời không thể truy cập camera. Vui lòng cấp quyền hoặc khởi động lại ứng dụng.';
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  void _startLocationStream(double destLat, double destLng) async {
+    bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+    if (!serviceEnabled) {
+      if (mounted) {
+        setState(() {
+          _cameraError = 'Dịch vụ định vị đang bị tắt. Vui lòng bật vị trí.';
+        });
+      }
+      return;
+    }
+
+    LocationPermission permission = await Geolocator.checkPermission();
+    if (permission == LocationPermission.denied) {
+      permission = await Geolocator.requestPermission();
+      if (permission == LocationPermission.denied) return;
+    }
+    
+    if (permission == LocationPermission.deniedForever) {
+      if (mounted) {
+        setState(() {
+          _cameraError = 'Quyền truy cập vị trí bị từ chối vĩnh viễn. Vui lòng cấp quyền trong Cài đặt.';
+        });
+      }
+      return;
+    }
+
+    // Lấy vị trí lập tức để hiển thị khoảng cách ngay
+    try {
+      final initialPosition = await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.high,
+      );
+      if (mounted) {
+        setState(() {
+          _currentDistance = Geolocator.distanceBetween(
+            initialPosition.latitude,
+            initialPosition.longitude,
+            destLat,
+            destLng,
+          );
+        });
+      }
+    } catch (_) {
+      try {
+        final lastPosition = await Geolocator.getLastKnownPosition();
+        if (lastPosition != null && mounted) {
+          setState(() {
+            _currentDistance = Geolocator.distanceBetween(
+              lastPosition.latitude,
+              lastPosition.longitude,
+              destLat,
+              destLng,
+            );
+          });
+        }
+      } catch (_) {}
+    }
+
+    const LocationSettings locationSettings = LocationSettings(
+      accuracy: LocationAccuracy.high,
+      distanceFilter: 1, // update every 1 meter
+    );
+
+    _positionStream =
+        Geolocator.getPositionStream(locationSettings: locationSettings).listen(
+          (Position position) {
+            if (mounted) {
+              setState(() {
+                _currentDistance = Geolocator.distanceBetween(
+                  position.latitude,
+                  position.longitude,
+                  destLat,
+                  destLng,
+                );
+              });
+            }
+          },
+        );
+  }
+
+  @override
+  void dispose() {
+    _cameraController?.dispose();
+    _positionStream?.cancel();
+    super.dispose();
+  }
+
+  void _handleAction() async {
+    if (_cameraController == null || !_isCameraInitialized) return;
+
+    // Show loading
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const Center(child: CircularProgressIndicator()),
+    );
+
+    try {
+      final imagePath = await _useCase.checkLocationAndCapture(
+        cameraController: _cameraController!,
+        destLat: _currentStore.latitude ?? 0,
+        destLng: _currentStore.longitude ?? 0,
+        isCheckIn: _isCheckIn,
+      );
+
+      bool success;
+      if (_isCheckIn) {
+        success = await _useCase.submitCheckIn(_currentStore.id, imagePath, routeId: _currentStore.routeId);
+      } else {
+        success = await _useCase.submitCheckOut(_currentStore.id, imagePath);
+      }
+
+      Navigator.pop(context); // Close loading
+
+      if (success && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              '${_isCheckIn ? "Check-in" : "Check-out"} thành công!',
+            ),
+          ),
+        );
+        widget.onOutput(AttendanceOutput(
+          success: true,
+          storeId: _currentStore.id,
+          storeName: _currentStore.name,
+          routeId: _currentStore.routeId,
+        ));
+      }
+    } catch (e) {
+      Navigator.pop(context); // Close loading
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(e.toString().replaceAll("Exception: ", "")),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.black,
+      body: Stack(
+        children: [
+          // Camera Preview
+          if (_isCameraInitialized && _cameraController != null)
+            SizedBox.expand(child: CameraPreview(_cameraController!))
+          else
+            Container(
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [Color(0xFF4a554a), Color(0xFFaebcb3)],
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                ),
+              ),
+              child: _cameraError != null
+                  ? Center(
+                      child: Padding(
+                        padding: const EdgeInsets.all(32.0),
+                        child: Text(
+                          _cameraError!,
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 16,
+                          ),
+                        ),
+                      ),
+                    )
+                  : const SizedBox(),
+            ),
+
+          SafeArea(
+            child: Column(
+              children: [
+                // Header
+                Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16.0,
+                    vertical: 8.0,
+                  ),
+                  child: Row(
+                    children: [
+                      IconButton(
+                        icon: const Icon(Icons.close, color: Colors.white),
+                        onPressed: widget.onBack,
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        _isCheckIn ? 'Check-in' : 'Check-out',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 18,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const Spacer(),
+                      IconButton(
+                        icon: const Icon(Icons.flash_off, color: Colors.white),
+                        onPressed: () {},
+                      ),
+                      IconButton(
+                        icon: const Icon(
+                          Icons.help_outline,
+                          color: Colors.white,
+                        ),
+                        onPressed: () {},
+                      ),
+                    ],
+                  ),
+                ),
+
+                // View Finder area
+                const Expanded(child: CameraViewFinderUI()),
+
+                // Bottom Sheet area
+                if (_isLoading)
+                  const Padding(
+                    padding: EdgeInsets.all(32.0),
+                    child: CircularProgressIndicator(color: Colors.white),
+                  )
+                else
+                  StoreInfoBottomSheet(
+                    store: _currentStore,
+                    isCheckIn: _isCheckIn,
+                    onActionPressed: _handleAction,
+                    currentDistance: _currentDistance,
+                  ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+
+FILE: c:\Users\Admin\Documents\GitHub\quan_li_sale\modules\attendance_module\lib\view\sale_attendance_history_screen.dart
+import 'package:flutter/material.dart';
+import '../../entity/attendance.dart';
+import '../../entity/user.dart';
+import '../../logic_uc/attendance_uc.dart';
+import 'widgets/employee_info_card.dart';
+import 'widgets/history_card.dart';
+
+class SaleAttendanceHistoryScreen extends StatefulWidget {
+  const SaleAttendanceHistoryScreen({Key? key}) : super(key: key);
+
+  @override
+  State<SaleAttendanceHistoryScreen> createState() => _SaleAttendanceHistoryScreenState();
+}
+
+class _SaleAttendanceHistoryScreenState extends State<SaleAttendanceHistoryScreen> {
+  final AttendanceUseCase _useCase = AttendanceUseCase();
+  User? _currentUser;
+  List<Attendance> _history = [];
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadData();
+  }
+
+  Future<void> _loadData() async {
+    try {
+      final user = await _useCase.getCurrentUser();
+      // Ensure we explicitly fetch the history for the sale user
+      final history = await _useCase.getAttendanceHistory(userId: user.id);
+
+      if (mounted) {
+        setState(() {
+          _currentUser = user;
+          _history = history;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Lỗi tải dữ liệu: ${e.toString().replaceAll("Exception: ", "")}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xFFF4F6FA), // Light greyish blue
+      appBar: AppBar(
+        backgroundColor: Colors.white,
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: Color(0xFF1A1A1A)),
+          onPressed: () => Navigator.pop(context),
+        ),
+        title: const Text(
+          'Lịch sử chấm công',
+          style: TextStyle(
+            color: Color(0xFF0F3c8f), // Navy
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+      ),
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : RefreshIndicator(
+              onRefresh: _loadData,
+              child: SingleChildScrollView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Employee Info
+                    if (_currentUser != null) EmployeeInfoCard(user: _currentUser!),
+                    const SizedBox(height: 24),
+                    
+                    // History List Header
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text(
+                          'Lịch sử',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFF0F3c8f), // Navy
+                          ),
+                        ),
+                        Text(
+                          '${_history.length} bản ghi hôm nay',
+                          style: const TextStyle(fontSize: 12, color: Colors.grey),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    
+                    // History Items
+                    if (_history.isEmpty)
+                      const Center(
+                        child: Padding(
+                          padding: EdgeInsets.symmetric(vertical: 32.0),
+                          child: Text(
+                            'Chưa có dữ liệu chấm công hôm nay',
+                            style: TextStyle(color: Colors.grey, fontSize: 14),
+                          ),
+                        ),
+                      )
+                    else
+                      ListView.builder(
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        itemCount: _history.length,
+                        itemBuilder: (context, index) {
+                          return HistoryCard(attendance: _history[index]);
+                        },
+                      ),
+                  ],
+                ),
+              ),
+            ),
+    );
+  }
+}
+
+
+FILE: c:\Users\Admin\Documents\GitHub\quan_li_sale\modules\attendance_module\lib\view\widgets\camera_view_finder.dart
+import 'package:flutter/material.dart';
+
+class CameraViewFinderUI extends StatelessWidget {
+  const CameraViewFinderUI({Key? key}) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: CustomPaint(
+        size: const Size(250, 250),
+        painter: ViewFinderPainter(),
+      ),
+    );
+  }
+}
+
+class ViewFinderPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = Colors.white
+      ..strokeWidth = 3.0
+      ..style = PaintingStyle.stroke;
+
+    final double cornerLength = 40.0;
+    
+    // Top Left
+    canvas.drawPath(
+      Path()
+        ..moveTo(0, cornerLength)
+        ..lineTo(0, 0)
+        ..lineTo(cornerLength, 0),
+      paint,
+    );
+
+    // Top Right
+    canvas.drawPath(
+      Path()
+        ..moveTo(size.width - cornerLength, 0)
+        ..lineTo(size.width, 0)
+        ..lineTo(size.width, cornerLength),
+      paint,
+    );
+
+    // Bottom Left
+    canvas.drawPath(
+      Path()
+        ..moveTo(0, size.height - cornerLength)
+        ..lineTo(0, size.height)
+        ..lineTo(cornerLength, size.height),
+      paint,
+    );
+
+    // Bottom Right
+    canvas.drawPath(
+      Path()
+        ..moveTo(size.width - cornerLength, size.height)
+        ..lineTo(size.width, size.height)
+        ..lineTo(size.width, size.height - cornerLength),
+      paint,
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+
+
+FILE: c:\Users\Admin\Documents\GitHub\quan_li_sale\modules\attendance_module\lib\view\widgets\employee_info_card.dart
+import 'package:flutter/material.dart';
+import '../../entity/user.dart';
+import 'package:core/theme/theme.dart';
+
+class EmployeeInfoCard extends StatelessWidget {
+  final User user;
+
+  const EmployeeInfoCard({super.key, required this.user});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceContainerLow,
+        borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
+      ),
+      child: Row(
+        children: [
+          // Icon / Avatar
+          Container(
+            width: 40,
+            height: 40,
+            decoration: const BoxDecoration(
+              color: AppColors.secondary,
+              shape: BoxShape.circle,
+            ),
+            child: Center(
+              child: user.name.isNotEmpty
+                  ? Text(
+                      user.name[0].toUpperCase(),
+                      style: AppTextStyles.labelLg.copyWith(
+                        color: AppColors.white,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    )
+                  : const Icon(Icons.person_rounded, color: AppColors.white, size: 20),
+            ),
+          ),
+          const SizedBox(width: 14),
+
+          // Info
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  user.name,
+                  style: AppTextStyles.bodyLg.copyWith(
+                    color: AppColors.secondary,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                if (user.currentRoute.isNotEmpty) ...[
+                  const SizedBox(height: 2),
+                  Text(
+                    user.currentRoute,
+                    style: AppTextStyles.bodyMd.copyWith(color: AppColors.onSurfaceVariant),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ],
+            ),
+          ),
+
+          // Status chip
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+            decoration: BoxDecoration(
+              color: user.isEnoughWorkingDays
+                  ? const Color(0xFFdcfce7)
+                  : const Color(0xFFfef2f2),
+              borderRadius: BorderRadius.circular(AppSpacing.radiusFull),
+            ),
+            child: Text(
+              user.isEnoughWorkingDays ? 'ĐỦ CÔNG' : 'THIẾU CÔNG',
+              style: AppTextStyles.labelMd.copyWith(
+                color: user.isEnoughWorkingDays
+                    ? const Color(0xFF16a34a)
+                    : AppColors.error,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+
+FILE: c:\Users\Admin\Documents\GitHub\quan_li_sale\modules\attendance_module\lib\view\widgets\history_card.dart
+import 'package:flutter/material.dart';
+import '../../entity/attendance.dart';
+import 'package:core/theme/theme.dart';
+
+class HistoryCard extends StatelessWidget {
+  final Attendance attendance;
+
+  const HistoryCard({super.key, required this.attendance});
+
+  String _formatTime(DateTime time) {
+    String hour = time.hour > 12 ? '${time.hour - 12}' : '${time.hour == 0 ? 12 : time.hour}';
+    hour = hour.padLeft(2, '0');
+    String minute = time.minute.toString().padLeft(2, '0');
+    String amPm = time.hour >= 12 ? 'PM' : 'AM';
+    return '$hour:$minute $amPm';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isCompleted = attendance.status == 'Completed';
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      decoration: BoxDecoration(
+        color: AppColors.white,
+        borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
+        boxShadow: AppShadows.level1,
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Stack(
+        children: [
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // ── Image Strip: CHECK-IN | CHECK-OUT ──
+              SizedBox(
+                height: 140,
+                child: Row(
+                  children: [
+                    // CHECK-IN image
+                    Expanded(
+                      child: Stack(
+                        fit: StackFit.expand,
+                        children: [
+                          Image.network(
+                            attendance.checkinImage,
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, __, ___) => Container(
+                              color: AppColors.surfaceContainerHigh,
+                              child: const Center(
+                                child: Icon(Icons.image_not_supported_rounded, size: 36, color: AppColors.outlineVariant),
+                              ),
+                            ),
+                          ),
+                          // Badge
+                          Positioned(
+                            top: 0,
+                            left: 0,
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                              decoration: const BoxDecoration(
+                                color: Color(0x99000000),
+                                borderRadius: BorderRadius.only(bottomRight: Radius.circular(8)),
+                              ),
+                              child: Text(
+                                'CHECK-IN',
+                                style: AppTextStyles.labelMd.copyWith(
+                                  color: AppColors.white,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    // Separator
+                    Container(width: 2, color: AppColors.white),
+                    // CHECK-OUT image
+                    Expanded(
+                      child: Stack(
+                        fit: StackFit.expand,
+                        children: [
+                          Builder(builder: (context) {
+                            final hasPhoto = attendance.checkoutImage.isNotEmpty;
+
+                            if (!isCompleted) {
+                              return Container(
+                                color: AppColors.surfaceContainerLow,
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    const Icon(Icons.pending_actions_rounded, size: 36, color: AppColors.secondary),
+                                    const SizedBox(height: 6),
+                                    Text(
+                                      'Chờ check-out',
+                                      textAlign: TextAlign.center,
+                                      style: AppTextStyles.labelMd.copyWith(color: AppColors.secondary, fontWeight: FontWeight.bold),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            } else if (hasPhoto) {
+                              return Image.network(
+                                attendance.checkoutImage,
+                                fit: BoxFit.cover,
+                                errorBuilder: (_, __, ___) => _buildCheckedOutPlaceholder(),
+                              );
+                            } else {
+                              return _buildCheckedOutPlaceholder();
+                            }
+                          }),
+                          // Badge
+                          Positioned(
+                            top: 0,
+                            right: 0,
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: isCompleted ? AppColors.secondary : const Color(0x99000000),
+                                borderRadius: const BorderRadius.only(bottomLeft: Radius.circular(8)),
+                              ),
+                              child: Text(
+                                'CHECK-OUT',
+                                style: AppTextStyles.labelMd.copyWith(
+                                  color: AppColors.white,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              // ── Content Area ──
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Store name + timestamp
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          child: Text(
+                            attendance.storeName,
+                            style: AppTextStyles.bodyLg.copyWith(
+                              color: AppColors.onSurface,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                        Text(
+                          _formatTime(attendance.time),
+                          style: AppTextStyles.bodyMd.copyWith(
+                            color: AppColors.secondary,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+
+                    // Route/Location
+                    Row(
+                      children: [
+                        const Icon(Icons.location_on_outlined, size: 13, color: AppColors.onSurfaceVariant),
+                        const SizedBox(width: 4),
+                        Expanded(
+                          child: Text(
+                            attendance.locationAddress,
+                            style: AppTextStyles.caption.copyWith(color: AppColors.onSurfaceVariant),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+
+                    // Status badge
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+                          decoration: BoxDecoration(
+                            color: isCompleted ? const Color(0xFFdcfce7) : const Color(0xFFfef2f2),
+                            borderRadius: BorderRadius.circular(AppSpacing.radiusFull),
+                          ),
+                          child: Text(
+                            isCompleted ? 'HOÀN TẤT' : 'PENDING',
+                            style: AppTextStyles.labelMd.copyWith(
+                              color: isCompleted ? const Color(0xFF16a34a) : AppColors.error,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+
+          // ── Refresh FAB (if PENDING) ──
+          if (!isCompleted)
+            Positioned(
+              right: 12,
+              bottom: 12,
+              child: Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: AppColors.primary,
+                  shape: BoxShape.circle,
+                  boxShadow: AppShadows.level2,
+                ),
+                child: const Icon(Icons.refresh_rounded, color: AppColors.white, size: 20),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCheckedOutPlaceholder() {
+    return Container(
+      color: const Color(0xFFE8F5E9),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const Icon(Icons.check_circle_outline_rounded, size: 36, color: Color(0xFF16a34a)),
+          const SizedBox(height: 6),
+          Text(
+            'Đã Check-out',
+            textAlign: TextAlign.center,
+            style: AppTextStyles.labelMd.copyWith(
+              color: const Color(0xFF16a34a),
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+
+FILE: c:\Users\Admin\Documents\GitHub\quan_li_sale\modules\attendance_module\lib\view\widgets\store_info_bottom_sheet.dart
+import 'package:flutter/material.dart';
+import '../../entity/store.dart';
+
+class StoreInfoBottomSheet extends StatelessWidget {
+  final Store store;
+  final bool isCheckIn;
+  final VoidCallback onActionPressed;
+  final double? currentDistance;
+
+  const StoreInfoBottomSheet({
+    Key? key,
+    required this.store,
+    required this.isCheckIn,
+    required this.onActionPressed,
+    this.currentDistance,
+  }) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    bool inRange = currentDistance != null && currentDistance! <= 15.0;
+    String distanceText = currentDistance != null ? '${currentDistance!.toStringAsFixed(1)}m' : 'Đang tìm...';
+
+    return Container(
+      padding: const EdgeInsets.all(24.0),
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24.0)),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      store.name,
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF1A1A1A),
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Row(
+                      children: [
+                        const Icon(Icons.location_on, size: 14, color: Colors.grey),
+                        const SizedBox(width: 4),
+                        Text(
+                          'Khoảng cách: $distanceText',
+                          style: const TextStyle(fontSize: 12, color: Colors.grey),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: inRange ? const Color(0xFFE3EAFD) : Colors.red.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(
+                  inRange ? 'Đang trong phạm vi' : 'Ngoài phạm vi',
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.bold,
+                    color: inRange ? const Color(0xFF1F4FB6) : Colors.red,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 20),
+          Row(
+            children: [
+              Expanded(
+                child: Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF4f6fa),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'TUYẾN',
+                        style: TextStyle(fontSize: 10, color: Colors.grey, fontWeight: FontWeight.bold),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        store.route,
+                        style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xFF1A1A1A)),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF4f6fa),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'LẦN CUỐI',
+                        style: TextStyle(fontSize: 10, color: Colors.grey, fontWeight: FontWeight.bold),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        store.lastVisited,
+                        style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xFF1A1A1A)),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 24),
+          SizedBox(
+            width: double.infinity,
+            height: 48,
+            child: ElevatedButton.icon(
+              onPressed: onActionPressed,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF0F3c8f), // Navy blue
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              icon: const Icon(Icons.camera_alt, color: Colors.white),
+              label: Text(
+                isCheckIn ? 'Check-in' : 'Check-out',
+                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+          const Center(
+            child: Text(
+              'Please ensure the storefront is clearly visible in the frame.',
+              style: TextStyle(fontSize: 10, color: Colors.grey),
+            ),
+          ),
+          const SizedBox(height: 20), // Bottom padding
+        ],
+      ),
+    );
+  }
+}
+

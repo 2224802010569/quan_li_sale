@@ -1,195 +1,229 @@
 import 'package:flutter/material.dart';
 import '../../entity/attendance.dart';
+import 'package:core/theme/theme.dart';
 
 class HistoryCard extends StatelessWidget {
   final Attendance attendance;
 
-  const HistoryCard({Key? key, required this.attendance}) : super(key: key);
+  const HistoryCard({super.key, required this.attendance});
+
+  String _formatTime(DateTime time) {
+    String hour = time.hour > 12 ? '${time.hour - 12}' : '${time.hour == 0 ? 12 : time.hour}';
+    hour = hour.padLeft(2, '0');
+    String minute = time.minute.toString().padLeft(2, '0');
+    String amPm = time.hour >= 12 ? 'PM' : 'AM';
+    return '$hour:$minute $amPm';
+  }
 
   @override
   Widget build(BuildContext context) {
-    // Simple format time since we aren't using intl
-    String formatTime(DateTime time) {
-      String hour = time.hour > 12 ? '${time.hour - 12}' : '${time.hour == 0 ? 12 : time.hour}';
-      hour = hour.padLeft(2, '0');
-      String minute = time.minute.toString().padLeft(2, '0');
-      String amPm = time.hour >= 12 ? 'PM' : 'AM';
-      return '$hour:$minute $amPm';
-    }
+    final isCompleted = attendance.status == 'Completed';
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 16),
+      margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            offset: const Offset(0, 4),
-            blurRadius: 10,
-          )
-        ],
+        color: AppColors.white,
+        borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
+        boxShadow: AppShadows.level1,
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      clipBehavior: Clip.antiAlias,
+      child: Stack(
         children: [
-          // Image part
-          Row(
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Check-in Image
-              Expanded(
-                child: Stack(
+              // ── Image Strip: CHECK-IN | CHECK-OUT ──
+              SizedBox(
+                height: 140,
+                child: Row(
                   children: [
-                    ClipRRect(
-                      borderRadius: const BorderRadius.only(topLeft: Radius.circular(12)),
-                      child: Image.network(
-                        attendance.checkinImage,
-                        height: 150,
-                        width: double.infinity,
-                        fit: BoxFit.cover,
-                        errorBuilder: (context, error, stackTrace) => Container(
-                          height: 150,
-                          width: double.infinity,
-                          color: Colors.grey[300],
-                          child: const Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(Icons.image_not_supported, size: 40, color: Colors.grey),
-                              SizedBox(height: 4),
-                              Text('Lỗi tải ảnh', style: TextStyle(fontSize: 10, color: Colors.grey)),
-                            ],
+                    // CHECK-IN image
+                    Expanded(
+                      child: Stack(
+                        fit: StackFit.expand,
+                        children: [
+                          Image.network(
+                            attendance.checkinImage,
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, __, ___) => Container(
+                              color: AppColors.surfaceContainerHigh,
+                              child: const Center(
+                                child: Icon(Icons.image_not_supported_rounded, size: 36, color: AppColors.outlineVariant),
+                              ),
+                            ),
                           ),
-                        ),
+                          // Badge
+                          Positioned(
+                            top: 0,
+                            left: 0,
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                              decoration: const BoxDecoration(
+                                color: Color(0x99000000),
+                                borderRadius: BorderRadius.only(bottomRight: Radius.circular(8)),
+                              ),
+                              child: Text(
+                                'CHECK-IN',
+                                style: AppTextStyles.labelMd.copyWith(
+                                  color: AppColors.white,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
-                    Positioned(
-                      top: 8,
-                      left: 8,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.9), // Keeping single withOpacity for tiny tags
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: const Text(
-                          'CHECK-IN',
-                          style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFF1A1A1A)),
-                        ),
+                    // Separator
+                    Container(width: 2, color: AppColors.white),
+                    // CHECK-OUT image
+                    Expanded(
+                      child: Stack(
+                        fit: StackFit.expand,
+                        children: [
+                          Builder(builder: (context) {
+                            final hasPhoto = attendance.checkoutImage.isNotEmpty;
+
+                            if (!isCompleted) {
+                              return Container(
+                                color: AppColors.surfaceContainerLow,
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    const Icon(Icons.pending_actions_rounded, size: 36, color: AppColors.secondary),
+                                    const SizedBox(height: 6),
+                                    Text(
+                                      'Chờ check-out',
+                                      textAlign: TextAlign.center,
+                                      style: AppTextStyles.labelMd.copyWith(color: AppColors.secondary, fontWeight: FontWeight.bold),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            } else if (hasPhoto) {
+                              return Image.network(
+                                attendance.checkoutImage,
+                                fit: BoxFit.cover,
+                                errorBuilder: (_, __, ___) => _buildCheckedOutPlaceholder(),
+                              );
+                            } else {
+                              return _buildCheckedOutPlaceholder();
+                            }
+                          }),
+                          // Badge
+                          Positioned(
+                            top: 0,
+                            right: 0,
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: isCompleted ? AppColors.secondary : const Color(0x99000000),
+                                borderRadius: const BorderRadius.only(bottomLeft: Radius.circular(8)),
+                              ),
+                              child: Text(
+                                'CHECK-OUT',
+                                style: AppTextStyles.labelMd.copyWith(
+                                  color: AppColors.white,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ],
                 ),
               ),
-              // Separator
-              Container(width: 2, height: 150, color: Colors.white),
-              // Check-out Image
-              Expanded(
-                child: Stack(
-                  children: [
-                    ClipRRect(
-                      borderRadius: const BorderRadius.only(topRight: Radius.circular(12)),
-                      child: Builder(builder: (context) {
-                        final isCompleted = attendance.status == 'Completed';
-                        final hasPhoto = attendance.checkoutImage.isNotEmpty;
 
-                        if (!isCompleted) {
-                          // Chưa check-out
-                          return Container(
-                            height: 150,
-                            width: double.infinity,
-                            color: const Color(0xFFF4F6FA),
-                            child: const Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Icon(Icons.pending_actions, size: 40, color: Colors.orange),
-                                SizedBox(height: 8),
-                                Text(
-                                  'Waiting for Check-out',
-                                  textAlign: TextAlign.center,
-                                  style: TextStyle(fontSize: 10, color: Colors.orange, fontWeight: FontWeight.bold),
-                                ),
-                              ],
+              // ── Content Area ──
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Store name + timestamp
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          child: Text(
+                            attendance.storeName,
+                            style: AppTextStyles.bodyLg.copyWith(
+                              color: AppColors.onSurface,
+                              fontWeight: FontWeight.w600,
                             ),
-                          );
-                        } else if (hasPhoto) {
-                          // Đã check-out + có ảnh thật
-                          return Image.network(
-                            attendance.checkoutImage,
-                            height: 150,
-                            width: double.infinity,
-                            fit: BoxFit.cover,
-                            errorBuilder: (context, error, stackTrace) => _buildCheckedOutPlaceholder(),
-                          );
-                        } else {
-                          // Đã check-out nhưng không có ảnh
-                          return _buildCheckedOutPlaceholder();
-                        }
-                      }),
+                          ),
+                        ),
+                        Text(
+                          _formatTime(attendance.time),
+                          style: AppTextStyles.bodyMd.copyWith(
+                            color: AppColors.secondary,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
                     ),
-                    Positioned(
-                      top: 8,
-                      right: 8,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.9),
-                          borderRadius: BorderRadius.circular(8),
+                    const SizedBox(height: 6),
+
+                    // Route/Location
+                    Row(
+                      children: [
+                        const Icon(Icons.location_on_outlined, size: 13, color: AppColors.onSurfaceVariant),
+                        const SizedBox(width: 4),
+                        Expanded(
+                          child: Text(
+                            attendance.locationAddress,
+                            style: AppTextStyles.caption.copyWith(color: AppColors.onSurfaceVariant),
+                            overflow: TextOverflow.ellipsis,
+                          ),
                         ),
-                        child: const Text(
-                          'CHECK-OUT',
-                          style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFF1A1A1A)),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+
+                    // Status badge
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+                          decoration: BoxDecoration(
+                            color: isCompleted ? const Color(0xFFdcfce7) : const Color(0xFFfef2f2),
+                            borderRadius: BorderRadius.circular(AppSpacing.radiusFull),
+                          ),
+                          child: Text(
+                            isCompleted ? 'HOÀN TẤT' : 'PENDING',
+                            style: AppTextStyles.labelMd.copyWith(
+                              color: isCompleted ? const Color(0xFF16a34a) : AppColors.error,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
                         ),
-                      ),
+                      ],
                     ),
                   ],
                 ),
               ),
             ],
           ),
-          // Info part
-          Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      attendance.storeName,
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: Color(0xFF1A1A1A),
-                      ),
-                    ),
-                    Text(
-                      formatTime(attendance.time),
-                      style: const TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.bold,
-                        color: Color(0xFF0F3c8f), // Navy
-                      ),
-                    ),
-                  ],
+
+          // ── Refresh FAB (if PENDING) ──
+          if (!isCompleted)
+            Positioned(
+              right: 12,
+              bottom: 12,
+              child: Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: AppColors.primary,
+                  shape: BoxShape.circle,
+                  boxShadow: AppShadows.level2,
                 ),
-                const SizedBox(height: 8),
-                Row(
-                  children: [
-                    const Icon(Icons.location_on_outlined, size: 14, color: Colors.grey),
-                    const SizedBox(width: 4),
-                    Text(
-                      attendance.locationAddress,
-                      style: const TextStyle(
-                        fontSize: 12,
-                        color: Colors.grey,
-                      ),
-                    ),
-                  ],
-                ),
-              ],
+                child: const Icon(Icons.refresh_rounded, color: AppColors.white, size: 20),
+              ),
             ),
-          ),
         ],
       ),
     );
@@ -197,20 +231,17 @@ class HistoryCard extends StatelessWidget {
 
   Widget _buildCheckedOutPlaceholder() {
     return Container(
-      height: 150,
-      width: double.infinity,
       color: const Color(0xFFE8F5E9),
-      child: const Column(
+      child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.check_circle_outline, size: 40, color: Color(0xFF388E3C)),
-          SizedBox(height: 8),
+          const Icon(Icons.check_circle_outline_rounded, size: 36, color: Color(0xFF16a34a)),
+          const SizedBox(height: 6),
           Text(
             'Đã Check-out',
             textAlign: TextAlign.center,
-            style: TextStyle(
-              fontSize: 11,
-              color: Color(0xFF388E3C),
+            style: AppTextStyles.labelMd.copyWith(
+              color: const Color(0xFF16a34a),
               fontWeight: FontWeight.bold,
             ),
           ),

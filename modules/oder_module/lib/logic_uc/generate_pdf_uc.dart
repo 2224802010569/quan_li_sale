@@ -39,7 +39,6 @@ class GeneratePdfUC {
 
     final pdf = pw.Document(theme: theme);
     pdf.addPage(_buildInvoicePage(
-      orderLabel: 'TẠM TÍNH',
       storeName: storeName,
       items: items,
       subtotal: subtotal,
@@ -47,7 +46,11 @@ class GeneratePdfUC {
       totalAmount: totalAmount,
     ));
 
-    await Printing.layoutPdf(onLayout: (format) => pdf.save());
+    final bytes = await pdf.save();
+    await Printing.sharePdf(
+      bytes: bytes,
+      filename: 'hoa_don_tam_tinh_${DateTime.now().millisecondsSinceEpoch}.pdf',
+    );
   }
 
   Future<String> generateAndUpload({
@@ -97,7 +100,7 @@ class GeneratePdfUC {
   }
 
   pw.Page _buildInvoicePage({
-    required String orderLabel,
+    String? orderLabel,
     required String storeName,
     required List<CartItem> items,
     required double subtotal,
@@ -126,13 +129,15 @@ class GeneratePdfUC {
                 style: const pw.TextStyle(fontSize: 14),
               ),
             ),
-            pw.SizedBox(height: 4),
-            pw.Center(
-              child: pw.Text(
-                'Mã đơn: $orderLabel',
-                style: const pw.TextStyle(fontSize: 12),
+            if (orderLabel != null && orderLabel.isNotEmpty) ...[
+              pw.SizedBox(height: 4),
+              pw.Center(
+                child: pw.Text(
+                  'Mã đơn: $orderLabel',
+                  style: const pw.TextStyle(fontSize: 12),
+                ),
               ),
-            ),
+            ],
             pw.SizedBox(height: 4),
             pw.Center(
               child: pw.Text(

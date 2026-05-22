@@ -1,0 +1,5006 @@
+
+FILE: c:\Users\Admin\Documents\GitHub\quan_li_sale\modules\route_store_module\lib\entity\assignment_entity.dart
+import 'package:route_store_module/entity/route_entity.dart';
+import 'package:route_store_module/entity/visit_status.dart';
+
+class AssignmentEntity {
+  final int assignmentId;
+  final String userId;
+  final int routeId;
+  final int isSupport; // 1: Chính, 2: Hỗ trợ, 3: Off
+  final DateTime assignedDate;
+  final VisitStatus status;
+  final DateTime? createdAt;
+  final Map<String, dynamic>? data;
+  
+  // Các field mở rộng khi join với bảng Routes
+  final RouteEntity? route;
+
+  AssignmentEntity({
+    required this.assignmentId,
+    required this.userId,
+    required this.routeId,
+    required this.isSupport,
+    required this.assignedDate,
+    this.status = VisitStatus.pending,
+    this.createdAt,
+    this.data,
+    this.route,
+  });
+
+  factory AssignmentEntity.fromMap(Map<String, dynamic> map) {
+    return AssignmentEntity(
+      assignmentId: map['id'] ?? map['assignment_id'] ?? 0,
+      userId: map['user_id'] ?? '',
+      routeId: map['route_id'] ?? 0,
+      isSupport: map['is_support'] ?? 1,
+      assignedDate: map['assigned_date'] != null 
+          ? DateTime.parse(map['assigned_date'].toString()) 
+          : DateTime.now(),
+      status: map['status'] != null 
+          ? VisitStatus.fromString(map['status']) 
+          : VisitStatus.pending,
+      createdAt: map['created_at'] != null
+          ? DateTime.parse(map['created_at'].toString())
+          : null,
+      data: map['data'] is Map<String, dynamic> ? map['data'] : null,
+      route: map['routes'] != null ? RouteEntity.fromJson(map['routes']) : null,
+    );
+  }
+
+  Map<String, dynamic> toMap() {
+    return {
+      'id': assignmentId,
+      'user_id': userId,
+      'route_id': routeId,
+      'is_support': isSupport,
+      'assigned_date': assignedDate.toIso8601String().split('T')[0],
+      if (data != null) 'data': data,
+    };
+  }
+
+
+  /// Kiểm tra xem đây có phải assignment hỗ trợ không
+  bool get isSupportAssignment => isSupport == 2;
+
+  /// Kiểm tra xem đây có phải assignment chính không
+  bool get isPrimaryAssignment => isSupport == 1;
+
+  /// Tạo bản sao với thay đổi
+  AssignmentEntity copyWith({
+    int? assignmentId,
+    String? userId,
+    int? routeId,
+    int? isSupport,
+    DateTime? assignedDate,
+    VisitStatus? status,
+    DateTime? createdAt,
+    Map<String, dynamic>? data,
+    RouteEntity? route,
+  }) {
+    return AssignmentEntity(
+      assignmentId: assignmentId ?? this.assignmentId,
+      userId: userId ?? this.userId,
+      routeId: routeId ?? this.routeId,
+      isSupport: isSupport ?? this.isSupport,
+      assignedDate: assignedDate ?? this.assignedDate,
+      status: status ?? this.status,
+      createdAt: createdAt ?? this.createdAt,
+      data: data ?? this.data,
+      route: route ?? this.route,
+    );
+  }
+}
+
+
+FILE: c:\Users\Admin\Documents\GitHub\quan_li_sale\modules\route_store_module\lib\entity\route_detail_entity.dart
+class RouteDetailEntity {
+  final int? id;
+  final int routeId;
+  final int storeId;
+  final int sequence;
+  final DateTime? createdAt;
+  final Map<String, dynamic>? data;
+
+  RouteDetailEntity({
+    this.id,
+    required this.routeId,
+    required this.storeId,
+    required this.sequence,
+    this.createdAt,
+    this.data,
+  });
+
+  factory RouteDetailEntity.fromJson(Map<String, dynamic> json) {
+    return RouteDetailEntity(
+      id: json['id'],
+      routeId: (json['route_id'] as num?)?.toInt() ?? 0,
+      storeId: (json['store_id'] as num?)?.toInt() ?? 0,
+      sequence: (json['sequence'] as num?)?.toInt() ?? 0,
+      createdAt: json['created_at'] != null
+          ? DateTime.parse(json['created_at'].toString())
+          : null,
+      data: json['data'] is Map<String, dynamic> ? json['data'] : null,
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'route_id': routeId,
+      'store_id': storeId,
+      'sequence': sequence,
+      if (data != null) 'data': data,
+    };
+  }
+
+  /// Tạo bản sao với thay đổi
+  RouteDetailEntity copyWith({
+    int? id,
+    int? routeId,
+    int? storeId,
+    int? sequence,
+    DateTime? createdAt,
+    Map<String, dynamic>? data,
+  }) {
+    return RouteDetailEntity(
+      id: id ?? this.id,
+      routeId: routeId ?? this.routeId,
+      storeId: storeId ?? this.storeId,
+      sequence: sequence ?? this.sequence,
+      createdAt: createdAt ?? this.createdAt,
+      data: data ?? this.data,
+    );
+  }
+}
+
+
+FILE: c:\Users\Admin\Documents\GitHub\quan_li_sale\modules\route_store_module\lib\entity\route_entity.dart
+class RouteEntity {
+  final int id;
+  final String routeName;
+  final String createdBy;
+  final bool isHidden;
+  final DateTime? createdAt;
+  final Map<String, dynamic>? data;
+
+  RouteEntity({
+    required this.id,
+    required this.routeName,
+    required this.createdBy,
+    this.isHidden = false,
+    this.createdAt,
+    this.data,
+  });
+
+  factory RouteEntity.fromJson(Map<String, dynamic> json) {
+    return RouteEntity(
+      id: (json['id'] as num?)?.toInt() ?? 0,
+      routeName: json['route_name'] as String,
+      createdBy: json['created_by']?.toString() ?? '',
+      isHidden: json['is_hidden'] ?? false,
+      createdAt: json['created_at'] != null
+          ? DateTime.parse(json['created_at'].toString())
+          : null,
+      data: json['data'] is Map<String, dynamic> ? json['data'] : null,
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'route_name': routeName,
+      'created_by': createdBy,
+      'is_hidden': isHidden,
+      if (data != null) 'data': data,
+    };
+  }
+
+  /// Tạo bản sao với thay đổi
+  RouteEntity copyWith({
+    int? id,
+    String? routeName,
+    String? createdBy,
+    bool? isHidden,
+    DateTime? createdAt,
+    Map<String, dynamic>? data,
+  }) {
+    return RouteEntity(
+      id: id ?? this.id,
+      routeName: routeName ?? this.routeName,
+      createdBy: createdBy ?? this.createdBy,
+      isHidden: isHidden ?? this.isHidden,
+      createdAt: createdAt ?? this.createdAt,
+      data: data ?? this.data,
+    );
+  }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is RouteEntity &&
+          runtimeType == other.runtimeType &&
+          id == other.id;
+
+  @override
+  int get hashCode => id.hashCode;
+}
+
+
+
+FILE: c:\Users\Admin\Documents\GitHub\quan_li_sale\modules\route_store_module\lib\entity\store_entity.dart
+class StoreEntity {
+  final int? id;
+  final String storeName;
+  final String address;
+  final double latitude;
+  final double longitude;
+  final String managerId;
+  final bool isHidden;
+  final DateTime? createdAt;
+  final Map<String, dynamic>? data;
+
+  StoreEntity({
+    this.id,
+    required this.storeName,
+    required this.address,
+    required this.latitude,
+    required this.longitude,
+    required this.managerId,
+    this.isHidden = false,
+    this.createdAt,
+    this.data,
+  });
+
+  factory StoreEntity.fromMap(Map<String, dynamic> map) {
+    return StoreEntity(
+      id: map['id'],
+      storeName: map['store_name'] ?? '',
+      address: map['address'] ?? '',
+      latitude: (map['latitude'] ?? 0).toDouble(),
+      longitude: (map['longitude'] ?? 0).toDouble(),
+      managerId: map['manager_id']?.toString() ?? '',
+      isHidden: map['is_hidden'] ?? false,
+      createdAt: map['created_at'] != null
+          ? DateTime.parse(map['created_at'].toString())
+          : null,
+      data: map['data'] is Map<String, dynamic> ? map['data'] : null,
+    );
+  }
+
+  Map<String, dynamic> toMap() {
+    return {
+      if (id != null) 'id': id,
+      'store_name': storeName,
+      'address': address,
+      'latitude': latitude,
+      'longitude': longitude,
+      'manager_id': managerId,
+      'is_hidden': isHidden,
+      if (data != null) 'data': data,
+    };
+  }
+
+  /// Tạo bản sao với thay đổi (copyWith)
+  StoreEntity copyWith({
+    int? id,
+    String? storeName,
+    String? address,
+    double? latitude,
+    double? longitude,
+    String? managerId,
+    bool? isHidden,
+    DateTime? createdAt,
+    Map<String, dynamic>? data,
+  }) {
+    return StoreEntity(
+      id: id ?? this.id,
+      storeName: storeName ?? this.storeName,
+      address: address ?? this.address,
+      latitude: latitude ?? this.latitude,
+      longitude: longitude ?? this.longitude,
+      managerId: managerId ?? this.managerId,
+      isHidden: isHidden ?? this.isHidden,
+      createdAt: createdAt ?? this.createdAt,
+      data: data ?? this.data,
+    );
+  }
+}
+
+
+FILE: c:\Users\Admin\Documents\GitHub\quan_li_sale\modules\route_store_module\lib\entity\visit_status.dart
+enum VisitStatus {
+  pending,
+  visited,
+  skipped;
+
+  factory VisitStatus.fromString(String value) {
+    switch (value) {
+      case 'visited':
+        return VisitStatus.visited;
+      case 'skipped':
+        return VisitStatus.skipped;
+      case 'pending':
+      default:
+        return VisitStatus.pending;
+    }
+  }
+
+  String toMap() {
+    return name;
+  }
+}
+
+
+FILE: c:\Users\Admin\Documents\GitHub\quan_li_sale\modules\route_store_module\lib\input\route_input.dart
+class RouteInput {
+  final String userId;
+  final String userRole; // VD: 'sale', 'manager'
+  final double? currentLatitude;
+  final double? currentLongitude;
+
+  RouteInput({
+    required this.userId,
+    required this.userRole,
+    this.currentLatitude,
+    this.currentLongitude,
+  });
+}
+
+
+FILE: c:\Users\Admin\Documents\GitHub\quan_li_sale\modules\route_store_module\lib\logic_data\assignment_data.dart
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:route_store_module/entity/assignment_entity.dart';
+
+final assignmentDataProvider = Provider<AssignmentData>((ref) => AssignmentData());
+
+class AssignmentData {
+  final SupabaseClient _supabase = Supabase.instance.client;
+
+  // ==================== QUERY ====================
+
+  /// Lấy danh sách phân công của user trong ngày cụ thể (join với Routes)
+  Future<List<AssignmentEntity>> getAssignmentsByUserAndDate(String userId, DateTime date) async {
+    final dateStr = date.toIso8601String().split('T')[0];
+    
+    final response = await _supabase
+        .from('assignments')
+        .select('''
+          *,
+          routes:route_id (*)
+        ''')
+        .eq('user_id', userId)
+        .eq('assigned_date', dateStr);
+
+    return (response as List).map((e) => AssignmentEntity.fromMap(e)).toList();
+  }
+
+  /// Lấy danh sách phân công theo route_id (cho Manager xem ai được gán)
+  Future<List<AssignmentEntity>> getAssignmentsByRoute(int routeId) async {
+    final response = await _supabase
+        .from('assignments')
+        .select('''
+          *,
+          routes:route_id (*)
+        ''')
+        .eq('route_id', routeId)
+        .order('assigned_date', ascending: false);
+
+    return (response as List).map((e) => AssignmentEntity.fromMap(e)).toList();
+  }
+
+  /// Lấy tất cả phân công trong ngày cụ thể (cho Manager view)
+  Future<List<AssignmentEntity>> getAssignmentsByDate(DateTime date) async {
+    final dateStr = date.toIso8601String().split('T')[0];
+    
+    final response = await _supabase
+        .from('assignments')
+        .select('''
+          *,
+          routes:route_id (*)
+        ''')
+        .eq('assigned_date', dateStr);
+
+    return (response as List).map((e) => AssignmentEntity.fromMap(e)).toList();
+  }
+
+  // ==================== VALIDATION ====================
+
+  /// Kiểm tra xem user đã có assignment trùng lịch trong ngày chưa
+  /// Trả về true nếu CÓ conflict
+  Future<bool> checkConflict(String userId, DateTime date, {int? excludeAssignmentId}) async {
+    final dateStr = date.toIso8601String().split('T')[0];
+    
+    var query = _supabase
+        .from('assignments')
+        .select('id')
+        .eq('user_id', userId)
+        .eq('assigned_date', dateStr);
+
+    // Loại trừ assignment hiện tại (khi update)
+    if (excludeAssignmentId != null) {
+      query = query.neq('id', excludeAssignmentId);
+    }
+
+    final response = await query;
+    return (response as List).isNotEmpty;
+  }
+
+  // ==================== MUTATION ====================
+
+  /// Tạo hoặc cập nhật phân công
+  Future<AssignmentEntity> upsertAssignment(AssignmentEntity assignment) async {
+    final map = assignment.toMap();
+    if (map['id'] == 0) {
+      map.remove('id'); // Để DB tự gen ID
+    }
+    final response = await _supabase
+        .from('assignments')
+        .upsert(map)
+        .select()
+        .single();
+    
+    return AssignmentEntity.fromMap(response);
+  }
+
+  /// Điều chuyển tuyến sang nhân viên khác (Reassignment / Hỗ trợ)
+  Future<void> reassignRoute(int assignmentId, String newUserId) async {
+    await _supabase
+        .from('assignments')
+        .update({
+          'user_id': newUserId,
+          'is_support': 2, // Đánh dấu là đi hỗ trợ
+        })
+        .eq('id', assignmentId);
+  }
+
+  /// Tạo assignment hỗ trợ mới (support assignment)
+  Future<AssignmentEntity> createSupportAssignment({
+    required String userId,
+    required int routeId,
+    required DateTime date,
+  }) async {
+    final response = await _supabase
+        .from('assignments')
+        .insert({
+          'user_id': userId,
+          'route_id': routeId,
+          'assigned_date': date.toIso8601String().split('T')[0],
+          'is_support': 2, // Hỗ trợ
+        })
+        .select()
+        .single();
+    
+    return AssignmentEntity.fromMap(response);
+  }
+
+  /// Xóa phân công
+  Future<void> deleteAssignment(int assignmentId) async {
+    await _supabase
+        .from('assignments')
+        .delete()
+        .eq('id', assignmentId);
+  }
+
+  // ==================== REALTIME ====================
+
+  /// Stream realtime cho bảng Assignments (theo user)
+  Stream<List<AssignmentEntity>> streamAssignmentsByUser(String userId) {
+    return _supabase
+        .from('assignments')
+        .stream(primaryKey: ['id'])
+        .eq('user_id', userId)
+        .order('assigned_date', ascending: false)
+        .map((list) => list.map((e) => AssignmentEntity.fromMap(e)).toList());
+  }
+
+  /// Stream realtime cho tất cả assignments (Manager view)
+  Stream<List<AssignmentEntity>> streamAllAssignments() {
+    return _supabase
+        .from('assignments')
+        .stream(primaryKey: ['id'])
+        .order('assigned_date', ascending: false)
+        .map((list) => list.map((e) => AssignmentEntity.fromMap(e)).toList());
+  }
+}
+
+
+FILE: c:\Users\Admin\Documents\GitHub\quan_li_sale\modules\route_store_module\lib\logic_data\realtime_data.dart
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:route_store_module/logic_data/store_data.dart';
+import 'package:route_store_module/logic_data/route_data.dart';
+import 'package:route_store_module/logic_data/assignment_data.dart';
+import 'package:route_store_module/entity/store_entity.dart';
+import 'package:route_store_module/entity/route_entity.dart';
+import 'package:route_store_module/entity/assignment_entity.dart';
+import 'package:route_store_module/entity/route_detail_entity.dart';
+
+// ==================== REALTIME PROVIDERS ====================
+
+/// Stream provider cho danh sách cửa hàng (realtime)
+final realtimeStoresProvider = StreamProvider<List<StoreEntity>>((ref) {
+  final storeData = ref.read(storeDataProvider);
+  return storeData.streamStores();
+});
+
+/// Stream provider cho danh sách tuyến (realtime)
+final realtimeRoutesProvider = StreamProvider<List<RouteEntity>>((ref) {
+  final routeData = ref.read(routeDataProvider);
+  return routeData.streamRoutes();
+});
+
+
+/// Stream provider cho chi tiết của một tuyến (realtime)
+final realtimeRouteDetailsProvider = StreamProvider.family<List<RouteDetailEntity>, int>((ref, routeId) {
+  final routeData = ref.read(routeDataProvider);
+  return routeData.streamRouteDetails(routeId);
+});
+
+/// Stream provider cho tất cả chi tiết tuyến (tất cả các cửa hàng đã có tuyến)
+final realtimeAllRouteDetailsProvider = StreamProvider<List<RouteDetailEntity>>((ref) {
+  final routeData = ref.read(routeDataProvider);
+  return routeData.supabase
+      .from('route_details')
+      .stream(primaryKey: ['id'])
+      .map((list) => list.map((e) => RouteDetailEntity.fromJson(e)).toList());
+});
+
+/// Stream provider cho assignments của user hiện tại (realtime)
+final realtimeUserAssignmentsProvider = StreamProvider.family<List<AssignmentEntity>, String>((ref, userId) {
+  if (userId.isEmpty) return Stream.value([]);
+  final assignmentData = ref.read(assignmentDataProvider);
+  return assignmentData.streamAssignmentsByUser(userId);
+});
+
+/// Stream provider cho tất cả assignments (Manager realtime)
+final realtimeAllAssignmentsProvider = StreamProvider<List<AssignmentEntity>>((ref) {
+  final assignmentData = ref.read(assignmentDataProvider);
+  return assignmentData.streamAllAssignments();
+});
+
+/// Stream provider cho danh sách users (Sale)
+final realtimeSaleUsersProvider = StreamProvider<List<Map<String, dynamic>>>((ref) {
+  final supabase = ref.read(routeDataProvider).supabase;
+  return supabase.from('users').stream(primaryKey: ['id']).map((data) {
+    return List<Map<String, dynamic>>.from(data)
+        .where((u) => u['role']?.toString().toLowerCase() == 'sale')
+        .toList();
+  });
+});
+
+
+/// Model cho Route Card UI
+class RouteWithInfo {
+  final RouteEntity route;
+  final AssignmentEntity? assignment;
+  final Map<String, dynamic>? saleUser;
+  final double progress; // 0.0 to 1.0
+
+  RouteWithInfo({
+    required this.route,
+    this.assignment,
+    this.saleUser,
+    this.progress = 0.0,
+  });
+}
+
+/// Stream provider cho attendance trong tuần
+final realtimeAttendanceThisWeekProvider = StreamProvider<List<Map<String, dynamic>>>((ref) {
+  final supabase = ref.read(routeDataProvider).supabase;
+  final now = DateTime.now();
+  final startOfWeek = DateTime(now.year, now.month, now.day).subtract(Duration(days: now.weekday - 1));
+  
+  return supabase
+      .from('attendance')
+      .stream(primaryKey: ['id'])
+      .gte('checkin_time', startOfWeek.toIso8601String());
+});
+
+
+
+/// Provider kết hợp Routes, Assignments và Users cho Manager View
+final routeListWithInfoProvider = Provider<AsyncValue<List<RouteWithInfo>>>((ref) {
+  final routesAsync = ref.watch(realtimeRoutesProvider);
+  final assignmentsAsync = ref.watch(realtimeAllAssignmentsProvider);
+  final usersAsync = ref.watch(realtimeSaleUsersProvider);
+  final attendanceAsync = ref.watch(realtimeAttendanceThisWeekProvider);
+  final routeDetailsAsync = ref.watch(realtimeAllRouteDetailsProvider);
+
+  // Xử lý loading và error tập trung
+  if (routesAsync.isLoading || assignmentsAsync.isLoading || usersAsync.isLoading || attendanceAsync.isLoading || routeDetailsAsync.isLoading) {
+    return const AsyncValue.loading();
+  }
+
+  if (routesAsync.hasError) return AsyncValue.error(routesAsync.error!, routesAsync.stackTrace!);
+  if (assignmentsAsync.hasError) return AsyncValue.error(assignmentsAsync.error!, assignmentsAsync.stackTrace!);
+  if (usersAsync.hasError) return AsyncValue.error(usersAsync.error!, usersAsync.stackTrace!);
+  if (attendanceAsync.hasError) return AsyncValue.error(attendanceAsync.error!, attendanceAsync.stackTrace!);
+  if (routeDetailsAsync.hasError) return AsyncValue.error(routeDetailsAsync.error!, routeDetailsAsync.stackTrace!);
+
+  final routes = routesAsync.value ?? [];
+  final assignments = assignmentsAsync.value ?? [];
+  final users = usersAsync.value ?? [];
+  final attendance = attendanceAsync.value ?? [];
+  final routeDetails = routeDetailsAsync.value ?? [];
+
+  final result = routes.map((route) {
+    // Tìm assignment cho route này (giả sử 1 route chỉ có 1 active assignment tại 1 thời điểm)
+    final assignment = assignments.firstWhere(
+      (a) => a.routeId == route.id,
+      orElse: () => AssignmentEntity(
+        assignmentId: 0,
+        userId: '',
+        routeId: 0,
+        assignedDate: DateTime.now(),
+        isSupport: 1,
+      ),
+    );
+
+    final hasAssignment = assignment.assignmentId != 0;
+    final saleUser = hasAssignment
+        ? users.firstWhere((u) => u['id'].toString() == assignment.userId, orElse: () => {})
+        : null;
+
+    // Calculate progress
+    final storesInRoute = routeDetails.where((rd) => rd.routeId == route.id).map((rd) => rd.storeId).toSet();
+    final totalStores = storesInRoute.length;
+    
+    double progress = 0.0;
+    if (totalStores > 0) {
+      final visitedStores = storesInRoute.where((storeId) => 
+        attendance.any((a) => a['store_id'] == storeId && a['checkin_time'] != null && a['checkout_time'] != null)
+      ).length;
+      progress = visitedStores / totalStores;
+    }
+
+    return RouteWithInfo(
+      route: route,
+      assignment: hasAssignment ? assignment : null,
+      saleUser: saleUser,
+      progress: progress,
+    );
+  }).toList();
+
+  return AsyncValue.data(result);
+});
+
+
+FILE: c:\Users\Admin\Documents\GitHub\quan_li_sale\modules\route_store_module\lib\logic_data\route_data.dart
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import '../entity/route_entity.dart';
+import '../entity/route_detail_entity.dart';
+
+final routeDataProvider = Provider<RouteData>((ref) => RouteData());
+
+class RouteData {
+  final SupabaseClient supabase = Supabase.instance.client;
+
+  // ==================== ROUTE CRUD ====================
+
+  /// Lấy danh sách tuyến đường (chỉ chưa bị ẩn)
+  Future<List<RouteEntity>> getRoutes() async {
+    final response = await supabase
+        .from('routes')
+        .select()
+        .eq('is_hidden', false)
+        .order('id', ascending: true);
+    return (response as List).map((e) => RouteEntity.fromJson(e)).toList();
+  }
+
+  /// Lấy tuyến theo manager (created_by)
+  Future<List<RouteEntity>> getRoutesByManager(String managerId) async {
+    final response = await supabase
+        .from('routes')
+        .select()
+        .eq('created_by', managerId)
+        .eq('is_hidden', false)
+        .order('id', ascending: true);
+    return (response as List).map((e) => RouteEntity.fromJson(e)).toList();
+  }
+
+  /// Tạo tuyến mới
+  Future<RouteEntity> createRoute(String routeName, String createdBy) async {
+    final response = await supabase.from('routes').insert({
+      'route_name': routeName,
+      'created_by': createdBy,
+      'is_hidden': false,
+    }).select().single();
+    return RouteEntity.fromJson(response);
+  }
+
+  /// Cập nhật tên tuyến
+  Future<void> updateRouteName(int routeId, String newName) async {
+    await supabase
+        .from('routes')
+        .update({'route_name': newName})
+        .eq('id', routeId);
+  }
+
+  /// Ẩn tuyến (soft delete - KHÔNG xóa cứng theo instructions.md)
+  Future<void> hideRoute(int routeId) async {
+    await supabase
+        .from('routes')
+        .update({'is_hidden': true})
+        .eq('id', routeId);
+  }
+
+  /// Hiện lại tuyến đã ẩn
+  Future<void> unhideRoute(int routeId) async {
+    await supabase
+        .from('routes')
+        .update({'is_hidden': false})
+        .eq('id', routeId);
+  }
+
+  // ==================== ROUTE DETAILS ====================
+
+  /// Lấy chi tiết cửa hàng trong tuyến (theo thứ tự sequence)
+  Future<List<RouteDetailEntity>> getRouteDetails(int routeId) async {
+    final response = await supabase
+        .from('route_details')
+        .select()
+        .eq('route_id', routeId)
+        .order('sequence', ascending: true);
+    return (response as List)
+        .map((e) => RouteDetailEntity.fromJson(e))
+        .toList();
+  }
+
+  /// Thêm danh sách cửa hàng vào tuyến
+  Future<void> addStoresToRoute(
+      int routeId, List<RouteDetailEntity> details) async {
+    final list = details.map((e) {
+      return {
+        'route_id': routeId,
+        'store_id': e.storeId,
+        'sequence': e.sequence,
+      };
+    }).toList();
+    await supabase.from('route_details').insert(list);
+  }
+
+  /// Cập nhật chi tiết tuyến (xóa toàn bộ rồi thêm lại)
+  Future<void> updateRouteDetails(
+      int routeId, List<RouteDetailEntity> newDetails) async {
+    await supabase.from('route_details').delete().eq('route_id', routeId);
+    await addStoresToRoute(routeId, newDetails);
+  }
+
+  /// Cập nhật sort_order (sequence) cho drag-drop
+  Future<void> updateSortOrder(
+      int routeId, List<Map<String, int>> sortOrders) async {
+    // sortOrders: [{'store_id': 1, 'sequence': 1}, {'store_id': 2, 'sequence': 2}, ...]
+    for (final item in sortOrders) {
+      await supabase
+          .from('route_details')
+          .update({'sequence': item['sequence']})
+          .eq('route_id', routeId)
+          .eq('store_id', item['store_id']!);
+    }
+  }
+
+  /// Xóa 1 cửa hàng khỏi tuyến
+  Future<void> removeStoreFromRoute(int routeId, int storeId) async {
+    await supabase
+        .from('route_details')
+        .delete()
+        .eq('route_id', routeId)
+        .eq('store_id', storeId);
+  }
+
+  // ==================== REALTIME ====================
+
+  /// Stream realtime cho bảng Routes
+  Stream<List<RouteEntity>> streamRoutes() {
+    return supabase
+        .from('routes')
+        .stream(primaryKey: ['id'])
+        .eq('is_hidden', false)
+        .order('id', ascending: true)
+        .map((list) => list.map((e) => RouteEntity.fromJson(e)).toList());
+  }
+
+  /// Stream realtime cho chi tiết tuyến
+  Stream<List<RouteDetailEntity>> streamRouteDetails(int routeId) {
+    return supabase
+        .from('route_details')
+        .stream(primaryKey: ['id'])
+        .eq('route_id', routeId)
+        .order('sequence', ascending: true)
+        .map((list) => list.map((e) => RouteDetailEntity.fromJson(e)).toList());
+  }
+}
+
+
+FILE: c:\Users\Admin\Documents\GitHub\quan_li_sale\modules\route_store_module\lib\logic_data\store_data.dart
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:route_store_module/entity/store_entity.dart';
+
+final storeDataProvider = Provider<StoreData>((ref) => StoreData());
+
+class StoreData {
+  final SupabaseClient _supabase = Supabase.instance.client;
+
+  /// Lấy tất cả cửa hàng (chỉ lấy chưa bị ẩn)
+  Future<List<StoreEntity>> getAllStores() async {
+    final response = await _supabase
+        .from('stores')
+        .select()
+        .eq('is_hidden', false)
+        .order('id', ascending: true);
+    return (response as List).map((e) => StoreEntity.fromMap(e)).toList();
+  }
+
+  /// Lấy cửa hàng theo manager_id (chỉ chưa bị ẩn)
+  Future<List<StoreEntity>> getStoresByManager(String managerId) async {
+    final response = await _supabase
+        .from('stores')
+        .select()
+        .eq('manager_id', managerId)
+        .eq('is_hidden', false)
+        .order('id', ascending: true);
+    return (response as List).map((e) => StoreEntity.fromMap(e)).toList();
+  }
+
+  /// Lấy cửa hàng theo ID
+  Future<StoreEntity?> getStoreById(int id) async {
+    final response = await _supabase
+        .from('stores')
+        .select()
+        .eq('id', id)
+        .maybeSingle();
+    if (response != null) {
+      return StoreEntity.fromMap(response);
+    }
+    return null;
+  }
+
+  /// Thêm cửa hàng mới
+  Future<void> addStore(StoreEntity store) async {
+    await _supabase.from('stores').insert(store.toMap());
+  }
+
+  /// Cập nhật cửa hàng
+  Future<void> updateStore(int id, StoreEntity store) async {
+    await _supabase.from('stores').update(store.toMap()).eq('id', id);
+  }
+
+  /// Ẩn cửa hàng (soft delete - KHÔNG xóa cứng theo instructions.md)
+  Future<void> hideStore(int id) async {
+    await _supabase
+        .from('stores')
+        .update({'is_hidden': true})
+        .eq('id', id);
+  }
+
+  /// Hiện lại cửa hàng đã ẩn
+  Future<void> unhideStore(int id) async {
+    await _supabase
+        .from('stores')
+        .update({'is_hidden': false})
+        .eq('id', id);
+  }
+
+  /// Tìm kiếm cửa hàng theo tên hoặc địa chỉ
+  Future<List<StoreEntity>> searchStores(String query) async {
+    final response = await _supabase
+        .from('stores')
+        .select()
+        .eq('is_hidden', false)
+        .or('store_name.ilike.%$query%,address.ilike.%$query%')
+        .order('store_name', ascending: true);
+    return (response as List).map((e) => StoreEntity.fromMap(e)).toList();
+  }
+
+  /// Stream realtime cho bảng stores
+  Stream<List<StoreEntity>> streamStores() {
+    return _supabase
+        .from('stores')
+        .stream(primaryKey: ['id'])
+        .eq('is_hidden', false)
+        .order('id', ascending: true)
+        .map((list) => list.map((e) => StoreEntity.fromMap(e)).toList());
+  }
+}
+
+
+FILE: c:\Users\Admin\Documents\GitHub\quan_li_sale\modules\route_store_module\lib\logic_data\store_manager_data.dart
+import 'package:core/di/injector.dart';
+import 'package:core/di/supabase.dart';
+import 'package:route_store_module/entity/store_entity.dart';
+
+class StoreManagerData {
+  final supabase = get<SupabaseConnect>().client!;
+
+  Future<List<StoreEntity>> getStores() async {
+    final response = await supabase
+        .from('stores')
+        .select()
+        .order('id', ascending: true);
+
+    return (response as List).map((e) => StoreEntity.fromMap(e)).toList();
+  }
+
+  Future<void> createStore(StoreEntity store) async {
+    await supabase.from('stores').insert(store.toMap());
+  }
+
+  Future<void> updateStore(StoreEntity store) async {
+    await supabase.from('stores').update(store.toMap()).eq('id', store.id!);
+  }
+
+  Future<void> deleteStore(int storeId) async {
+    await supabase.from('stores').delete().eq('id', storeId);
+  }
+}
+
+
+FILE: c:\Users\Admin\Documents\GitHub\quan_li_sale\modules\route_store_module\lib\logic_data\visit_data.dart
+import 'dart:io';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:path/path.dart' as p;
+
+final visitDataProvider = Provider<VisitData>((ref) => VisitData());
+
+class VisitData {
+  final SupabaseClient _supabase = Supabase.instance.client;
+
+  // Ghi nhận checkin
+  Future<void> recordVisit({
+    required String userId,
+    required int storeId,
+    required double lat,
+    required double lng,
+    required String photoUrl,
+    required DateTime visitTime,
+  }) async {
+    await _supabase.from('visits').insert({
+      'user_id': userId,
+      'store_id': storeId,
+      'latitude': lat,
+      'longitude': lng,
+      'photo_url': photoUrl,
+      'visit_time': visitTime.toIso8601String(),
+      'status': 'visited'
+    });
+  }
+
+  // Upload ảnh lên storage/visits/{user_id}/{date}/
+  Future<String> uploadVisitPhoto(String userId, File photoFile) async {
+    final dateStr = DateTime.now().toIso8601String().split('T')[0];
+    final ext = p.extension(photoFile.path);
+    final fileName = '${DateTime.now().millisecondsSinceEpoch}$ext';
+    final path = '$userId/$dateStr/$fileName';
+
+    await _supabase.storage.from('visits').upload(path, photoFile);
+    
+    final publicUrl = _supabase.storage.from('visits').getPublicUrl(path);
+    return publicUrl;
+  }
+}
+
+
+FILE: c:\Users\Admin\Documents\GitHub\quan_li_sale\modules\route_store_module\lib\logic_uc\check_in_gps_uc.dart
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:geolocator/geolocator.dart';
+import 'package:latlong2/latlong.dart';
+
+final checkInGpsUcProvider = Provider<CheckInGpsUc>((ref) => CheckInGpsUc());
+
+class CheckInGpsUc {
+  static const double ALLOWED_DISTANCE_METERS = 200.0;
+
+  Future<Position?> getCurrentLocation() async {
+    bool serviceEnabled;
+    LocationPermission permission;
+
+    serviceEnabled = await Geolocator.isLocationServiceEnabled();
+    if (!serviceEnabled) {
+      return null;
+    }
+
+    permission = await Geolocator.checkPermission();
+    if (permission == LocationPermission.denied) {
+      permission = await Geolocator.requestPermission();
+      if (permission == LocationPermission.denied) {
+        return null;
+      }
+    }
+    
+    if (permission == LocationPermission.deniedForever) {
+      return null;
+    } 
+
+    return await Geolocator.getCurrentPosition(
+      desiredAccuracy: LocationAccuracy.high
+    );
+  }
+
+  bool isWithinRadius(double currentLat, double currentLng, double storeLat, double storeLng) {
+    final distance = Distance().as(
+      LengthUnit.Meter,
+      LatLng(currentLat, currentLng),
+      LatLng(storeLat, storeLng),
+    );
+    return distance <= ALLOWED_DISTANCE_METERS;
+  }
+}
+
+
+FILE: c:\Users\Admin\Documents\GitHub\quan_li_sale\modules\route_store_module\lib\logic_uc\fetch_route_daily_uc.dart
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:route_store_module/entity/assignment_entity.dart';
+import 'package:route_store_module/logic_data/assignment_data.dart';
+
+final fetchRouteDailyUcProvider = Provider<FetchRouteDailyUc>((ref) {
+  return FetchRouteDailyUc(ref.read(assignmentDataProvider));
+});
+
+// Giả sử có một provider lưu trữ trạng thái userId và date hiện tại
+// Có thể lấy từ route_input
+final currentUserIdProvider = StateProvider<String>((ref) => '');
+final currentDateProvider = StateProvider<DateTime>((ref) => DateTime.now());
+
+// Riverpod AsyncValue provider để UI dễ consume
+final dailyRouteProvider = FutureProvider<List<AssignmentEntity>>((ref) async {
+  final userId = ref.watch(currentUserIdProvider);
+  final date = ref.watch(currentDateProvider);
+  
+  if (userId.isEmpty) return [];
+  
+  final uc = ref.read(fetchRouteDailyUcProvider);
+  return await uc.execute(userId, date);
+});
+
+class FetchRouteDailyUc {
+  final AssignmentData _assignmentData;
+
+  FetchRouteDailyUc(this._assignmentData);
+
+  Future<List<AssignmentEntity>> execute(String userId, DateTime date) async {
+    return await _assignmentData.getAssignmentsByUserAndDate(userId, date);
+  }
+}
+
+
+FILE: c:\Users\Admin\Documents\GitHub\quan_li_sale\modules\route_store_module\lib\logic_uc\manage_assignment_uc.dart
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:route_store_module/entity/assignment_entity.dart';
+import 'package:route_store_module/logic_data/assignment_data.dart';
+
+final manageAssignmentUcProvider = Provider<ManageAssignmentUc>((ref) {
+  return ManageAssignmentUc(ref.read(assignmentDataProvider));
+});
+
+class ManageAssignmentUc {
+  final AssignmentData _assignmentData;
+
+  ManageAssignmentUc(this._assignmentData);
+
+  /// Phân công tuyến cho Sale
+  /// Throws Exception nếu có conflict (trùng lịch)
+  Future<AssignmentEntity> assignRouteToSale(String userId, int routeId, DateTime date) async {
+    // Validation: kiểm tra trùng lịch (theo instructions.md - Assignment Rules)
+    final hasConflict = await _assignmentData.checkConflict(userId, date);
+    if (hasConflict) {
+      throw Exception('Sale đã có tuyến được gán trong ngày ${date.toIso8601String().split('T')[0]}. Không thể trùng lịch assignment.');
+    }
+
+    final assignment = AssignmentEntity(
+      assignmentId: 0,
+      userId: userId,
+      routeId: routeId,
+      isSupport: 1, // Mặc định là tuyến chính
+      assignedDate: date,
+    );
+    return await _assignmentData.upsertAssignment(assignment);
+  }
+
+  /// Điều chuyển người hỗ trợ (Reassignment)
+  /// Khi sale đang được phân công mà xin nghỉ phép
+  Future<void> reassignToSupport(int assignmentId, String newUserId) async {
+    await _assignmentData.reassignRoute(assignmentId, newUserId);
+  }
+
+  /// Tạo assignment hỗ trợ mới (is_support = 2)
+  /// Dùng khi có sale xin nghỉ phép và cần người đi hỗ trợ
+  Future<AssignmentEntity> createSupportAssignment({
+    required String userId,
+    required int routeId,
+    required DateTime date,
+  }) async {
+    // Validation trùng lịch
+    final hasConflict = await _assignmentData.checkConflict(userId, date);
+    if (hasConflict) {
+      throw Exception('Sale hỗ trợ đã có tuyến trong ngày này. Không thể trùng lịch.');
+    }
+
+    return await _assignmentData.createSupportAssignment(
+      userId: userId,
+      routeId: routeId,
+      date: date,
+    );
+  }
+
+  /// Lấy assignments theo route (Manager xem ai được gán)
+  Future<List<AssignmentEntity>> getAssignmentsByRoute(int routeId) async {
+    return await _assignmentData.getAssignmentsByRoute(routeId);
+  }
+
+  /// Lấy assignments trong ngày (Manager view)
+  Future<List<AssignmentEntity>> getAssignmentsByDate(DateTime date) async {
+    return await _assignmentData.getAssignmentsByDate(date);
+  }
+
+  /// Xóa phân công
+  Future<void> deleteAssignment(int assignmentId) async {
+    await _assignmentData.deleteAssignment(assignmentId);
+  }
+}
+
+
+FILE: c:\Users\Admin\Documents\GitHub\quan_li_sale\modules\route_store_module\lib\logic_uc\manage_route_uc.dart
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:route_store_module/entity/route_entity.dart';
+import 'package:route_store_module/entity/route_detail_entity.dart';
+import 'package:route_store_module/logic_data/route_data.dart';
+
+final manageRouteUcProvider = Provider<ManageRouteUc>((ref) {
+  return ManageRouteUc(ref.read(routeDataProvider));
+});
+
+// Provider quản lý state danh sách tuyến
+final routeListProvider = FutureProvider<List<RouteEntity>>((ref) async {
+  final uc = ref.read(manageRouteUcProvider);
+  return await uc.fetchAllRoutes();
+});
+
+class ManageRouteUc {
+  final RouteData _routeData;
+
+  ManageRouteUc(this._routeData);
+
+  /// Lấy danh sách tuyến đường (chưa bị ẩn)
+  Future<List<RouteEntity>> fetchAllRoutes() async {
+    return await _routeData.getRoutes();
+  }
+
+  /// Lấy tuyến theo manager
+  Future<List<RouteEntity>> fetchRoutesByManager(String managerId) async {
+    return await _routeData.getRoutesByManager(managerId);
+  }
+
+  /// Tạo tuyến mới với danh sách các cửa hàng (theo thứ tự sequence)
+  Future<RouteEntity> createRouteWithStores(
+    String routeName,
+    String createdBy,
+    List<int> storeIds,
+  ) async {
+    // 1. Tạo Route
+    final route = await _routeData.createRoute(routeName, createdBy);
+
+    // 2. Tạo Route Details
+    List<RouteDetailEntity> details = [];
+    for (int i = 0; i < storeIds.length; i++) {
+      details.add(
+        RouteDetailEntity(
+          routeId: route.id,
+          storeId: storeIds[i],
+          sequence: i + 1,
+        ),
+      );
+    }
+
+    if (details.isNotEmpty) {
+      await _routeData.addStoresToRoute(route.id, details);
+    }
+
+    return route;
+  }
+
+  /// Lấy danh sách chi tiết (cửa hàng) của 1 tuyến
+  Future<List<RouteDetailEntity>> getRouteDetails(int routeId) async {
+    return await _routeData.getRouteDetails(routeId);
+  }
+
+  /// Cập nhật tên tuyến
+  Future<void> updateRouteName(int routeId, String newName) async {
+    await _routeData.updateRouteName(routeId, newName);
+  }
+
+  /// Cập nhật tuyến (sửa danh sách cửa hàng)
+  Future<void> updateRouteStores(int routeId, List<int> newStoreIds) async {
+    List<RouteDetailEntity> details = [];
+    for (int i = 0; i < newStoreIds.length; i++) {
+      details.add(
+        RouteDetailEntity(
+          routeId: routeId,
+          storeId: newStoreIds[i],
+          sequence: i + 1,
+        ),
+      );
+    }
+    await _routeData.updateRouteDetails(routeId, details);
+  }
+
+  /// Cập nhật thứ tự sắp xếp (drag-drop sorting)
+  Future<void> updateSortOrder(int routeId, List<int> orderedStoreIds) async {
+    final sortOrders = <Map<String, int>>[];
+    for (int i = 0; i < orderedStoreIds.length; i++) {
+      sortOrders.add({'store_id': orderedStoreIds[i], 'sequence': i + 1});
+    }
+    await _routeData.updateSortOrder(routeId, sortOrders);
+  }
+
+  /// Xóa 1 cửa hàng khỏi tuyến
+  Future<void> removeStoreFromRoute(int routeId, int storeId) async {
+    await _routeData.removeStoreFromRoute(routeId, storeId);
+  }
+
+  /// Thêm 1 cửa hàng vào tuyến
+  Future<void> addStoreToRoute(int routeId, int storeId, int sequence) async {
+    await _routeData.addStoresToRoute(routeId, [
+      RouteDetailEntity(routeId: routeId, storeId: storeId, sequence: sequence),
+    ]);
+  }
+
+  /// Ẩn tuyến (soft delete - KHÔNG xóa cứng)
+  Future<void> hideRoute(int routeId) async {
+    await _routeData.hideRoute(routeId);
+  }
+}
+
+
+FILE: c:\Users\Admin\Documents\GitHub\quan_li_sale\modules\route_store_module\lib\logic_uc\manage_store_uc.dart
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:route_store_module/entity/store_entity.dart';
+import 'package:route_store_module/logic_data/store_data.dart';
+
+final manageStoreUcProvider = Provider<ManageStoreUc>((ref) {
+  return ManageStoreUc(ref.read(storeDataProvider));
+});
+
+// Provider quản lý state danh sách cửa hàng cho view manager
+final storeListProvider = FutureProvider<List<StoreEntity>>((ref) async {
+  final uc = ref.read(manageStoreUcProvider);
+  return await uc.getAllStores();
+});
+
+// Provider cho search kết quả
+final storeSearchQueryProvider = StateProvider<String>((ref) => '');
+
+final storeSearchResultsProvider = FutureProvider<List<StoreEntity>>((ref) async {
+  final query = ref.watch(storeSearchQueryProvider);
+  final uc = ref.read(manageStoreUcProvider);
+  
+  if (query.isEmpty) {
+    return await uc.getAllStores();
+  }
+  return await uc.searchStores(query);
+});
+
+class ManageStoreUc {
+  final StoreData _storeData;
+
+  ManageStoreUc(this._storeData);
+
+  /// Lấy tất cả cửa hàng (chưa bị ẩn)
+  Future<List<StoreEntity>> getAllStores() async {
+    return await _storeData.getAllStores();
+  }
+
+  /// Lấy cửa hàng theo manager
+  Future<List<StoreEntity>> getStoresByManager(String managerId) async {
+    return await _storeData.getStoresByManager(managerId);
+  }
+
+  /// Thêm cửa hàng mới
+  Future<void> addStore(StoreEntity store) async {
+    await _storeData.addStore(store);
+  }
+
+  /// Cập nhật cửa hàng
+  Future<void> updateStore(int id, StoreEntity store) async {
+    await _storeData.updateStore(id, store);
+  }
+
+  /// Ẩn cửa hàng (soft delete - KHÔNG xóa cứng)
+  Future<void> hideStore(int id) async {
+    await _storeData.hideStore(id);
+  }
+
+  /// Hiện lại cửa hàng đã ẩn
+  Future<void> unhideStore(int id) async {
+    await _storeData.unhideStore(id);
+  }
+
+  /// Tìm kiếm cửa hàng theo tên hoặc địa chỉ
+  Future<List<StoreEntity>> searchStores(String query) async {
+    return await _storeData.searchStores(query);
+  }
+}
+
+
+FILE: c:\Users\Admin\Documents\GitHub\quan_li_sale\modules\route_store_module\lib\logic_uc\search_store_uc.dart
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:route_store_module/entity/store_entity.dart';
+import 'package:route_store_module/logic_data/store_data.dart';
+
+final searchStoreUcProvider = Provider<SearchStoreUc>((ref) {
+  return SearchStoreUc(ref.read(storeDataProvider));
+});
+
+/// Provider cho search query (debounce nên được handle ở UI)
+final searchQueryProvider = StateProvider<String>((ref) => '');
+
+/// Provider cho kết quả search
+final searchResultsProvider = FutureProvider<List<StoreEntity>>((ref) async {
+  final query = ref.watch(searchQueryProvider);
+  final uc = ref.read(searchStoreUcProvider);
+
+  if (query.trim().isEmpty) {
+    return [];
+  }
+  return await uc.search(query.trim());
+});
+
+class SearchStoreUc {
+  final StoreData _storeData;
+
+  SearchStoreUc(this._storeData);
+
+  /// Tìm kiếm cửa hàng theo tên hoặc địa chỉ
+  Future<List<StoreEntity>> search(String query) async {
+    return await _storeData.searchStores(query);
+  }
+}
+
+
+FILE: c:\Users\Admin\Documents\GitHub\quan_li_sale\modules\route_store_module\lib\logic_uc\upload_visit_photo_uc.dart
+import 'dart:io';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:route_store_module/logic_data/visit_data.dart';
+
+final uploadVisitPhotoUcProvider = Provider<UploadVisitPhotoUc>((ref) {
+  return UploadVisitPhotoUc(ref.read(visitDataProvider));
+});
+
+class UploadVisitPhotoUc {
+  final VisitData _visitData;
+
+  UploadVisitPhotoUc(this._visitData);
+
+  Future<String> execute(String userId, File photoFile) async {
+    return await _visitData.uploadVisitPhoto(userId, photoFile);
+  }
+}
+
+
+FILE: c:\Users\Admin\Documents\GitHub\quan_li_sale\modules\route_store_module\lib\output\route_output.dart
+import 'package:route_store_module/entity/assignment_entity.dart';
+
+class RouteOutput {
+  final Function(AssignmentEntity assignment)? onVisitCompleted;
+  final Function(List<AssignmentEntity> allAssignments)? onRouteFinished;
+
+  RouteOutput({
+    this.onVisitCompleted,
+    this.onRouteFinished,
+  });
+}
+
+
+FILE: c:\Users\Admin\Documents\GitHub\quan_li_sale\modules\route_store_module\lib\route_store_module.dart
+library route_store_module;
+
+// Entity
+export 'entity/store_entity.dart';
+export 'entity/assignment_entity.dart';
+export 'entity/visit_status.dart';
+export 'entity/route_entity.dart';
+export 'entity/route_detail_entity.dart';
+
+// I/O
+export 'input/route_input.dart';
+export 'output/route_output.dart';
+
+// Use cases
+export 'logic_uc/fetch_route_daily_uc.dart';
+export 'logic_uc/check_in_gps_uc.dart';
+export 'logic_uc/upload_visit_photo_uc.dart';
+export 'logic_uc/manage_store_uc.dart';
+export 'logic_uc/manage_route_uc.dart';
+export 'logic_uc/manage_assignment_uc.dart';
+export 'logic_uc/search_store_uc.dart';
+
+// Data
+export 'logic_data/store_data.dart';
+export 'logic_data/assignment_data.dart';
+export 'logic_data/visit_data.dart';
+export 'logic_data/route_data.dart';
+export 'logic_data/realtime_data.dart';
+
+// Views - Sale
+export 'view/sale/daily_route_view.dart';
+export 'view/sale/store_detail_view.dart';
+export 'view/sale/camera_visit_view.dart';
+
+// Views - Manager
+export 'view/manager/store_list_view.dart';
+export 'view/manager/create_store_view.dart';
+export 'view/manager/route_list_view.dart';
+export 'view/manager/route_detail_view.dart';
+export 'view/manager/edit_route.dart';
+export 'view/manager/route_support.dart';
+export 'view/manager/choose_sale.dart';
+export 'view/manager/delete_route_confirm.dart';
+export 'view/manager/create_route_view.dart';
+
+
+FILE: c:\Users\Admin\Documents\GitHub\quan_li_sale\modules\route_store_module\lib\view\components\route_list.dart
+import 'package:flutter/material.dart';
+
+class RouteList extends StatelessWidget {
+  final List<String> routes;
+  final Function(String)? onTap;
+
+  const RouteList({super.key, required this.routes, this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    if (routes.isEmpty) {
+      return const Center(child: Text('Chưa có tuyến'));
+    }
+
+    return ListView.builder(
+      itemCount: routes.length,
+      itemBuilder: (context, index) {
+        final route = routes[index];
+        return ListTile(
+          leading: const Icon(Icons.route),
+          title: Text(route),
+          onTap: () => onTap?.call(route),
+        );
+      },
+    );
+  }
+}
+
+
+FILE: c:\Users\Admin\Documents\GitHub\quan_li_sale\modules\route_store_module\lib\view\manager\assign_route_view.dart
+// Trang này đã được loại bỏ và tích hợp trực tiếp vào BottomSheet của RouteListView.
+
+
+FILE: c:\Users\Admin\Documents\GitHub\quan_li_sale\modules\route_store_module\lib\view\manager\choose_sale.dart
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:route_store_module/logic_data/realtime_data.dart';
+
+class ChooseSaleView extends ConsumerWidget {
+  final Function(Map<String, dynamic> user) onSelected;
+
+  const ChooseSaleView({Key? key, required this.onSelected}) : super(key: key);
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final usersAsync = ref.watch(realtimeSaleUsersProvider);
+
+    return Scaffold(
+      backgroundColor: const Color(0xFFFAF8FF),
+      appBar: AppBar(
+        title: const Text('Chọn nhân viên'),
+        backgroundColor: Colors.white,
+        foregroundColor: const Color(0xFF0D47A1),
+        elevation: 0,
+      ),
+      body: usersAsync.when(
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (err, _) => Center(child: Text('Lỗi: $err')),
+        data: (users) {
+          return ListView.separated(
+            padding: const EdgeInsets.all(16),
+            itemCount: users.length,
+            separatorBuilder: (_, __) => const SizedBox(height: 12),
+            itemBuilder: (context, index) {
+              final user = users[index];
+              final fullName = user['full_name'] ?? 'Ẩn danh';
+              
+              return InkWell(
+                onTap: () => onSelected(user),
+                child: Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(16),
+                    boxShadow: const [BoxShadow(color: Color(0x0A000000), blurRadius: 8)],
+                  ),
+                  child: Row(
+                    children: [
+                      CircleAvatar(
+                        backgroundColor: const Color(0xFFD9E2FF),
+                        child: Text(fullName[0].toUpperCase(), style: const TextStyle(color: Color(0xFF003178))),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(fullName, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                            const Text('Nhân viên kinh doanh', style: TextStyle(color: Colors.grey, fontSize: 12)),
+                          ],
+                        ),
+                      ),
+                      const Icon(Icons.chevron_right, color: Colors.grey),
+                    ],
+                  ),
+                ),
+              );
+            },
+          );
+        },
+      ),
+    );
+  }
+}
+
+
+FILE: c:\Users\Admin\Documents\GitHub\quan_li_sale\modules\route_store_module\lib\view\manager\create_route_view.dart
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:route_store_module/logic_uc/manage_route_uc.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:core/di/injector.dart';
+import 'package:core/storage/app_storage.dart';
+import 'package:route_store_module/entity/store_entity.dart';
+import 'package:route_store_module/logic_data/realtime_data.dart';
+
+class CreateRouteView extends ConsumerStatefulWidget {
+  final VoidCallback? onBack;
+  const CreateRouteView({Key? key, this.onBack}) : super(key: key);
+
+  @override
+  ConsumerState<CreateRouteView> createState() => _CreateRouteViewState();
+}
+
+class _CreateRouteViewState extends ConsumerState<CreateRouteView> {
+  final _nameController = TextEditingController();
+  final List<StoreEntity> _selectedStores = [];
+  bool _isSaving = false;
+
+  Future<void> _handleSave() async {
+    if (_nameController.text.trim().isEmpty) return;
+
+    setState(() => _isSaving = true);
+    try {
+      final storage = get<AppStorage>();
+      final user = storage.get<Map<String, dynamic>>('user');
+      final userId = user?['id']?.toString() ?? '';
+      
+      // In this system, manager_id might be a string (UUID) or int. 
+      // Let's check the schema again. 
+      // rls_policies.sql says created_by = auth.uid()::int
+      
+      final uc = ref.read(manageRouteUcProvider);
+      await uc.createRouteWithStores(
+        _nameController.text.trim(),
+        userId,
+        _selectedStores.map((s) => s.id!).toList(),
+      );
+
+      if (mounted) {
+        if (widget.onBack != null) {
+          widget.onBack!();
+        } else {
+          Navigator.pop(context);
+        }
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Đã tạo tuyến mới thành công')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Lỗi: $e')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isSaving = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xFFFAF8FF),
+      appBar: AppBar(
+        title: const Text('Tạo tuyến mới'),
+        backgroundColor: Colors.white,
+        foregroundColor: const Color(0xFF1A1B21),
+        elevation: 0,
+      ),
+      body: Padding(
+        padding: const EdgeInsets.all(24.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Tên tuyến đường',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+                color: Color(0xFF434652),
+              ),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: _nameController,
+              decoration: InputDecoration(
+                hintText: 'Ví dụ: Tuyến Quận 1 - Sáng thứ 2',
+                filled: true,
+                fillColor: Colors.white,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+                ),
+              ),
+            ),
+            const SizedBox(height: 32),
+            const Text(
+              'Danh sách cửa hàng',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+                color: Color(0xFF434652),
+              ),
+            ),
+            const SizedBox(height: 12),
+            Expanded(
+              child: _buildStoreList(),
+            ),
+            const SizedBox(height: 16),
+            SizedBox(
+              width: double.infinity,
+              height: 56,
+              child: ElevatedButton(
+                onPressed: _isSaving ? null : _handleSave,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF0D47A1),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                ),
+                child: _isSaving
+                    ? const CircularProgressIndicator(color: Colors.white)
+                    : const Text(
+                        'TẠO TUYẾN',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                      ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildStoreList() {
+    final allStoresAsync = ref.watch(realtimeStoresProvider);
+
+    return allStoresAsync.when(
+      loading: () => const Center(child: CircularProgressIndicator()),
+      error: (err, _) => Center(child: Text('Lỗi tải cửa hàng: $err')),
+      data: (stores) {
+        return Column(
+          children: [
+            Expanded(
+              child: ListView.builder(
+                itemCount: _selectedStores.length,
+                itemBuilder: (context, index) {
+                  final store = _selectedStores[index];
+                  return Container(
+                    margin: const EdgeInsets.only(bottom: 12),
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: const Color(0xFFE2E8F0)),
+                    ),
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 32,
+                          height: 32,
+                          decoration: const BoxDecoration(
+                            color: Color(0xFFF3F3FB),
+                            shape: BoxShape.circle,
+                          ),
+                          alignment: Alignment.center,
+                          child: Text(
+                            '${index + 1}',
+                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                store.storeName,
+                                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                              ),
+                              Text(
+                                store.address,
+                                style: const TextStyle(color: Colors.grey, fontSize: 12),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ],
+                          ),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.remove_circle_outline, color: Colors.redAccent),
+                          onPressed: () {
+                            setState(() {
+                              _selectedStores.removeAt(index);
+                            });
+                          },
+                        ),
+                      ],
+                    ),
+                  );
+                },
+              ),
+            ),
+            const SizedBox(height: 12),
+            InkWell(
+              onTap: () {
+                _showAddStoreDialog(stores);
+              },
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                decoration: BoxDecoration(
+                  border: Border.all(color: const Color(0xFFC3C6D4), width: 2, style: BorderStyle.solid),
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: const Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.add, color: Color(0xFF434652)),
+                    SizedBox(width: 8),
+                    Text(
+                      'Thêm điểm dừng mới',
+                      style: TextStyle(
+                        color: Color(0xFF434652),
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _showAddStoreDialog(List<StoreEntity> allStores) {
+    final availableStores = allStores.where((s) => !_selectedStores.any((selected) => selected.id == s.id)).toList();
+
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (context) {
+        return Container(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Chọn cửa hàng',
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 16),
+              Expanded(
+                child: ListView.builder(
+                  itemCount: availableStores.length,
+                  itemBuilder: (context, index) {
+                    final store = availableStores[index];
+                    return ListTile(
+                      title: Text(store.storeName),
+                      subtitle: Text(store.address),
+                      trailing: const Icon(Icons.add_circle_outline, color: Color(0xFF0D47A1)),
+                      onTap: () {
+                        setState(() {
+                          _selectedStores.add(store);
+                        });
+                        Navigator.pop(context);
+                      },
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+
+
+FILE: c:\Users\Admin\Documents\GitHub\quan_li_sale\modules\route_store_module\lib\view\manager\create_store_view.dart
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:route_store_module/entity/store_entity.dart';
+import 'package:route_store_module/logic_uc/manage_store_uc.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:core/di/injector.dart';
+import 'package:core/storage/app_storage.dart';
+
+class CreateStoreView extends ConsumerStatefulWidget {
+  final VoidCallback? onBack;
+  final StoreEntity? store;
+  const CreateStoreView({Key? key, this.onBack, this.store}) : super(key: key);
+
+  @override
+  ConsumerState<CreateStoreView> createState() => _CreateStoreViewState();
+}
+
+class _CreateStoreViewState extends ConsumerState<CreateStoreView> {
+  final _formKey = GlobalKey<FormState>();
+  late TextEditingController _nameController;
+  late TextEditingController _addressController;
+  late TextEditingController _latController;
+  late TextEditingController _lngController;
+  
+  bool _isSaving = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _nameController = TextEditingController(text: widget.store?.storeName ?? '');
+    _addressController = TextEditingController(text: widget.store?.address ?? '');
+    _latController = TextEditingController(text: widget.store?.latitude.toString() ?? '');
+    _lngController = TextEditingController(text: widget.store?.longitude.toString() ?? '');
+  }
+
+  Future<void> _handleSave() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    setState(() => _isSaving = true);
+    try {
+      final storage = get<AppStorage>();
+      final user = storage.get<Map<String, dynamic>>('user');
+      final managerId = user?['id']?.toString() ?? '';
+      
+      final store = StoreEntity(
+        id: widget.store?.id,
+        storeName: _nameController.text.trim(),
+        address: _addressController.text.trim(),
+        latitude: double.tryParse(_latController.text) ?? 0.0,
+        longitude: double.tryParse(_lngController.text) ?? 0.0,
+        managerId: managerId,
+      );
+
+      final uc = ref.read(manageStoreUcProvider);
+      if (widget.store != null) {
+        await uc.updateStore(widget.store!.id!, store);
+      } else {
+        await uc.addStore(store);
+      }
+
+      if (mounted) {
+        if (widget.onBack != null) {
+          widget.onBack!();
+        } else {
+          Navigator.pop(context);
+        }
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(widget.store != null ? 'Đã cập nhật cửa hàng thành công' : 'Đã tạo cửa hàng mới thành công')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Lỗi: $e')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isSaving = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xFFFAF8FF),
+      appBar: AppBar(
+        title: Text(widget.store != null ? 'Chỉnh sửa cửa hàng' : 'Thêm cửa hàng mới'),
+        backgroundColor: Colors.white,
+        foregroundColor: const Color(0xFF1A1B21),
+        elevation: 0,
+        centerTitle: true,
+      ),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(24.0),
+        child: Form(
+          key: _formKey,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildLabel('Tên cửa hàng'),
+              const SizedBox(height: 8),
+              _buildTextField(
+                controller: _nameController,
+                hint: 'Ví dụ: Tạp hóa Lan Anh',
+                validator: (v) => v!.isEmpty ? 'Vui lòng nhập tên cửa hàng' : null,
+              ),
+              const SizedBox(height: 20),
+              
+              _buildLabel('Địa chỉ'),
+              const SizedBox(height: 8),
+              _buildTextField(
+                controller: _addressController,
+                hint: 'Số nhà, tên đường, quận/huyện...',
+                maxLines: 2,
+                validator: (v) => v!.isEmpty ? 'Vui lòng nhập địa chỉ' : null,
+              ),
+              const SizedBox(height: 20),
+
+              Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _buildLabel('Vĩ độ (Lat)'),
+                        const SizedBox(height: 8),
+                        _buildTextField(
+                          controller: _latController,
+                          hint: '10.7626',
+                          keyboardType: TextInputType.number,
+                          validator: (v) => double.tryParse(v ?? '') == null ? 'Lỗi' : null,
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _buildLabel('Kinh độ (Long)'),
+                        const SizedBox(height: 8),
+                        _buildTextField(
+                          controller: _lngController,
+                          hint: '106.6602',
+                          keyboardType: TextInputType.number,
+                          validator: (v) => double.tryParse(v ?? '') == null ? 'Lỗi' : null,
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 40),
+              
+              SizedBox(
+                width: double.infinity,
+                height: 56,
+                child: ElevatedButton(
+                  onPressed: _isSaving ? null : _handleSave,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF0D47A1),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    elevation: 4,
+                    shadowColor: const Color(0xFF0D47A1).withValues(alpha: 0.4),
+                  ),
+                  child: _isSaving
+                      ? const CircularProgressIndicator(color: Colors.white)
+                      : const Text(
+                          'LƯU CỬA HÀNG',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                            letterSpacing: 1.1,
+                          ),
+                        ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildLabel(String text) {
+    return Text(
+      text,
+      style: const TextStyle(
+        fontSize: 14,
+        fontWeight: FontWeight.w600,
+        color: Color(0xFF434652),
+      ),
+    );
+  }
+
+  Widget _buildTextField({
+    required TextEditingController controller,
+    required String hint,
+    int maxLines = 1,
+    TextInputType? keyboardType,
+    String? Function(String?)? validator,
+  }) {
+    return TextFormField(
+      controller: controller,
+      maxLines: maxLines,
+      keyboardType: keyboardType,
+      validator: validator,
+      decoration: InputDecoration(
+        hintText: hint,
+        hintStyle: const TextStyle(color: Color(0xFF94A3B8), fontSize: 14),
+        filled: true,
+        fillColor: Colors.white,
+        contentPadding: const EdgeInsets.all(16),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: Color(0xFF0D47A1), width: 1.5),
+        ),
+        errorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: Colors.redAccent),
+        ),
+      ),
+    );
+  }
+}
+
+FILE: c:\Users\Admin\Documents\GitHub\quan_li_sale\modules\route_store_module\lib\view\manager\delete_route_confirm.dart
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:route_store_module/logic_uc/manage_route_uc.dart';
+
+class DeleteConfirmationDialog extends ConsumerWidget {
+  final int routeId;
+  final String routeName;
+
+  const DeleteConfirmationDialog({
+    Key? key,
+    required this.routeId,
+    required this.routeName,
+  }) : super(key: key);
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return Dialog(
+      backgroundColor: Colors.transparent,
+      insetPadding: const EdgeInsets.symmetric(horizontal: 24),
+      child: Container(
+        padding: const EdgeInsets.all(24),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(24),
+          boxShadow: const [
+            BoxShadow(
+              color: Color(0x261A1B21),
+              blurRadius: 32,
+              offset: Offset(0, 12),
+            )
+          ],
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 64,
+              height: 64,
+              decoration: const BoxDecoration(
+                color: Color(0xFFFFDAD6),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(Icons.delete_outline, color: Color(0xFFBA1A1A), size: 32),
+            ),
+            const SizedBox(height: 24),
+            const Text(
+              'Xóa tuyến đường?',
+              style: TextStyle(
+                color: Color(0xFF1A1B21),
+                fontSize: 20,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+            const SizedBox(height: 12),
+            Text.rich(
+              TextSpan(
+                children: [
+                  const TextSpan(text: 'Tất cả dữ liệu lịch trình và phân công của tuyến '),
+                  TextSpan(
+                    text: routeName,
+                    style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF1A1B21)),
+                  ),
+                  const TextSpan(text: ' sẽ bị ẩn. Bạn có chắc chắn?'),
+                ],
+              ),
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: Color(0xFF434652), fontSize: 14),
+            ),
+            const SizedBox(height: 32),
+            ElevatedButton(
+              onPressed: () async {
+                await ref.read(manageRouteUcProvider).hideRoute(routeId);
+                if (context.mounted) Navigator.pop(context, true);
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFFBA1A1A),
+                foregroundColor: Colors.white,
+                minimumSize: const Size(double.infinity, 56),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                elevation: 0,
+              ),
+              child: const Text('XÓA TUYẾN', style: TextStyle(fontWeight: FontWeight.bold)),
+            ),
+            const SizedBox(height: 12),
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              style: TextButton.styleFrom(
+                minimumSize: const Size(double.infinity, 56),
+              ),
+              child: const Text('HỦY', style: TextStyle(color: Color(0xFF434652), fontWeight: FontWeight.bold)),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+FILE: c:\Users\Admin\Documents\GitHub\quan_li_sale\modules\route_store_module\lib\view\manager\edit_route.dart
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:route_store_module/entity/route_entity.dart';
+import 'package:route_store_module/entity/route_detail_entity.dart';
+import 'package:route_store_module/entity/store_entity.dart';
+import 'package:route_store_module/logic_data/realtime_data.dart';
+import 'package:route_store_module/logic_uc/manage_route_uc.dart';
+
+class EditRouteView extends ConsumerStatefulWidget {
+  final RouteEntity route;
+  final VoidCallback? onBack;
+
+  const EditRouteView({Key? key, required this.route, this.onBack}) : super(key: key);
+
+  @override
+  ConsumerState<EditRouteView> createState() => _EditRouteViewState();
+}
+
+class _EditRouteViewState extends ConsumerState<EditRouteView> {
+  final _routeNameController = TextEditingController();
+  bool _isSaving = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _routeNameController.text = widget.route.routeName;
+  }
+
+  @override
+  void dispose() {
+    _routeNameController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _saveChanges() async {
+    setState(() => _isSaving = true);
+    try {
+      final uc = ref.read(manageRouteUcProvider);
+      await uc.updateRouteName(widget.route.id, _routeNameController.text);
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Đã cập nhật lộ trình')));
+        if (widget.onBack != null) {
+          widget.onBack!();
+        } else {
+          Navigator.pop(context);
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Lỗi: $e')));
+      }
+    } finally {
+      if (mounted) setState(() => _isSaving = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final detailsAsync = ref.watch(
+      realtimeRouteDetailsProvider(widget.route.id),
+    );
+    final allStoresAsync = ref.watch(realtimeStoresProvider);
+    final allRouteDetailsAsync = ref.watch(realtimeAllRouteDetailsProvider);
+
+    return Scaffold(
+      backgroundColor: const Color(0xFFF5F5F5),
+      appBar: AppBar(
+        title: const Text('Chỉnh sửa Lộ trình'),
+        backgroundColor: Colors.white,
+        foregroundColor: const Color(0xFF0D47A1),
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () {
+            if (widget.onBack != null) {
+              widget.onBack!();
+            } else {
+              Navigator.pop(context);
+            }
+          },
+        ),
+        actions: [
+          if (_isSaving)
+            const Padding(
+              padding: EdgeInsets.all(16.0),
+              child: SizedBox(
+                width: 24,
+                height: 24,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              ),
+            )
+          else
+            TextButton(
+              onPressed: _saveChanges,
+              child: const Text(
+                'LƯU',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+            ),
+        ],
+      ),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildNameInput(),
+            const SizedBox(height: 32),
+            const Text(
+              'Danh sách cửa hàng',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: Color(0xFF1A1B21),
+              ),
+            ),
+            const SizedBox(height: 16),
+            detailsAsync.when(
+              loading: () => const Center(child: CircularProgressIndicator()),
+              error: (err, _) => Center(child: Text('Lỗi: $err')),
+              data: (details) {
+                return allStoresAsync.when(
+                  loading: () =>
+                      const Center(child: CircularProgressIndicator()),
+                  error: (err, _) =>
+                      Center(child: Text('Lỗi tải cửa hàng: $err')),
+                  data: (stores) {
+                    return Column(
+                      children: [
+                        ...details.map((d) {
+                          final store = stores.firstWhere(
+                            (s) => s.id == d.storeId,
+                            orElse: () => StoreEntity(
+                              id: d.storeId,
+                              storeName: 'Cửa hàng #${d.storeId}',
+                              address: 'Đã bị xóa hoặc không tìm thấy',
+                              latitude: 0.0,
+                              longitude: 0.0,
+                              managerId: '',
+                            ),
+                          );
+                          return _EditableStoreItem(
+                            detail: d,
+                            store: store,
+                            onRemove: () async {
+                              await ref
+                                  .read(manageRouteUcProvider)
+                                  .removeStoreFromRoute(
+                                    widget.route.id,
+                                    d.storeId,
+                                  );
+                              ref.invalidate(realtimeRouteDetailsProvider(widget.route.id));
+                              ref.invalidate(realtimeAllRouteDetailsProvider);
+                            },
+                          );
+                        }).toList(),
+                        const SizedBox(height: 16),
+                        _buildAddButton(stores, details, allRouteDetailsAsync.value ?? []),
+                      ],
+                    );
+                  },
+                );
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildNameInput() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: const [BoxShadow(color: Color(0x0C000000), blurRadius: 2)],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Tên lộ trình',
+            style: TextStyle(color: Colors.grey, fontSize: 12),
+          ),
+          TextField(
+            controller: _routeNameController,
+            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            decoration: const InputDecoration(
+              border: InputBorder.none,
+              hintText: 'Nhập tên lộ trình',
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAddButton(
+    List<StoreEntity> allStores,
+    List<RouteDetailEntity> currentDetails,
+    List<RouteDetailEntity> allDetails,
+  ) {
+    return InkWell(
+      onTap: () {
+        _showAddStoreDialog(allStores, currentDetails, allDetails);
+      },
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(vertical: 16),
+        decoration: BoxDecoration(
+          border: Border.all(color: const Color(0xFFC3C6D4), width: 2),
+          borderRadius: BorderRadius.circular(24),
+        ),
+        child: const Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.add, color: Color(0xFF434652)),
+            SizedBox(width: 8),
+            Text(
+              'Thêm điểm dừng mới',
+              style: TextStyle(
+                color: Color(0xFF434652),
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showAddStoreDialog(
+    List<StoreEntity> allStores,
+    List<RouteDetailEntity> currentDetails,
+    List<RouteDetailEntity> allDetails,
+  ) {
+    // Filter out stores already in ANY route
+    final availableStores = allStores
+        .where((s) => !allDetails.any((d) => d.storeId == s.id))
+        .toList();
+
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (context) {
+        return Container(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Chọn cửa hàng để thêm',
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 16),
+              Expanded(
+                child: ListView.builder(
+                  itemCount: availableStores.length,
+                  itemBuilder: (context, index) {
+                    final store = availableStores[index];
+                    return ListTile(
+                      title: Text(store.storeName),
+                      subtitle: Text(store.address),
+                      trailing: const Icon(
+                        Icons.add_circle_outline,
+                        color: Color(0xFF0D47A1),
+                      ),
+                      onTap: () async {
+                        final uc = ref.read(manageRouteUcProvider);
+                        await uc.addStoreToRoute(
+                          widget.route.id,
+                          store.id!,
+                          currentDetails.length + 1,
+                        );
+                        ref.invalidate(realtimeRouteDetailsProvider(widget.route.id));
+                        ref.invalidate(realtimeAllRouteDetailsProvider);
+                        if (Navigator.canPop(context)) Navigator.pop(context);
+                      },
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _EditableStoreItem extends StatelessWidget {
+  final RouteDetailEntity detail;
+  final StoreEntity store;
+  final VoidCallback onRemove;
+
+  const _EditableStoreItem({
+    required this.detail,
+    required this.store,
+    required this.onRemove,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: const [BoxShadow(color: Color(0x0C000000), blurRadius: 2)],
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 32,
+            height: 32,
+            decoration: const BoxDecoration(
+              color: Color(0xFFF3F3FB),
+              shape: BoxShape.circle,
+            ),
+            alignment: Alignment.center,
+            child: Text(
+              '${detail.sequence}',
+              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+            ),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  store.storeName,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                  ),
+                ),
+                Text(
+                  store.address,
+                  style: const TextStyle(color: Colors.grey, fontSize: 12),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
+          ),
+          IconButton(
+            icon: const Icon(
+              Icons.remove_circle_outline,
+              color: Colors.redAccent,
+            ),
+            onPressed: onRemove,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+
+FILE: c:\Users\Admin\Documents\GitHub\quan_li_sale\modules\route_store_module\lib\view\manager\fix_store.dart
+
+import "dart:io";
+
+void main() async {
+  final file = File("create_store_view.dart");
+  final lines = await file.readAsLines();
+  List<String> newLines = [];
+  
+  for (int i = 0; i < lines.length; i++) {
+    if (i == 1355 && lines[i].startsWith("import")) {
+      break;
+    }
+    newLines.add(lines[i]);
+  }
+  
+  await file.writeAsString(newLines.join("\n"));
+  print("Fixed");
+}
+
+
+
+FILE: c:\Users\Admin\Documents\GitHub\quan_li_sale\modules\route_store_module\lib\view\manager\route_detail_view.dart
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:route_store_module/entity/route_entity.dart';
+import 'package:route_store_module/entity/store_entity.dart';
+import 'package:route_store_module/logic_data/realtime_data.dart';
+import 'package:core/di/injector.dart';
+import 'package:core/storage/app_storage.dart';
+import 'package:route_store_module/entity/route_detail_entity.dart';
+import 'package:geolocator/geolocator.dart';
+import 'package:latlong2/latlong.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+
+class StoreWithDistance {
+  final RouteDetailEntity detail;
+  final StoreEntity store;
+  final double distance;
+  final bool isCompleted;
+
+  StoreWithDistance({
+    required this.detail,
+    required this.store,
+    required this.distance,
+    required this.isCompleted,
+  });
+}
+
+class RouteDetailView extends ConsumerWidget {
+  final RouteEntity route;
+  final void Function(StoreEntity store, RouteEntity route)? onCheckin;
+
+  const RouteDetailView({Key? key, required this.route, this.onCheckin}) : super(key: key);
+
+  Future<Position?> _determinePosition() async {
+    try {
+      bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) return null;
+
+      LocationPermission permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+        if (permission == LocationPermission.denied) return null;
+      }
+      
+      if (permission == LocationPermission.deniedForever) return null;
+
+      return await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.high,
+        timeLimit: const Duration(seconds: 5),
+      );
+    } catch (e) {
+      debugPrint('Lỗi xác định GPS: $e');
+      return null;
+    }
+  }
+
+  Future<Map<String, dynamic>> _fetchLocationAndCompletedStores(String userId) async {
+    Position? position;
+    List<int> completedStoreIds = [];
+
+    if (userId.isNotEmpty) {
+      try {
+        position = await _determinePosition();
+      } catch (e) {
+        debugPrint('Lỗi GPS: $e');
+      }
+
+      try {
+        final supabase = Supabase.instance.client;
+        final now = DateTime.now();
+        final startOfDay = DateTime(now.year, now.month, now.day).toIso8601String();
+        final completedResponse = await supabase
+            .from('attendance')
+            .select('store_id')
+            .eq('user_id', userId)
+            .gte('created_at', startOfDay)
+            .not('checkout_time', 'is', null);
+
+        completedStoreIds = (completedResponse as List).map((e) => e['store_id'] as int).toList();
+      } catch (e) {
+        debugPrint('Lỗi lấy lịch sử check-out: $e');
+      }
+    }
+
+    return {
+      'position': position,
+      'completedStoreIds': completedStoreIds,
+    };
+  }
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final storage = get<AppStorage>();
+    final user = storage.get<Map<String, dynamic>>('user');
+    final userId = user?['id']?.toString() ?? '';
+    final isSaleRole = (user?['role'] ?? '').toString().toLowerCase() == 'sale';
+
+    return FutureBuilder<Map<String, dynamic>>(
+      future: _fetchLocationAndCompletedStores(userId),
+      builder: (context, snapshot) {
+        final dataMap = snapshot.data ?? {'position': null, 'completedStoreIds': <int>[]};
+        final Position? position = dataMap['position'];
+        final List<int> completedStoreIds = dataMap['completedStoreIds'] ?? [];
+
+        final detailsAsync = ref.watch(realtimeRouteDetailsProvider(route.id));
+        final storesAsync = ref.watch(realtimeStoresProvider);
+        final routeInfoAsync = ref.watch(routeListWithInfoProvider);
+
+        // Get specific info for this route (assignment, user)
+        RouteWithInfo? routeInfo;
+        try {
+          routeInfo = routeInfoAsync.value?.firstWhere(
+            (i) => i.route.id == route.id,
+          );
+        } catch (_) {}
+
+        return Scaffold(
+          backgroundColor: const Color(0xFFFAF8FF),
+          body: Stack(
+            children: [
+              // ==================== CONTENT ====================
+              Positioned.fill(
+                child: Column(
+                  children: [
+                    const SizedBox(height: 80),
+                    Expanded(
+                      child: SingleChildScrollView(
+                        padding: const EdgeInsets.all(24),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            _buildRouteTitle(),
+                            const SizedBox(height: 32),
+                            if (routeInfo != null) _buildAssignmentInfo(routeInfo),
+                            const SizedBox(height: 32),
+                            const Text(
+                              'Lộ trình cửa hàng',
+                              style: TextStyle(
+                                color: Color(0xFF1A1B21),
+                                fontSize: 18,
+                                fontFamily: 'Manrope',
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                            const SizedBox(height: 24),
+                            detailsAsync.when(
+                              loading: () =>
+                                  const Center(child: CircularProgressIndicator()),
+                              error: (err, _) => Center(child: Text('Lỗi: $err')),
+                              data: (details) {
+                                return storesAsync.when(
+                                  loading: () => const Center(
+                                    child: CircularProgressIndicator(),
+                                  ),
+                                  error: (err, _) =>
+                                      Center(child: Text('Lỗi tải cửa hàng: $err')),
+                                  data: (allStores) {
+                                    if (details.isEmpty) {
+                                      return const Center(
+                                        child: Text(
+                                          'Chưa có cửa hàng nào trong tuyến này',
+                                        ),
+                                      );
+                                    }
+
+                                    // Tạo danh sách Store với khoảng cách & trạng thái hoàn thành
+                                    final List<StoreWithDistance> sortedList = details.map((d) {
+                                      final store = allStores.firstWhere(
+                                        (s) => s.id == d.storeId,
+                                        orElse: () => StoreEntity(
+                                          id: d.storeId,
+                                          storeName: 'Cửa hàng không tồn tại',
+                                          address: 'Đã bị xóa hoặc không tìm thấy',
+                                          latitude: 0.0,
+                                          longitude: 0.0,
+                                          managerId: '',
+                                        ),
+                                      );
+                                      
+                                      final isCompleted = completedStoreIds.contains(store.id);
+                                      
+                                      double distance = 0.0;
+                                      if (position != null && store.latitude != 0.0) {
+                                        distance = Distance().as(
+                                          LengthUnit.Meter,
+                                          LatLng(position.latitude, position.longitude),
+                                          LatLng(store.latitude, store.longitude),
+                                        );
+                                      }
+
+                                      return StoreWithDistance(
+                                        detail: d,
+                                        store: store,
+                                        distance: distance,
+                                        isCompleted: isCompleted,
+                                      );
+                                    }).toList();
+
+                                    // Sắp xếp theo:
+                                    // 1. Cửa hàng chưa hoàn thành lên trước, đã hoàn thành xuống cuối
+                                    // 2. Cửa hàng gần nhất lên trước
+                                    sortedList.sort((a, b) {
+                                      if (a.isCompleted && !b.isCompleted) return 1;
+                                      if (!a.isCompleted && b.isCompleted) return -1;
+                                      
+                                      if (a.distance == b.distance) {
+                                        return a.detail.sequence.compareTo(b.detail.sequence);
+                                      }
+                                      return a.distance.compareTo(b.distance);
+                                    });
+
+                                    return Column(
+                                      children: sortedList.map((item) {
+                                        final d = item.detail;
+                                        final store = item.store;
+                                        return _StoreTimelineItem(
+                                          index: d.sequence,
+                                          storeName: store.storeName,
+                                          address: store.address,
+                                          isLast: item == sortedList.last,
+                                          isSaleRole: isSaleRole,
+                                          distance: item.distance,
+                                          isCompleted: item.isCompleted,
+                                          onCheckinPressed: onCheckin != null ? () {
+                                            Navigator.pop(context);
+                                            onCheckin!(store, route);
+                                          } : null,
+                                        );
+                                      }).toList(),
+                                    );
+                                  },
+                                );
+                              },
+                            ),
+                            const SizedBox(height: 100),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              // ==================== APP BAR ====================
+              Positioned(left: 0, top: 0, right: 0, child: _buildAppBar(context)),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildAppBar(BuildContext context) {
+    return Container(
+      height: 80,
+      decoration: const BoxDecoration(
+        color: Color(0xD8FAF8FF),
+        boxShadow: [
+          BoxShadow(
+            color: Color(0x0F1A1B21),
+            blurRadius: 32,
+            offset: Offset(0, 12),
+          ),
+        ],
+      ),
+      child: SafeArea(
+        bottom: false,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          child: Row(
+            children: [
+              IconButton(
+                icon: const Icon(Icons.arrow_back, color: Color(0xFF0D47A1)),
+                onPressed: () => Navigator.pop(context),
+              ),
+              const Text(
+                'Chi tiết Lộ trình',
+                style: TextStyle(
+                  color: Color(0xFF0D47A1),
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const Spacer(),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildRouteTitle() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          route.routeName,
+          style: const TextStyle(
+            color: Color(0xFF1A1B21),
+            fontSize: 30,
+            fontFamily: 'Manrope',
+            fontWeight: FontWeight.w800,
+            letterSpacing: -0.75,
+          ),
+        ),
+        // Đã xóa thông tin thời gian theo yêu cầu
+      ],
+    );
+  }
+
+  Widget _buildAssignmentInfo(RouteWithInfo info) {
+    final saleUser = info.saleUser;
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x0F1A1B21),
+            blurRadius: 32,
+            offset: Offset(0, 12),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Builder(
+            builder: (context) {
+              final avatarPath = saleUser?['avatar_path']?.toString() ?? saleUser?['avatarPath']?.toString() ?? '';
+              final avatarUrl = avatarPath.isNotEmpty 
+                  ? Supabase.instance.client.storage.from('user_avatars').getPublicUrl(avatarPath)
+                  : '';
+              return CircleAvatar(
+                radius: 28,
+                backgroundColor: const Color(0xFFD9E2FF),
+                backgroundImage: avatarUrl.isNotEmpty ? NetworkImage(avatarUrl) : null,
+                child: avatarUrl.isEmpty
+                    ? Text(
+                        (saleUser?['full_name'] ?? 'S')[0].toUpperCase(),
+                        style: const TextStyle(
+                          color: Color(0xFF0D47A1),
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      )
+                    : null,
+              );
+            },
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Nhân viên phụ trách',
+                  style: TextStyle(color: Color(0xFF434652), fontSize: 12),
+                ),
+                Text(
+                  saleUser?['full_name'] ?? 'Chưa phân công',
+                  style: const TextStyle(
+                    color: Color(0xFF1A1B21),
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          if (info.assignment != null)
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+              decoration: BoxDecoration(
+                color: const Color(0xFFD9E2FF),
+                borderRadius: BorderRadius.circular(9999),
+              ),
+              child: const Text(
+                'Chính thức',
+                style: TextStyle(
+                  color: Color(0xFF00429C),
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _StoreTimelineItem extends StatelessWidget {
+  final int index;
+  final String storeName;
+  final String address;
+  final bool isLast;
+  final bool isSaleRole;
+  final double distance;
+  final bool isCompleted;
+  final VoidCallback? onCheckinPressed;
+
+  const _StoreTimelineItem({
+    required this.index,
+    required this.storeName,
+    required this.address,
+    required this.isLast,
+    this.isSaleRole = false,
+    this.distance = 0.0,
+    this.isCompleted = false,
+    this.onCheckinPressed,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final Color themeColor = isCompleted ? const Color(0xFF2E7D32) : const Color(0xFF003178);
+
+    return IntrinsicHeight(
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Column(
+            children: [
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: themeColor,
+                  shape: BoxShape.circle,
+                ),
+                alignment: Alignment.center,
+                child: isCompleted
+                    ? const Icon(Icons.check, color: Colors.white, size: 20)
+                    : Text(
+                        '$index',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+              ),
+              if (!isLast)
+                Expanded(
+                  child: Container(
+                    width: 2,
+                    color: isCompleted ? const Color(0xFF81C784) : const Color(0xFFB0C6FF),
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Container(
+              margin: const EdgeInsets.only(bottom: 24),
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: isCompleted ? const Color(0xFFE8F5E9).withOpacity(0.5) : const Color(0xFFF3F3FB),
+                borderRadius: BorderRadius.circular(24),
+                border: isCompleted ? Border.all(color: const Color(0xFFC8E6C9), width: 1) : null,
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          storeName,
+                          style: TextStyle(
+                            color: isCompleted ? const Color(0xFF1B5E20) : const Color(0xFF1A1B21),
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                            decoration: isCompleted ? TextDecoration.lineThrough : null,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          address,
+                          style: TextStyle(
+                            color: isCompleted ? const Color(0xFF4C8C50) : const Color(0xFF434652),
+                            fontSize: 14,
+                          ),
+                        ),
+                        if (distance > 0) ...[
+                          const SizedBox(height: 6),
+                          Row(
+                            children: [
+                              const Icon(Icons.location_on, size: 12, color: Color(0xFF0D47A1)),
+                              const SizedBox(width: 4),
+                              Text(
+                                distance >= 1000
+                                    ? 'Cách ${(distance / 1000).toStringAsFixed(1)} km'
+                                    : 'Cách ${distance.toStringAsFixed(0)} m',
+                                style: const TextStyle(
+                                  color: Color(0xFF0D47A1),
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                  if (isCompleted) ...[
+                    const SizedBox(width: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFE8F5E9),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: const Color(0xFF81C784)),
+                      ),
+                      child: const Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.check_circle, color: Color(0xFF2E7D32), size: 16),
+                          SizedBox(width: 4),
+                          Text(
+                            'Hoàn thành',
+                            style: TextStyle(
+                              color: Color(0xFF2E7D32),
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ] else if (isSaleRole && onCheckinPressed != null) ...[
+                    const SizedBox(width: 8),
+                    ElevatedButton.icon(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF003178),
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      ),
+                      onPressed: onCheckinPressed,
+                      icon: const Icon(Icons.check_circle_outline, size: 16),
+                      label: const Text('Check-in', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                    ),
+                  ]
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+
+FILE: c:\Users\Admin\Documents\GitHub\quan_li_sale\modules\route_store_module\lib\view\manager\route_list_view.dart
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:route_store_module/logic_data/realtime_data.dart';
+import 'package:route_store_module/logic_data/assignment_data.dart';
+import 'package:route_store_module/entity/route_entity.dart';
+import 'package:route_store_module/entity/assignment_entity.dart';
+import 'package:route_store_module/view/manager/route_detail_view.dart';
+import 'package:route_store_module/view/manager/delete_route_confirm.dart';
+import 'package:core/di/injector.dart';
+import 'package:core/storage/app_storage.dart';
+
+class RouteListView extends ConsumerWidget {
+  final VoidCallback? onAdd;
+  final Function(RouteEntity)? onEdit;
+  final Function(RouteEntity)? onView;
+
+  const RouteListView({Key? key, this.onAdd, this.onEdit, this.onView}) : super(key: key);
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final storage = get<AppStorage>();
+    final currentUser = storage.get<Map<String, dynamic>>('user');
+    final currentUserId = currentUser?['id']?.toString() ?? '';
+
+    final routeInfoAsync = ref.watch(routeListWithInfoProvider);
+
+    return Scaffold(
+      backgroundColor: const Color(0xFFFAF8FF),
+      body: Stack(
+        children: [
+          // ==================== LIST CONTENT ====================
+          Positioned.fill(
+            child: Column(
+              children: [
+                const SizedBox(height: 80),
+                Expanded(
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.all(24),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Search bar placeholder
+                        _buildSearchBar(),
+                        const SizedBox(height: 24),
+                        
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            const Text(
+                              'Tất cả lộ trình',
+                              style: TextStyle(
+                                color: Color(0xFF1A1B21),
+                                fontSize: 18,
+                                fontFamily: 'Manrope',
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                            IconButton(
+                              icon: const Icon(Icons.filter_list, size: 20),
+                              onPressed: () {},
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 16),
+
+                        routeInfoAsync.when(
+                          loading: () => const Center(
+                            child: Padding(
+                              padding: EdgeInsets.only(top: 40),
+                              child: CircularProgressIndicator(),
+                            ),
+                          ),
+                          error: (err, _) => Center(child: Text('Lỗi: $err')),
+                          data: (items) {
+                            // Chỉ lọc hiển thị các tuyến do Manager hiện tại tạo
+                            final myRoutes = items.where((item) => item.route.createdBy == currentUserId).toList();
+
+                            if (myRoutes.isEmpty) {
+                              return const Center(
+                                child: Padding(
+                                  padding: EdgeInsets.only(top: 40),
+                                  child: Text('Chưa có lộ trình nào do bạn tạo'),
+                                ),
+                              );
+                            }
+                            return ListView.separated(
+                              shrinkWrap: true,
+                              physics: const NeverScrollableScrollPhysics(),
+                              itemCount: myRoutes.length,
+                              separatorBuilder: (_, __) => const SizedBox(height: 24),
+                              itemBuilder: (context, index) {
+                                return _RouteCard(
+                                  info: myRoutes[index],
+                                  onView: onView,
+                                  onEdit: onEdit,
+                                );
+                              },
+                            );
+                          },
+                        ),
+                        const SizedBox(height: 100),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          // ==================== APP BAR ====================
+          Positioned(
+            left: 0,
+            top: 0,
+            right: 0,
+            child: Container(
+              height: 80,
+              decoration: const BoxDecoration(
+                color: Color(0xD8FAF8FF),
+                boxShadow: [
+                  BoxShadow(
+                    color: Color(0x0F1A1B21),
+                    blurRadius: 32,
+                    offset: Offset(0, 12),
+                    spreadRadius: 0,
+                  )
+                ],
+              ),
+              child: SafeArea(
+                bottom: false,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 24),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text(
+                        'Quản lý tuyến',
+                        style: TextStyle(
+                          color: Color(0xFF0D47A1),
+                          fontSize: 22,
+                          fontFamily: 'Manrope',
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: -0.55,
+                        ),
+                      ),
+                      IconButton(
+                        onPressed: () {
+                          ref.invalidate(realtimeRoutesProvider);
+                          ref.invalidate(realtimeSaleUsersProvider);
+                          ref.invalidate(routeListWithInfoProvider);
+                        },
+                        icon: const Icon(Icons.refresh, color: Color(0xFF0D47A1)),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+
+          // ==================== FAB ====================
+          Positioned(
+            right: 24,
+            bottom: 24,
+            child: FloatingActionButton(
+              onPressed: onAdd,
+              backgroundColor: const Color(0xFF0D47A1),
+              child: const Icon(Icons.add, color: Colors.white),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSearchBar() {
+    return Container(
+      width: double.infinity,
+      height: 56,
+      padding: const EdgeInsets.only(left: 48, right: 16),
+      decoration: ShapeDecoration(
+        color: Colors.white,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+        ),
+        shadows: const [
+          BoxShadow(
+            color: Color(0x0C000000),
+            blurRadius: 2,
+            offset: Offset(0, 1),
+            spreadRadius: 0,
+          )
+        ],
+      ),
+      child: const TextField(
+        decoration: InputDecoration(
+          hintText: 'Tìm kiếm tuyến đường...',
+          hintStyle: TextStyle(color: Color(0x99737783), fontSize: 16),
+          border: InputBorder.none,
+          icon: Icon(Icons.search, color: Color(0x99737783)),
+        ),
+      ),
+    );
+  }
+}
+
+class _RouteCard extends ConsumerWidget {
+  final RouteWithInfo info;
+  final Function(RouteEntity)? onView;
+  final Function(RouteEntity)? onEdit;
+
+  const _RouteCard({Key? key, required this.info, this.onView, this.onEdit}) : super(key: key);
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final route = info.route;
+    final assignment = info.assignment;
+    final saleUser = info.saleUser;
+
+    return GestureDetector(
+      onTap: () {
+        if (onView != null) {
+          onView!(route);
+        } else {
+          // Fallback: push RouteDetailView nội bộ
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => RouteDetailView(route: route),
+            ),
+          );
+        }
+      },
+      child: Container(
+        padding: const EdgeInsets.all(20),
+        decoration: ShapeDecoration(
+          color: Colors.white,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(24),
+          ),
+          shadows: const [
+            BoxShadow(
+              color: Color(0x0A1A1B21),
+              blurRadius: 32,
+              offset: Offset(0, 12),
+            )
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Route Header
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        route.routeName,
+                        style: const TextStyle(
+                          color: Color(0xFF0D47A1),
+                          fontSize: 18,
+                          fontFamily: 'Manrope',
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Row(
+                        children: [
+                          const Icon(Icons.access_time, size: 14, color: Color(0xFF434652)),
+                          const SizedBox(width: 4),
+                          Text(
+                            'Thứ 2, 08:30 AM', // Mock
+                            style: const TextStyle(
+                              color: Color(0xFF434652),
+                              fontSize: 12,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: assignment != null ? const Color(0xFF0D47A1) : Colors.grey,
+                        borderRadius: BorderRadius.circular(9999),
+                      ),
+                      child: Text(
+                        assignment != null ? 'ASSIGNED' : 'OPEN',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 10,
+                          fontWeight: FontWeight.w600,
+                          letterSpacing: 0.5,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    IconButton(
+                      icon: const Icon(Icons.delete_outline, color: Color(0xFFBA1A1A), size: 20),
+                      constraints: const BoxConstraints(),
+                      padding: EdgeInsets.zero,
+                      onPressed: () async {
+                        final deleted = await showDialog<bool>(
+                          context: context,
+                          builder: (_) => DeleteConfirmationDialog(
+                            routeId: route.id,
+                            routeName: route.routeName,
+                          ),
+                        );
+                        if (deleted == true) {
+                          ref.invalidate(realtimeRoutesProvider);
+                          ref.invalidate(routeListWithInfoProvider);
+                        }
+                      },
+                    ),
+                  ],
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+
+            // Assignment Info
+            if (saleUser != null)
+              Row(
+                children: [
+                  CircleAvatar(
+                    radius: 16,
+                    backgroundColor: const Color(0xFFD9E2FF),
+                    child: Text(
+                      (saleUser['full_name'] ?? 'S')[0].toUpperCase(),
+                      style: const TextStyle(color: Color(0xFF0D47A1), fontSize: 12),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Text(
+                    saleUser['full_name'] ?? 'Unknown',
+                    style: const TextStyle(
+                      color: Color(0xFF1A1B21),
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              )
+            else
+              const Text(
+                'Chưa phân công',
+                style: TextStyle(color: Colors.grey, fontSize: 14, fontStyle: FontStyle.italic),
+              ),
+            
+            const SizedBox(height: 16),
+
+            // Progress Bar
+            Column(
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text(
+                      'Tiến độ viếng thăm',
+                      style: TextStyle(color: Color(0xFF434652), fontSize: 12),
+                    ),
+                    Text(
+                      '${(info.progress * 100).toInt()}%',
+                      style: const TextStyle(
+                        color: Color(0xFF003178),
+                        fontSize: 10,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                LinearProgressIndicator(
+                  value: info.progress,
+                  backgroundColor: const Color(0xFFE8E7F0),
+                  color: const Color(0xFF0D47A1),
+                  minHeight: 6,
+                  borderRadius: BorderRadius.circular(9999),
+                ),
+              ],
+            ),
+
+            // ==================== ACTION BUTTONS ====================
+            const SizedBox(height: 16),
+            const Divider(height: 1, color: Color(0xFFF0F0F8)),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                // Chỉnh sửa / gán cửa hàng
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: onEdit != null ? () => onEdit!(route) : null,
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: const Color(0xFF0D47A1),
+                      side: const BorderSide(color: Color(0xFF0D47A1)),
+                      padding: const EdgeInsets.symmetric(vertical: 8),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                    child: const Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.edit, size: 14),
+                        SizedBox(width: 4),
+                        Text('Sửa', style: TextStyle(fontSize: 12)),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                // Phân công tuyến cho nhân viên trực tiếp
+                Expanded(
+                  child: ElevatedButton(
+                    onPressed: () => _showAssignmentBottomSheet(context, ref, info),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF0D47A1),
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 8),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      elevation: 0,
+                    ),
+                    child: const Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.assignment_ind, size: 14),
+                        SizedBox(width: 4),
+                        Text('Phân công', style: TextStyle(fontSize: 12)),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showAssignmentBottomSheet(BuildContext context, WidgetRef ref, RouteWithInfo info) {
+    // Invalidate để đảm bảo nhân viên mới thêm được cập nhật ngay lập tức
+    ref.invalidate(realtimeSaleUsersProvider);
+
+    final storage = get<AppStorage>();
+    final currentUser = storage.get<Map<String, dynamic>>('user');
+    final managerGroupId = currentUser?['group_id'] ?? currentUser?['groupId'] ?? '';
+
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      backgroundColor: Colors.white,
+      builder: (context) {
+        return SafeArea(
+          child: Container(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text(
+                      'Phân công Nhân viên',
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF1A1B21),
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.close),
+                      onPressed: () => Navigator.pop(context),
+                    ),
+                  ],
+                ),
+                Text(
+                  'Chọn nhân viên phụ trách tuyến: ${info.route.routeName}',
+                  style: const TextStyle(
+                    color: Color(0xFF434652),
+                    fontSize: 14,
+                  ),
+                ),
+                const SizedBox(height: 20),
+                Flexible(
+                  child: Consumer(
+                    builder: (context, ref, child) {
+                      final usersAsync = ref.watch(realtimeSaleUsersProvider);
+                      return usersAsync.when(
+                        loading: () => const Center(
+                          child: Padding(
+                            padding: EdgeInsets.all(24.0),
+                            child: CircularProgressIndicator(),
+                          ),
+                        ),
+                        error: (err, _) => Center(child: Text('Lỗi: $err')),
+                        data: (users) {
+                          // Lọc danh sách nhân viên Sale có cùng group_id với Manager
+                          final filteredUsers = users.where((u) {
+                            final userGroupId = (u['group_id'] ?? u['groupId'] ?? '').toString();
+                            final mGroupId = managerGroupId.toString();
+                            return userGroupId == mGroupId;
+                          }).toList();
+
+                          if (filteredUsers.isEmpty) {
+                            return const Center(
+                              child: Padding(
+                                padding: EdgeInsets.all(24.0),
+                                child: Text('Không tìm thấy nhân viên Sale nào thuộc nhóm của bạn'),
+                              ),
+                            );
+                          }
+                          return ListView.builder(
+                            shrinkWrap: true,
+                            itemCount: filteredUsers.length,
+                            itemBuilder: (context, index) {
+                              final user = filteredUsers[index];
+                              final userId = user['id']?.toString() ?? '';
+                              final fullName = user['full_name']?.toString() ?? 'Nhân viên';
+                              final employeeCode = user['employee_code']?.toString() ?? '';
+                              
+                              final isCurrent = info.assignment?.userId == userId;
+
+                              return Container(
+                                margin: const EdgeInsets.only(bottom: 8),
+                                decoration: BoxDecoration(
+                                  color: isCurrent ? const Color(0xFFF0F4FF) : Colors.transparent,
+                                  borderRadius: BorderRadius.circular(16),
+                                  border: Border.all(
+                                    color: isCurrent ? const Color(0xFF0D47A1) : const Color(0xFFE2E8F0),
+                                    width: isCurrent ? 2 : 1,
+                                  ),
+                                ),
+                                child: ListTile(
+                                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                                  leading: CircleAvatar(
+                                    backgroundColor: isCurrent ? const Color(0xFF0D47A1) : const Color(0xFFE2E8F0),
+                                    child: Text(
+                                      fullName[0].toUpperCase(),
+                                      style: TextStyle(
+                                        color: isCurrent ? Colors.white : const Color(0xFF434652),
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ),
+                                  title: Text(
+                                    fullName,
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      color: isCurrent ? const Color(0xFF0D47A1) : const Color(0xFF1A1B21),
+                                    ),
+                                  ),
+                                  subtitle: employeeCode.isNotEmpty ? Text('Mã NV: $employeeCode') : null,
+                                  trailing: isCurrent 
+                                      ? const Icon(Icons.check_circle, color: Color(0xFF0D47A1))
+                                      : const Icon(Icons.chevron_right, color: Color(0xFF434652)),
+                                  onTap: () async {
+                                    final assignmentData = ref.read(assignmentDataProvider);
+                                    
+                                    final newAssignment = AssignmentEntity(
+                                      assignmentId: info.assignment?.assignmentId ?? 0,
+                                      userId: userId,
+                                      routeId: info.route.id,
+                                      isSupport: 1,
+                                      assignedDate: DateTime.now(),
+                                    );
+
+                                    try {
+                                      await assignmentData.upsertAssignment(newAssignment);
+                                      
+                                      ref.invalidate(realtimeAllAssignmentsProvider);
+                                      ref.invalidate(routeListWithInfoProvider);
+
+                                      if (context.mounted) {
+                                        Navigator.pop(context);
+                                        ScaffoldMessenger.of(context).showSnackBar(
+                                          SnackBar(content: Text('Đã gán tuyến cho $fullName thành công')),
+                                        );
+                                      }
+                                    } catch (e) {
+                                      if (context.mounted) {
+                                        ScaffoldMessenger.of(context).showSnackBar(
+                                          SnackBar(content: Text('Lỗi: $e')),
+                                        );
+                                      }
+                                    }
+                                  },
+                                ),
+                              );
+                            },
+                          );
+                        },
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+FILE: c:\Users\Admin\Documents\GitHub\quan_li_sale\modules\route_store_module\lib\view\manager\route_support.dart
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:route_store_module/entity/route_entity.dart';
+import 'package:route_store_module/logic_data/realtime_data.dart';
+import 'package:route_store_module/logic_uc/manage_route_uc.dart';
+
+class RouteSupportView extends ConsumerStatefulWidget {
+  final RouteEntity route;
+  final String absentUserName;
+
+  const RouteSupportView({
+    Key? key,
+    required this.route,
+    required this.absentUserName,
+  }) : super(key: key);
+
+  @override
+  ConsumerState<RouteSupportView> createState() => _RouteSupportViewState();
+}
+
+class _RouteSupportViewState extends ConsumerState<RouteSupportView> {
+  final Set<int> _selectedStoreIds = {};
+
+  @override
+  Widget build(BuildContext context) {
+    final detailsAsync = ref.watch(
+      realtimeRouteDetailsProvider(widget.route.id),
+    );
+    final storesAsync = ref.watch(realtimeStoresProvider);
+
+    return Scaffold(
+      backgroundColor: const Color(0xFFFAF8FF),
+      appBar: AppBar(
+        title: const Text('Gán hỗ trợ'),
+        backgroundColor: Colors.white,
+        foregroundColor: const Color(0xFF0D47A1),
+        elevation: 0,
+      ),
+      body: Column(
+        children: [
+          _buildWarningBanner(),
+          _buildSelectionHeader(detailsAsync.value?.length ?? 0),
+          Expanded(
+            child: detailsAsync.when(
+              loading: () => const Center(child: CircularProgressIndicator()),
+              error: (err, _) => Center(child: Text('Lỗi: $err')),
+              data: (details) {
+                return storesAsync.when(
+                  loading: () =>
+                      const Center(child: CircularProgressIndicator()),
+                  error: (err, _) =>
+                      Center(child: Text('Lỗi tải cửa hàng: $err')),
+                  data: (allStores) {
+                    return ListView.builder(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      itemCount: details.length,
+                      itemBuilder: (context, index) {
+                        final detail = details[index];
+                        final store = allStores.firstWhere(
+                          (s) => s.id == detail.storeId,
+                        );
+                        final isSelected = _selectedStoreIds.contains(
+                          store.id!,
+                        );
+
+                        return _SupportStoreItem(
+                          storeName: store.storeName,
+                          address: store.address,
+                          isSelected: isSelected,
+                          onToggle: () {
+                            setState(() {
+                              if (isSelected) {
+                                _selectedStoreIds.remove(store.id!);
+                              } else {
+                                _selectedStoreIds.add(store.id!);
+                              }
+                            });
+                          },
+                        );
+                      },
+                    );
+                  },
+                );
+              },
+            ),
+          ),
+          _buildBottomAction(),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildWarningBanner() {
+    return Container(
+      margin: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFFDAD6),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.warning_amber_rounded, color: Color(0xFF93000A)),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              'Nhân viên ${widget.absentUserName} vắng mặt. Vui lòng chọn cửa hàng để gán hỗ trợ.',
+              style: const TextStyle(
+                color: Color(0xFF93000A),
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSelectionHeader(int total) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          const Text(
+            'Chọn cửa hàng',
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+          ),
+          Text('$total Cửa hàng', style: const TextStyle(color: Colors.grey)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildBottomAction() {
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        boxShadow: [
+          BoxShadow(
+            color: Color(0x0F1A1B21),
+            blurRadius: 32,
+            offset: Offset(0, -12),
+          ),
+        ],
+      ),
+      child: ElevatedButton(
+        onPressed: _selectedStoreIds.isEmpty ? null : () => _showAssignDialog(),
+        style: ElevatedButton.styleFrom(
+          backgroundColor: const Color(0xFF0D47A1),
+          minimumSize: const Size(double.infinity, 56),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+        ),
+        child: const Text(
+          'TIẾP TỤC CHỌN NHÂN VIÊN',
+          style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
+        ),
+      ),
+    );
+  }
+
+  void _showAssignDialog() {
+    // Navigate to a user selection screen or show dialog
+    // For now, I'll just show a snackbar
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Đang gán ${_selectedStoreIds.length} cửa hàng...'),
+      ),
+    );
+  }
+}
+
+class _SupportStoreItem extends StatelessWidget {
+  final String storeName;
+  final String address;
+  final bool isSelected;
+  final VoidCallback onToggle;
+
+  const _SupportStoreItem({
+    required this.storeName,
+    required this.address,
+    required this.isSelected,
+    required this.onToggle,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onToggle,
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 12),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: isSelected ? const Color(0xFFD9E2FF) : Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: isSelected ? const Color(0xFF0D47A1) : Colors.transparent,
+          ),
+          boxShadow: const [
+            BoxShadow(
+              color: Color(0x0A000000),
+              blurRadius: 8,
+              offset: Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            Icon(
+              isSelected ? Icons.check_box : Icons.check_box_outline_blank,
+              color: isSelected ? const Color(0xFF0D47A1) : Colors.grey,
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    storeName,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                    ),
+                  ),
+                  Text(
+                    address,
+                    style: const TextStyle(color: Colors.grey, fontSize: 12),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+
+FILE: c:\Users\Admin\Documents\GitHub\quan_li_sale\modules\route_store_module\lib\view\manager\store_list_view.dart
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:route_store_module/entity/store_entity.dart';
+import 'package:route_store_module/logic_data/realtime_data.dart';
+import 'package:route_store_module/logic_uc/search_store_uc.dart';
+
+class StoreListView extends ConsumerWidget {
+  final VoidCallback? onAdd;
+  final Function(StoreEntity)? onEdit;
+
+  const StoreListView({Key? key, this.onAdd, this.onEdit}) : super(key: key);
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final storesAsync = ref.watch(realtimeStoresProvider);
+    final searchQuery = ref.watch(searchQueryProvider);
+
+    return Scaffold(
+      backgroundColor: const Color(0xFFF5F5F5),
+      body: Stack(
+        children: [
+          // ==================== LIST CONTENT ====================
+          Positioned.fill(
+            child: Column(
+              children: [
+                const SizedBox(height: 80), // App bar height
+                Expanded(
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.only(
+                      top: 16,
+                      left: 16,
+                      right: 16,
+                      bottom: 100,
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Search Bar
+                        _buildSearchBar(ref, searchQuery),
+                        const SizedBox(height: 24),
+
+                        // Store List
+                        storesAsync.when(
+                          loading: () => const Center(
+                            child: Padding(
+                              padding: EdgeInsets.only(top: 40),
+                              child: CircularProgressIndicator(),
+                            ),
+                          ),
+                          error: (err, _) => Center(
+                            child: Padding(
+                              padding: const EdgeInsets.only(top: 40),
+                              child: Text('Lỗi: $err'),
+                            ),
+                          ),
+                          data: (stores) {
+                            if (stores.isEmpty) {
+                              return const Center(
+                                child: Padding(
+                                  padding: EdgeInsets.only(top: 40),
+                                  child: Text('Không tìm thấy cửa hàng nào'),
+                                ),
+                              );
+                            }
+                            return ListView.separated(
+                              shrinkWrap: true,
+                              physics: const NeverScrollableScrollPhysics(),
+                              itemCount: stores.length,
+                              separatorBuilder: (_, __) =>
+                                  const SizedBox(height: 16),
+                              itemBuilder: (context, index) {
+                                return _StoreCard(
+                                  store: stores[index],
+                                  onEdit: onEdit,
+                                );
+                              },
+                            );
+                          },
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          // ==================== APP BAR ====================
+          Positioned(
+            left: 0,
+            top: 0,
+            right: 0,
+            child: Container(
+              height: 80,
+              decoration: const BoxDecoration(
+                color: Color(0xD8FAF8FF),
+                boxShadow: [
+                  BoxShadow(
+                    color: Color(0x0F1A1B21),
+                    blurRadius: 32,
+                    offset: Offset(0, 12),
+                    spreadRadius: 0,
+                  ),
+                ],
+              ),
+              child: SafeArea(
+                bottom: false,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 24),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text(
+                        'Cửa hàng',
+                        style: TextStyle(
+                          color: Color(0xFF0D47A1),
+                          fontSize: 22,
+                          fontFamily: 'Manrope',
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: -0.55,
+                        ),
+                      ),
+                      IconButton(
+                        onPressed: () {
+                          ref.invalidate(realtimeStoresProvider);
+                        },
+                        icon: const Icon(
+                          Icons.refresh,
+                          color: Color(0xFF0D47A1),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+
+          // ==================== FAB ====================
+          Positioned(
+            right: 24,
+            bottom: 24,
+            child: FloatingActionButton(
+              onPressed: onAdd,
+              backgroundColor: const Color(0xFF0D47A1),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(9999),
+              ),
+              child: const Icon(Icons.add, color: Colors.white),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSearchBar(WidgetRef ref, String query) {
+    return Container(
+      width: double.infinity,
+      height: 56,
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      decoration: ShapeDecoration(
+        color: Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        shadows: const [
+          BoxShadow(
+            color: Color(0x0C000000),
+            blurRadius: 2,
+            offset: Offset(0, 1),
+            spreadRadius: 0,
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.search, color: Color(0xFF6B7280)),
+          const SizedBox(width: 12),
+          Expanded(
+            child: TextField(
+              onChanged: (value) {
+                ref.read(searchQueryProvider.notifier).state = value;
+              },
+              decoration: const InputDecoration(
+                hintText: 'Tìm kiếm cửa hàng...',
+                hintStyle: TextStyle(
+                  color: Color(0xFF6B7280),
+                  fontSize: 16,
+                  fontFamily: 'Inter',
+                  fontWeight: FontWeight.w400,
+                ),
+                border: InputBorder.none,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _StoreCard extends StatelessWidget {
+  final StoreEntity store;
+  final Function(StoreEntity)? onEdit;
+
+  const _StoreCard({Key? key, required this.store, this.onEdit})
+    : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: ShapeDecoration(
+        color: Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        shadows: const [
+          BoxShadow(
+            color: Color(0x0A000000),
+            blurRadius: 12,
+            offset: Offset(0, 4),
+            spreadRadius: 0,
+          ),
+        ],
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  store.storeName,
+                  style: const TextStyle(
+                    color: Color(0xFF0D47A1),
+                    fontSize: 18,
+                    fontFamily: 'Manrope',
+                    fontWeight: FontWeight.w700,
+                    height: 1.56,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  store.address,
+                  style: const TextStyle(
+                    color: Color(0xFF434652),
+                    fontSize: 14,
+                    fontFamily: 'Inter',
+                    fontWeight: FontWeight.w400,
+                    height: 1.63,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 6,
+                  ),
+                  decoration: ShapeDecoration(
+                    color: const Color(0xFFF3F3FB),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(9999),
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(
+                        Icons.location_on,
+                        size: 12,
+                        color: Color(0xFF4F5E82),
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        '${store.latitude.toStringAsFixed(4)}° N, ${store.longitude.toStringAsFixed(4)}° E',
+                        style: const TextStyle(
+                          color: Color(0xFF4F5E82),
+                          fontSize: 11,
+                          fontFamily: 'Liberation Mono',
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          PopupMenuButton<String>(
+            icon: const Icon(Icons.more_vert, color: Color(0xFF6B7280)),
+            onSelected: (value) {
+              if (value == 'edit') {
+                if (onEdit != null) onEdit!(store);
+              } else if (value == 'hide') {
+                // Implement hide logic if needed
+              }
+            },
+            itemBuilder: (context) => [
+              const PopupMenuItem(
+                value: 'edit',
+                child: Row(
+                  children: [
+                    Icon(Icons.edit, size: 20),
+                    SizedBox(width: 8),
+                    Text('Sửa cửa hàng'),
+                  ],
+                ),
+              ),
+              const PopupMenuItem(
+                value: 'hide',
+                child: Row(
+                  children: [
+                    Icon(Icons.visibility_off, size: 20, color: Colors.red),
+                    SizedBox(width: 8),
+                    Text('Ẩn cửa hàng', style: TextStyle(color: Colors.red)),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+
+FILE: c:\Users\Admin\Documents\GitHub\quan_li_sale\modules\route_store_module\lib\view\sale\camera_visit_view.dart
+import 'dart:io';
+import 'package:flutter/material.dart';
+import 'package:camera/camera.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:route_store_module/entity/assignment_entity.dart';
+import 'package:route_store_module/logic_uc/upload_visit_photo_uc.dart';
+
+class CameraVisitView extends ConsumerStatefulWidget {
+  final AssignmentEntity assignment;
+
+  const CameraVisitView({Key? key, required this.assignment}) : super(key: key);
+
+  @override
+  ConsumerState<CameraVisitView> createState() => _CameraVisitViewState();
+}
+
+class _CameraVisitViewState extends ConsumerState<CameraVisitView> {
+  CameraController? _controller;
+  List<CameraDescription> _cameras = [];
+  bool _isReady = false;
+  bool _isUploading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _initCamera();
+  }
+
+  Future<void> _initCamera() async {
+    _cameras = await availableCameras();
+    if (_cameras.isNotEmpty) {
+      _controller = CameraController(_cameras[0], ResolutionPreset.high);
+      await _controller?.initialize();
+      if (mounted) {
+        setState(() {
+          _isReady = true;
+        });
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller?.dispose();
+    super.dispose();
+  }
+
+  Future<void> _takePicture() async {
+    if (_controller == null || !_controller!.value.isInitialized || _isUploading) return;
+
+    try {
+      final image = await _controller!.takePicture();
+      setState(() {
+        _isUploading = true;
+      });
+
+      final uc = ref.read(uploadVisitPhotoUcProvider);
+      // Giả sử userId lấy từ assignment (để upload ảnh vào đúng folder)
+      final url = await uc.execute(widget.assignment.userId, File(image.path));
+      
+      if (mounted) {
+        setState(() {
+          _isUploading = false;
+        });
+        // Ở đây có thể show Dialog thành công và quay về
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Upload thành công!')));
+        Navigator.popUntil(context, (route) => route.isFirst);
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isUploading = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Lỗi: $e')));
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (!_isReady || _controller == null) {
+      return const Scaffold(
+        backgroundColor: Colors.black,
+        body: Center(child: CircularProgressIndicator(color: Colors.white)),
+      );
+    }
+
+    return Scaffold(
+      backgroundColor: Colors.black,
+      body: Stack(
+        children: [
+          Positioned.fill(
+            child: CameraPreview(_controller!),
+          ),
+          if (_isUploading)
+            Container(
+              color: Colors.black54,
+              child: const Center(
+                child: CircularProgressIndicator(color: Colors.white),
+              ),
+            ),
+          Positioned(
+            bottom: 40,
+            left: 0,
+            right: 0,
+            child: Center(
+              child: InkWell(
+                onTap: _takePicture,
+                child: Container(
+                  width: 70,
+                  height: 70,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    border: Border.all(color: Colors.white, width: 4),
+                    color: Colors.white.withOpacity(0.5),
+                  ),
+                  child: const Center(
+                    child: Icon(Icons.camera_alt, color: Colors.white, size: 30),
+                  ),
+                ),
+              ),
+            ),
+          ),
+          Positioned(
+            top: 40,
+            left: 16,
+            child: IconButton(
+              icon: const Icon(Icons.arrow_back, color: Colors.white, size: 30),
+              onPressed: () => Navigator.pop(context),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+FILE: c:\Users\Admin\Documents\GitHub\quan_li_sale\modules\route_store_module\lib\view\sale\daily_route_view.dart
+import 'dart:io';
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:route_store_module/logic_data/realtime_data.dart';
+import 'package:route_store_module/entity/route_entity.dart';
+import 'package:route_store_module/entity/assignment_entity.dart';
+import 'package:route_store_module/entity/route_detail_entity.dart';
+import 'package:route_store_module/view/manager/route_detail_view.dart';
+import 'package:core/di/injector.dart';
+import 'package:core/storage/app_storage.dart';
+import 'package:route_store_module/entity/store_entity.dart';
+
+void _logToFile(String msg) {
+  try {
+    final file = File('c:/Users/Admin/Documents/GitHub/quan_li_sale/app/doc/app_debug_log.txt');
+    file.writeAsStringSync('${DateTime.now().toIso8601String()} - $msg\n', mode: FileMode.append);
+  } catch (_) {}
+}
+
+class DailyRouteView extends ConsumerWidget {
+  /// Callback khi người dùng chọn một route để xem danh sách cửa hàng.
+  /// Nếu null, widget sẽ dùng Navigator.push nội bộ (mặc định).
+  final void Function(RouteEntity route, AssignmentEntity assignment)? onRouteTap;
+  final void Function(StoreEntity store, RouteEntity route)? onCheckin;
+
+  const DailyRouteView({Key? key, this.onRouteTap, this.onCheckin}) : super(key: key);
+
+  void _handleRouteTap(BuildContext context, RouteEntity route, AssignmentEntity assignment) {
+    if (onRouteTap != null) {
+      onRouteTap!(route, assignment);
+    } else {
+      // Fallback: navigate nội bộ → xem danh sách cửa hàng trong tuyến
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => RouteDetailView(route: route, onCheckin: onCheckin),
+        ),
+      );
+    }
+  }
+
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final storage = get<AppStorage>();
+    final user = storage.get<Map<String, dynamic>>('user');
+    final userId = user?['id'] ?? '';
+    final assignmentsAsync = ref.watch(realtimeUserAssignmentsProvider(userId));
+    final routesAsync = ref.watch(realtimeRoutesProvider);
+    final routeDetailsAsync = ref.watch(realtimeAllRouteDetailsProvider);
+    final attendanceAsync = ref.watch(realtimeAttendanceThisWeekProvider);
+
+    final routeDetails = routeDetailsAsync.value ?? <RouteDetailEntity>[];
+    final attendance = attendanceAsync.value ?? <Map<String, dynamic>>[];
+
+    _logToFile('=== DailyRouteView Build ===');
+    _logToFile('userId: $userId, name: ${user?['full_name']}, role: ${user?['role']}');
+
+    return Scaffold(
+      backgroundColor: const Color(0xFFFAF8FF),
+      body: SafeArea(
+        child: assignmentsAsync.when(
+          loading: () => const Center(child: CircularProgressIndicator()),
+          error: (err, _) {
+            _logToFile('Assignments Error: $err');
+            return Center(child: Text('Lỗi: $err'));
+          },
+          data: (assignments) {
+            _logToFile('Assignments count: ${assignments.length}');
+            for (var a in assignments) {
+              _logToFile(' - Assignment: id=${a.assignmentId}, routeId=${a.routeId}, date=${a.assignedDate}, isSupport=${a.isSupport}');
+            }
+            return routesAsync.when(
+              loading: () => const Center(child: CircularProgressIndicator()),
+              error: (err, _) {
+                _logToFile('Routes Error: $err');
+                return Center(child: Text('Lỗi tải tuyến: $err'));
+              },
+              data: (routes) {
+                _logToFile('Routes count: ${routes.length}');
+                
+                final todayStr = DateTime.now().toIso8601String().split('T')[0];
+                final todayAssignments = assignments.where((a) => a.assignedDate.toIso8601String().split('T')[0] == todayStr).toList();
+                
+                _logToFile('todayStr: $todayStr');
+                _logToFile('todayAssignments count: ${todayAssignments.length}');
+                for (var ta in todayAssignments) {
+                  _logToFile(' - Today Assignment: routeId=${ta.routeId}');
+                }
+                
+                final assignedRoutes = routes
+                    .where((r) => todayAssignments.any((a) => a.routeId == r.id))
+                    .toList();
+                
+                _logToFile('assignedRoutes count: ${assignedRoutes.length}');
+                for (var ar in assignedRoutes) {
+                  _logToFile(' - Assigned Route: id=${ar.id}, name=${ar.routeName}');
+                }
+
+                if (assignedRoutes.isEmpty) {
+                  return _buildEmptyState();
+                }
+
+                // Assume the first one is the active one for simplicity in this mockup
+                final activeRoute = assignedRoutes.first;
+                final activeAssignment = assignments.firstWhere(
+                  (a) => a.routeId == activeRoute.id,
+                  orElse: () => AssignmentEntity(
+                    assignmentId: 0,
+                    userId: userId,
+                    routeId: activeRoute.id,
+                    isSupport: 1,
+                    assignedDate: DateTime.now(),
+                  ),
+                );
+                final otherRoutes = assignedRoutes.skip(1).toList();
+
+                return SingleChildScrollView(
+                  padding: const EdgeInsets.all(24),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _buildHeader(user),
+                      const SizedBox(height: 24),
+                      _buildActiveRouteCard(context, activeRoute, activeAssignment, routeDetails, attendance),
+                      const SizedBox(height: 32),
+                      if (otherRoutes.isNotEmpty) ...[
+                        const Text(
+                          'Lộ trình khác & Hỗ trợ',
+                          style: TextStyle(
+                            color: Color(0xFF1A1B21),
+                            fontSize: 18,
+                            fontFamily: 'Manrope',
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        ...otherRoutes
+                            .map((r) {
+                              final assignment = assignments.firstWhere(
+                                (a) => a.routeId == r.id,
+                                orElse: () => AssignmentEntity(
+                                  assignmentId: 0,
+                                  userId: userId,
+                                  routeId: r.id,
+                                  isSupport: 2,
+                                  assignedDate: DateTime.now(),
+                                ),
+                              );
+                              return _buildOtherRouteCard(context, r, assignment);
+                            })
+                            .toList(),
+                      ],
+                    ],
+                  ),
+                );
+              },
+            );
+          },
+        ),
+      ),
+    );
+  }
+
+  Widget _buildEmptyState() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const Icon(Icons.calendar_today, size: 64, color: Colors.grey),
+          const SizedBox(height: 16),
+          const Text(
+            'Hôm nay bạn không có lịch trình nào',
+            style: TextStyle(color: Colors.grey, fontSize: 16),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildHeader(Map<String, dynamic>? user) {
+    final name = user?['fullName'] ?? user?['full_name'] ?? 'Sale';
+    final avatarPath = user?['avatar_path']?.toString() ?? user?['avatarPath']?.toString() ?? '';
+    final avatarUrl = avatarPath.isNotEmpty 
+        ? Supabase.instance.client.storage.from('user_avatars').getPublicUrl(avatarPath)
+        : '';
+
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Chào buổi sáng, $name',
+              style: const TextStyle(color: Color(0xFF434652), fontSize: 14),
+            ),
+            const Text(
+              'Lộ trình hôm nay',
+              style: TextStyle(
+                color: Color(0xFF0D47A1),
+                fontSize: 24,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ],
+        ),
+        CircleAvatar(
+          backgroundColor: const Color(0xFFD9E2FF),
+          backgroundImage: avatarUrl.isNotEmpty ? NetworkImage(avatarUrl) : null,
+          child: avatarUrl.isEmpty
+              ? const Icon(Icons.person, color: Color(0xFF0D47A1))
+              : null,
+        ),
+      ],
+    );
+  }
+
+  Widget _buildActiveRouteCard(
+    BuildContext context,
+    RouteEntity route,
+    AssignmentEntity assignment,
+    List<RouteDetailEntity> routeDetails,
+    List<Map<String, dynamic>> attendance,
+  ) {
+    // Tính toán tiến độ shop hoàn thành trong tuyến
+    final storesInRoute = routeDetails.where((rd) => rd.routeId == route.id).map((rd) => rd.storeId).toSet();
+    final totalStores = storesInRoute.length;
+    
+    final todayStr = DateTime.now().toIso8601String().split('T')[0];
+    final visitedStores = storesInRoute.where((storeId) => 
+      attendance.any((a) {
+        final checkin = a['checkin_time']?.toString() ?? '';
+        final checkout = a['checkout_time']?.toString() ?? '';
+        final isToday = checkin.startsWith(todayStr);
+        return a['store_id'] == storeId && isToday && checkin.isNotEmpty && checkout.isNotEmpty;
+      })
+    ).length;
+
+    final double progress = totalStores > 0 ? visitedStores / totalStores : 0.0;
+
+    return GestureDetector(
+      onTap: () => _handleRouteTap(context, route, assignment),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(24),
+        decoration: ShapeDecoration(
+          color: Colors.white,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+          shadows: const [
+            BoxShadow(
+              color: Color(0x0F1A1B21),
+              blurRadius: 32,
+              offset: Offset(0, 12),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        route.routeName,
+                        style: const TextStyle(
+                          color: Color(0xFF1A1B21),
+                          fontSize: 20,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      Text(
+                        '[$visitedStores/$totalStores] Cửa hàng đã hoàn thành',
+                        style: const TextStyle(color: Color(0xFF434652), fontSize: 14),
+                      ),
+                    ],
+                  ),
+                ),
+                Container(
+                  width: 40,
+                  height: 40,
+                  decoration: const BoxDecoration(
+                    color: Color(0xFF0D47A1),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(Icons.play_arrow, color: Colors.white),
+                ),
+              ],
+            ),
+            const SizedBox(height: 24),
+            LinearProgressIndicator(
+              value: progress,
+              backgroundColor: const Color(0xFFF3F3FB),
+              color: const Color(0xFF0D47A1),
+              minHeight: 12,
+              borderRadius: const BorderRadius.all(Radius.circular(9999)),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildOtherRouteCard(BuildContext context, RouteEntity route, AssignmentEntity assignment) {
+    return GestureDetector(
+      onTap: () => _handleRouteTap(context, route, assignment),
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 12),
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: const Color(0xFFF3F3FB),
+          borderRadius: BorderRadius.circular(24),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 48,
+              height: 48,
+              decoration: BoxDecoration(
+                color: const Color(0xFFFFDBCD),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: const Icon(Icons.support, color: Color(0xFF853100)),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    route.routeName,
+                    style: const TextStyle(
+                      color: Color(0xFF1A1B21),
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const Text(
+                    'SUPPORT',
+                    style: TextStyle(
+                      color: Color(0xFF853100),
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const Icon(Icons.chevron_right, color: Colors.grey),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPerformanceStats() {
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: const Color(0xFF1A1B21),
+        borderRadius: BorderRadius.circular(24),
+      ),
+      child: const Row(
+        mainAxisAlignment: MainAxisAlignment.spaceAround,
+        children: [
+          _StatItem(label: 'HIỆU SUẤT', value: '85%'),
+          _StatItem(label: 'ĐƠN HÀNG', value: '12'),
+          _StatItem(label: 'DOANH THU', value: '4.5M'),
+        ],
+      ),
+    );
+  }
+}
+
+class _StatItem extends StatelessWidget {
+  final String label;
+  final String value;
+
+  const _StatItem({required this.label, required this.value});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        Text(
+          value,
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 24,
+            fontWeight: FontWeight.w800,
+          ),
+        ),
+        Text(
+          label,
+          style: TextStyle(
+            color: Colors.white.withOpacity(0.6),
+            fontSize: 10,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+
+FILE: c:\Users\Admin\Documents\GitHub\quan_li_sale\modules\route_store_module\lib\view\sale\store_detail_view.dart
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:route_store_module/entity/store_entity.dart';
+import 'package:route_store_module/entity/assignment_entity.dart';
+import 'package:route_store_module/logic_uc/check_in_gps_uc.dart';
+import 'package:route_store_module/view/sale/camera_visit_view.dart';
+
+class StoreDetailView extends ConsumerStatefulWidget {
+  final StoreEntity store;
+  final AssignmentEntity assignment;
+
+  const StoreDetailView({Key? key, required this.store, required this.assignment}) : super(key: key);
+
+  @override
+  ConsumerState<StoreDetailView> createState() => _StoreDetailViewState();
+}
+
+class _StoreDetailViewState extends ConsumerState<StoreDetailView> {
+  bool _isLoadingGps = false;
+  bool _canCheckIn = false;
+  String _gpsMessage = 'Đang kiểm tra vị trí...';
+
+  @override
+  void initState() {
+    super.initState();
+    _checkGps();
+  }
+
+  Future<void> _checkGps() async {
+    setState(() {
+      _isLoadingGps = true;
+    });
+
+    final uc = ref.read(checkInGpsUcProvider);
+    final pos = await uc.getCurrentLocation();
+    
+    if (pos == null) {
+      setState(() {
+        _isLoadingGps = false;
+        _canCheckIn = false;
+        _gpsMessage = 'Không thể lấy được GPS';
+      });
+      return;
+    }
+
+    final store = widget.store;
+    final isWithin = uc.isWithinRadius(pos.latitude, pos.longitude, store.latitude, store.longitude);
+    setState(() {
+      _isLoadingGps = false;
+      _canCheckIn = isWithin;
+      _gpsMessage = isWithin ? 'Đang ở trong bán kính, có thể Check-in' : 'Ngoài bán kính 200m';
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final store = widget.store;
+
+    return Scaffold(
+      backgroundColor: const Color.fromARGB(255, 18, 32, 47),
+      appBar: AppBar(
+        title: Text(store.storeName),
+        backgroundColor: const Color(0xFF001D4E),
+      ),
+      body: Padding(
+        padding: const EdgeInsets.all(24.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Địa chỉ: ${store.address}',
+                    style: const TextStyle(color: Colors.black87, fontSize: 16),
+                  ),
+                  const SizedBox(height: 16),
+                  Row(
+                    children: [
+                      const Icon(Icons.location_on, color: Color(0xFF0D47A1)),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          _gpsMessage,
+                          style: TextStyle(
+                            color: _canCheckIn ? const Color(0xFF22C55E) : const Color(0xFFEF4444),
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            const Spacer(),
+            if (_isLoadingGps)
+              const Center(child: CircularProgressIndicator(color: Colors.white))
+            else
+              ElevatedButton(
+                onPressed: _canCheckIn
+                    ? () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => CameraVisitView(assignment: widget.assignment),
+                          ),
+                        );
+                      }
+                    : null,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: _canCheckIn ? const Color(0xFF001D4E) : Colors.grey,
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                child: const Text(
+                  'CHỤP ẢNH CHECK-IN',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}

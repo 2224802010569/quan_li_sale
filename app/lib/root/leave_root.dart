@@ -8,35 +8,59 @@ class LeaveRoot {
   // ── Sale ────────────────────────────────────────────────────────────────────
 
   /// Sale xem danh sách đơn nghỉ của mình.
-  Widget build(Function(AppOutput) onNavigate) {
+  Widget build(Function(AppOutput) onNavigate, {VoidCallback? onBack}) {
     return LeaveScreen(
-      onEvent: (event) => _handleEvent(event, onNavigate),
+      onEvent: (event) {
+        if (event.type == LeaveEventType.close) {
+          onBack?.call();
+        } else {
+          _handleEvent(event, onNavigate);
+        }
+      },
     );
   }
 
   /// Sale tạo đơn nghỉ mới.
-  Widget buildForm(Function(AppOutput) onNavigate) {
+  Widget buildForm(Function(AppOutput) onNavigate, {VoidCallback? onBack}) {
     return LeaveScreen(
       view: 'SALE_FORM',
-      onEvent: (event) => _handleEvent(event, onNavigate),
+      onEvent: (event) {
+        if (event.type == LeaveEventType.close) {
+          onBack?.call();
+        } else {
+          _handleEvent(event, onNavigate);
+        }
+      },
     );
   }
 
   // ── Manager ─────────────────────────────────────────────────────────────────
 
   /// Manager xem danh sách đơn chờ duyệt.
-  Widget buildManagerPending(Function(AppOutput) onNavigate) {
+  Widget buildManagerPending(Function(AppOutput) onNavigate, {VoidCallback? onBack}) {
     return LeaveScreen(
       view: 'MANAGER_PENDING',
-      onEvent: (event) => _handleEvent(event, onNavigate),
+      onEvent: (event) {
+        if (event.type == LeaveEventType.close) {
+          onBack?.call();
+        } else {
+          _handleEvent(event, onNavigate);
+        }
+      },
     );
   }
 
   /// Manager xem lịch sử nghỉ phép nhân viên.
-  Widget buildManagerHistory(Function(AppOutput) onNavigate) {
+  Widget buildManagerHistory(Function(AppOutput) onNavigate, {VoidCallback? onBack}) {
     return LeaveScreen(
       view: 'MANAGER_HISTORY',
-      onEvent: (event) => _handleEvent(event, onNavigate),
+      onEvent: (event) {
+        if (event.type == LeaveEventType.close) {
+          onBack?.call();
+        } else {
+          _handleEvent(event, onNavigate);
+        }
+      },
     );
   }
 
@@ -56,8 +80,7 @@ class LeaveRoot {
         break;
 
       case LeaveEventType.close:
-        // Quay về màn trước (ROUTE_STORE là màn home mặc định)
-        onNavigate(AppOutput(toModule: 'ROUTE_STORE'));
+        // Handled by individual build*() methods via onBack
         break;
     }
   }

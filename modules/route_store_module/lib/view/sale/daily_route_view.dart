@@ -10,6 +10,7 @@ import 'package:route_store_module/view/manager/route_detail_view.dart';
 import 'package:core/di/injector.dart';
 import 'package:core/storage/app_storage.dart';
 import 'package:route_store_module/entity/store_entity.dart';
+import 'package:core/theme/theme.dart';
 
 void _logToFile(String msg) {
   try {
@@ -24,7 +25,7 @@ class DailyRouteView extends ConsumerWidget {
   final void Function(RouteEntity route, AssignmentEntity assignment)? onRouteTap;
   final void Function(StoreEntity store, RouteEntity route)? onCheckin;
 
-  const DailyRouteView({Key? key, this.onRouteTap, this.onCheckin}) : super(key: key);
+  const DailyRouteView({super.key, this.onRouteTap, this.onCheckin});
 
   void _handleRouteTap(BuildContext context, RouteEntity route, AssignmentEntity assignment) {
     if (onRouteTap != null) {
@@ -39,7 +40,6 @@ class DailyRouteView extends ConsumerWidget {
       );
     }
   }
-
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -58,13 +58,13 @@ class DailyRouteView extends ConsumerWidget {
     _logToFile('userId: $userId, name: ${user?['full_name']}, role: ${user?['role']}');
 
     return Scaffold(
-      backgroundColor: const Color(0xFFFAF8FF),
+      backgroundColor: AppColors.background,
       body: SafeArea(
         child: assignmentsAsync.when(
-          loading: () => const Center(child: CircularProgressIndicator()),
+          loading: () => const Center(child: CircularProgressIndicator(color: AppColors.secondary)),
           error: (err, _) {
             _logToFile('Assignments Error: $err');
-            return Center(child: Text('Lỗi: $err'));
+            return Center(child: Text('Lỗi: $err', style: AppTextStyles.bodyMd.copyWith(color: AppColors.error)));
           },
           data: (assignments) {
             _logToFile('Assignments count: ${assignments.length}');
@@ -72,10 +72,10 @@ class DailyRouteView extends ConsumerWidget {
               _logToFile(' - Assignment: id=${a.assignmentId}, routeId=${a.routeId}, date=${a.assignedDate}, isSupport=${a.isSupport}');
             }
             return routesAsync.when(
-              loading: () => const Center(child: CircularProgressIndicator()),
+              loading: () => const Center(child: CircularProgressIndicator(color: AppColors.secondary)),
               error: (err, _) {
                 _logToFile('Routes Error: $err');
-                return Center(child: Text('Lỗi tải tuyến: $err'));
+                return Center(child: Text('Lỗi tải tuyến: $err', style: AppTextStyles.bodyMd.copyWith(color: AppColors.error)));
               },
               data: (routes) {
                 _logToFile('Routes count: ${routes.length}');
@@ -117,25 +117,28 @@ class DailyRouteView extends ConsumerWidget {
                 final otherRoutes = assignedRoutes.skip(1).toList();
 
                 return SingleChildScrollView(
-                  padding: const EdgeInsets.all(24),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.containerMargin,
+                    vertical: AppSpacing.xxl,
+                  ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       _buildHeader(user),
-                      const SizedBox(height: 24),
+                      const SizedBox(height: AppSpacing.xxl),
                       _buildActiveRouteCard(context, activeRoute, activeAssignment, routeDetails, attendance),
-                      const SizedBox(height: 32),
+                      const SizedBox(height: AppSpacing.xxxl),
+                      _buildRouteMap(context),
                       if (otherRoutes.isNotEmpty) ...[
-                        const Text(
+                        const SizedBox(height: AppSpacing.xxxl),
+                        Text(
                           'Lộ trình khác & Hỗ trợ',
-                          style: TextStyle(
-                            color: Color(0xFF1A1B21),
-                            fontSize: 18,
-                            fontFamily: 'Manrope',
-                            fontWeight: FontWeight.w800,
+                          style: AppTextStyles.headlineSm.copyWith(
+                            color: AppColors.onSurface,
+                            fontWeight: FontWeight.w700,
                           ),
                         ),
-                        const SizedBox(height: 16),
+                        const SizedBox(height: AppSpacing.lg),
                         ...otherRoutes
                             .map((r) {
                               final assignment = assignments.firstWhere(
@@ -150,7 +153,6 @@ class DailyRouteView extends ConsumerWidget {
                               );
                               return _buildOtherRouteCard(context, r, assignment);
                             })
-                            .toList(),
                       ],
                     ],
                   ),
@@ -168,11 +170,11 @@ class DailyRouteView extends ConsumerWidget {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const Icon(Icons.calendar_today, size: 64, color: Colors.grey),
-          const SizedBox(height: 16),
-          const Text(
+          const Icon(Icons.calendar_today_outlined, size: 64, color: AppColors.outline),
+          const SizedBox(height: AppSpacing.lg),
+          Text(
             'Hôm nay bạn không có lịch trình nào',
-            style: TextStyle(color: Colors.grey, fontSize: 16),
+            style: AppTextStyles.bodyLg.copyWith(color: AppColors.onSurfaceVariant),
           ),
         ],
       ),
@@ -194,24 +196,50 @@ class DailyRouteView extends ConsumerWidget {
           children: [
             Text(
               'Chào buổi sáng, $name',
-              style: const TextStyle(color: Color(0xFF434652), fontSize: 14),
+              style: AppTextStyles.bodyMd.copyWith(color: AppColors.onSurfaceVariant),
             ),
-            const Text(
+            const SizedBox(height: 2),
+            Text(
               'Lộ trình hôm nay',
-              style: TextStyle(
-                color: Color(0xFF0D47A1),
-                fontSize: 24,
-                fontWeight: FontWeight.w800,
+              style: AppTextStyles.headlineLg.copyWith(
+                color: AppColors.primary,
+                fontWeight: FontWeight.w700,
               ),
             ),
           ],
         ),
-        CircleAvatar(
-          backgroundColor: const Color(0xFFD9E2FF),
-          backgroundImage: avatarUrl.isNotEmpty ? NetworkImage(avatarUrl) : null,
-          child: avatarUrl.isEmpty
-              ? const Icon(Icons.person, color: Color(0xFF0D47A1))
-              : null,
+        Stack(
+          children: [
+            Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(color: AppColors.online, width: 2),
+              ),
+              child: ClipOval(
+                child: avatarUrl.isNotEmpty
+                    ? Image.network(
+                        avatarUrl,
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) => const Icon(Icons.person, color: AppColors.primary),
+                      )
+                    : const Icon(Icons.person, color: AppColors.primary),
+              ),
+            ),
+            Positioned(
+              right: 1,
+              bottom: 1,
+              child: Container(
+                width: 10,
+                height: 10,
+                decoration: const BoxDecoration(
+                  color: AppColors.online,
+                  shape: BoxShape.circle,
+                ),
+              ),
+            ),
+          ],
         ),
       ],
     );
@@ -244,17 +272,11 @@ class DailyRouteView extends ConsumerWidget {
       onTap: () => _handleRouteTap(context, route, assignment),
       child: Container(
         width: double.infinity,
-        padding: const EdgeInsets.all(24),
-        decoration: ShapeDecoration(
-          color: Colors.white,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-          shadows: const [
-            BoxShadow(
-              color: Color(0x0F1A1B21),
-              blurRadius: 32,
-              offset: Offset(0, 12),
-            ),
-          ],
+        padding: const EdgeInsets.all(AppSpacing.cardPadding),
+        decoration: BoxDecoration(
+          color: AppColors.white,
+          borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
+          boxShadow: AppShadows.level1,
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -262,65 +284,68 @@ class DailyRouteView extends ConsumerWidget {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Text(
-                            route.routeName,
-                            style: const TextStyle(
-                              color: Color(0xFF1A1B21),
-                              fontSize: 20,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                          if (assignment.isSupport == 2) ...[
-                            const SizedBox(width: 8),
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFFFFDBCD),
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: const Text(
-                                'SUPPORT',
-                                style: TextStyle(
-                                  color: Color(0xFF853100),
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ],
-                      ),
-                      Text(
-                        '[$visitedStores/$totalStores] Cửa hàng đã hoàn thành',
-                        style: const TextStyle(color: Color(0xFF434652), fontSize: 14),
-                      ),
-                    ],
+                Container(
+                  decoration: BoxDecoration(
+                    color: AppColors.surfaceContainer,
+                    borderRadius: BorderRadius.circular(AppSpacing.radiusFull),
+                  ),
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  child: Text(
+                    'ĐANG DIỄN RA',
+                    style: AppTextStyles.labelMd.copyWith(
+                      color: AppColors.secondary,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                 ),
                 Container(
-                  width: 40,
-                  height: 40,
+                  width: 48,
+                  height: 48,
                   decoration: const BoxDecoration(
-                    color: Color(0xFF0D47A1),
+                    color: AppColors.secondary,
                     shape: BoxShape.circle,
                   ),
-                  child: const Icon(Icons.play_arrow, color: Colors.white),
+                  child: const Icon(Icons.play_arrow_rounded, color: AppColors.white, size: 28),
                 ),
               ],
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: AppSpacing.sm),
+            Text(
+              route.routeName,
+              style: AppTextStyles.headlineSm.copyWith(
+                color: AppColors.onSurface,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              '[$visitedStores/$totalStores] Cửa hàng đã hoàn thành',
+              style: AppTextStyles.bodyMd.copyWith(color: AppColors.onSurfaceVariant),
+            ),
+            const SizedBox(height: AppSpacing.xl),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'Tiến độ',
+                  style: AppTextStyles.labelMd.copyWith(color: AppColors.onSurfaceVariant),
+                ),
+                Text(
+                  '${(progress * 100).toStringAsFixed(0)}%',
+                  style: AppTextStyles.labelMd.copyWith(
+                    color: AppColors.onSurfaceVariant,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 6),
             LinearProgressIndicator(
               value: progress,
-              backgroundColor: const Color(0xFFF3F3FB),
-              color: const Color(0xFF0D47A1),
-              minHeight: 12,
-              borderRadius: const BorderRadius.all(Radius.circular(9999)),
+              backgroundColor: AppColors.surfaceContainerHigh,
+              color: AppColors.secondary,
+              minHeight: 6,
+              borderRadius: const BorderRadius.all(Radius.circular(3)),
             ),
           ],
         ),
@@ -332,11 +357,12 @@ class DailyRouteView extends ConsumerWidget {
     return GestureDetector(
       onTap: () => _handleRouteTap(context, route, assignment),
       child: Container(
-        margin: const EdgeInsets.only(bottom: 12),
-        padding: const EdgeInsets.all(20),
+        margin: const EdgeInsets.only(bottom: AppSpacing.stackGap),
+        padding: const EdgeInsets.all(AppSpacing.cardPadding),
         decoration: BoxDecoration(
-          color: const Color(0xFFF3F3FB),
-          borderRadius: BorderRadius.circular(24),
+          color: AppColors.white,
+          borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
+          boxShadow: AppShadows.level1,
         ),
         child: Row(
           children: [
@@ -344,97 +370,152 @@ class DailyRouteView extends ConsumerWidget {
               width: 48,
               height: 48,
               decoration: BoxDecoration(
-                color: assignment.isSupport == 2
-                    ? const Color(0xFFFFDBCD)
-                    : const Color(0xFFD9E2FF),
-                borderRadius: BorderRadius.circular(12),
+                color: AppColors.surfaceContainerLow,
+                borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
               ),
-              child: Icon(
-                assignment.isSupport == 2 ? Icons.support : Icons.route,
-                color: assignment.isSupport == 2
-                    ? const Color(0xFF853100)
-                    : const Color(0xFF0D47A1),
-              ),
+              child: const Icon(Icons.support_agent_outlined, color: AppColors.secondary),
             ),
-            const SizedBox(width: 16),
+            const SizedBox(width: AppSpacing.lg),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
                     route.routeName,
-                    style: const TextStyle(
-                      color: Color(0xFF1A1B21),
-                      fontSize: 16,
+                    style: AppTextStyles.headlineSm.copyWith(
+                      color: AppColors.onSurface,
                       fontWeight: FontWeight.w700,
                     ),
                   ),
-                  Text(
-                    assignment.isSupport == 2 ? 'SUPPORT' : 'CHÍNH',
-                    style: TextStyle(
-                      color: assignment.isSupport == 2
-                          ? const Color(0xFF853100)
-                          : const Color(0xFF0D47A1),
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold,
+                  const SizedBox(height: 2),
+                  Container(
+                    decoration: BoxDecoration(
+                      color: AppColors.errorContainer,
+                      borderRadius: BorderRadius.circular(AppSpacing.radiusFull),
+                    ),
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                    child: Text(
+                      'SUPPORT',
+                      style: AppTextStyles.caption.copyWith(
+                        color: AppColors.error,
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
                   ),
                 ],
               ),
             ),
-            const Icon(Icons.chevron_right, color: Colors.grey),
+            const Icon(Icons.chevron_right_rounded, color: AppColors.outline),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildPerformanceStats() {
-    return Container(
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        color: const Color(0xFF1A1B21),
-        borderRadius: BorderRadius.circular(24),
-      ),
-      child: const Row(
-        mainAxisAlignment: MainAxisAlignment.spaceAround,
-        children: [
-          _StatItem(label: 'HIỆU SUẤT', value: '85%'),
-          _StatItem(label: 'ĐƠN HÀNG', value: '12'),
-          _StatItem(label: 'DOANH THU', value: '4.5M'),
-        ],
-      ),
-    );
-  }
-}
-
-class _StatItem extends StatelessWidget {
-  final String label;
-  final String value;
-
-  const _StatItem({required this.label, required this.value});
-
-  @override
-  Widget build(BuildContext context) {
+  Widget _buildRouteMap(BuildContext context) {
     return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          value,
-          style: const TextStyle(
-            color: Colors.white,
-            fontSize: 24,
-            fontWeight: FontWeight.w800,
-          ),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              'Bản đồ lộ trình',
+              style: AppTextStyles.headlineSm.copyWith(
+                color: AppColors.onSurface,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            GestureDetector(
+              onTap: () {
+                // Có thể mở một trang bản đồ chi tiết
+              },
+              child: Text(
+                'Chi tiết',
+                style: AppTextStyles.labelLg.copyWith(
+                  color: AppColors.secondary,
+                ),
+              ),
+            ),
+          ],
         ),
-        Text(
-          label,
-          style: TextStyle(
-            color: Colors.white.withOpacity(0.6),
-            fontSize: 10,
-            fontWeight: FontWeight.bold,
+        const SizedBox(height: AppSpacing.lg),
+        Container(
+          height: 180,
+          width: double.infinity,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
+            boxShadow: AppShadows.level1,
+          ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
+            child: CustomPaint(
+              painter: MockMapPainter(),
+            ),
           ),
         ),
       ],
     );
   }
+}
+
+class MockMapPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paintBg = Paint()..color = const Color(0xFFEFF4FF);
+    canvas.drawRect(Offset.zero & size, paintBg);
+
+    // Vẽ lưới đường phố mờ mờ
+    final paintGrid = Paint()
+      ..color = AppColors.outlineVariant.withValues(alpha: 0.3)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1;
+    
+    for (double i = 0; i < size.width; i += 40) {
+      canvas.drawLine(Offset(i, 0), Offset(i, size.height), paintGrid);
+    }
+    for (double i = 0; i < size.height; i += 40) {
+      canvas.drawLine(Offset(0, i), Offset(size.width, i), paintGrid);
+    }
+
+    // Vẽ đường lộ trình (Route line)
+    final routePaint = Paint()
+      ..color = AppColors.primary
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 3
+      ..strokeCap = StrokeCap.round;
+
+    final path = Path()
+      ..moveTo(30, size.height - 30)
+      ..quadraticBezierTo(size.width * 0.3, size.height * 0.4, size.width * 0.5, size.height * 0.6)
+      ..lineTo(size.width * 0.7, size.height * 0.3)
+      ..lineTo(size.width - 40, size.height * 0.5);
+
+    canvas.drawPath(path, routePaint);
+
+    // Vẽ các Waypoint dots
+    final dotPaint = Paint()
+      ..color = AppColors.secondary
+      ..style = PaintingStyle.fill;
+    
+    final borderPaint = Paint()
+      ..color = AppColors.white
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2;
+
+    final points = [
+      Offset(30, size.height - 30),
+      Offset(size.width * 0.5, size.height * 0.6),
+      Offset(size.width * 0.7, size.height * 0.3),
+      Offset(size.width - 40, size.height * 0.5),
+    ];
+
+    for (var pt in points) {
+      canvas.drawCircle(pt, 6, dotPaint);
+      canvas.drawCircle(pt, 6, borderPaint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
