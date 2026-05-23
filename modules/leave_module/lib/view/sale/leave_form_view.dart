@@ -344,7 +344,7 @@ class _LeaveFormViewState extends ConsumerState<LeaveFormView> {
     return Text(
       text,
       style: AppTextStyles.labelLg.copyWith(
-        color: AppColors.onSurfaceVariant,
+        color: AppColors.primary,
         fontWeight: FontWeight.bold,
         letterSpacing: 1.20,
       ),
@@ -356,20 +356,24 @@ class _LeaveFormViewState extends ConsumerState<LeaveFormView> {
       width: double.infinity,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppColors.surfaceContainerLow,
+        color: AppColors.white,
         borderRadius: BorderRadius.circular(AppSpacing.radius),
-        border: Border.all(color: AppColors.outlineVariant, width: 1),
+        border: Border.all(color: AppColors.primary, width: 1.5),
       ),
       child: TextField(
         key: const Key('reason_text_field'),
         controller: _reasonController,
         focusNode: _reasonFocusNode,
         maxLines: 4,
-        style: AppTextStyles.bodyLg.copyWith(color: AppColors.onSurface),
+        style: AppTextStyles.bodyLg.copyWith(color: AppColors.primary, fontWeight: FontWeight.w500),
         decoration: InputDecoration(
           hintText: 'Nhập lý do chi tiết...',
-          hintStyle: AppTextStyles.bodyLg.copyWith(color: AppColors.onSurfaceVariant.withValues(alpha: 0.5)),
+          hintStyle: AppTextStyles.bodyLg.copyWith(color: AppColors.primary.withValues(alpha: 0.5)),
           border: InputBorder.none,
+          enabledBorder: InputBorder.none,
+          focusedBorder: InputBorder.none,
+          errorBorder: InputBorder.none,
+          disabledBorder: InputBorder.none,
           isDense: true,
           contentPadding: EdgeInsets.zero,
         ),
@@ -389,21 +393,21 @@ class _LeaveFormViewState extends ConsumerState<LeaveFormView> {
         width: double.infinity,
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: AppColors.surfaceContainerLow,
+          color: AppColors.white,
           borderRadius: BorderRadius.circular(AppSpacing.radius),
-          border: Border.all(color: AppColors.outlineVariant, width: 1),
+          border: Border.all(color: AppColors.primary, width: 1.5),
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Text(
               value,
-              style: AppTextStyles.bodyLg.copyWith(color: AppColors.onSurface),
+              style: AppTextStyles.bodyLg.copyWith(color: AppColors.primary, fontWeight: FontWeight.w500),
             ),
             const Icon(
               Icons.calendar_today_rounded,
               size: 20,
-              color: AppColors.secondary,
+              color: AppColors.primary,
             ),
           ],
         ),
@@ -452,93 +456,33 @@ class _LeaveFormViewState extends ConsumerState<LeaveFormView> {
   // ── Bottom Row (info card + days remaining) ──────────────────────────────────
 
   Widget _buildBottomRow() {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        // Info card
-        Expanded(
-          flex: 2,
-          child: Container(
-            padding: const EdgeInsets.all(AppSpacing.cardPadding),
-            decoration: BoxDecoration(
-              color: AppColors.primaryContainer,
-              borderRadius: BorderRadius.circular(AppSpacing.radiusXl),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Quy định nghỉ phép',
-                  style: AppTextStyles.headlineSm.copyWith(
-                    color: AppColors.white,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  'Bộ phận Kinh doanh (Sale) cần đăng ký trước ít nhất 48h để sắp xếp bàn giao khách hàng.',
-                  style: AppTextStyles.bodyMd.copyWith(
-                    color: AppColors.inversePrimary,
-                    height: 1.5,
-                  ),
-                ),
-                const SizedBox(height: 16),
-                Row(
-                  children: [
-                    const Icon(Icons.open_in_new_rounded, color: AppColors.white, size: 14),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        'Chi tiết chính sách nhân sự 2024',
-                        style: AppTextStyles.labelMd.copyWith(
-                          color: AppColors.white,
-                          fontWeight: FontWeight.w600,
-                          decoration: TextDecoration.underline,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(AppSpacing.cardPadding),
+      decoration: BoxDecoration(
+        color: AppColors.primaryContainer,
+        borderRadius: BorderRadius.circular(AppSpacing.radiusXl),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Quy định nghỉ phép',
+            style: AppTextStyles.headlineSm.copyWith(
+              color: AppColors.white,
+              fontWeight: FontWeight.bold,
             ),
           ),
-        ),
-        const SizedBox(width: 12),
-        // Days remaining card
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
-          decoration: BoxDecoration(
-            color: AppColors.surfaceContainer,
-            borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
+          const SizedBox(height: 8),
+          Text(
+            'Bộ phận Kinh doanh (Sale) cần đăng ký trước ít nhất 48h để sắp xếp bàn giao khách hàng.',
+            style: AppTextStyles.bodyMd.copyWith(
+              color: AppColors.inversePrimary,
+              height: 1.5,
+            ),
           ),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Text(
-                '12',
-                textAlign: TextAlign.center,
-                style: const TextStyle(
-                  color: AppColors.secondary,
-                  fontSize: 36,
-                  fontWeight: FontWeight.w900,
-                  height: 1.1,
-                  fontFamily: 'BeVietnamPro',
-                ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                'NGÀY PHÉP\nCÒN LẠI',
-                textAlign: TextAlign.center,
-                style: AppTextStyles.labelMd.copyWith(
-                  color: AppColors.onSurfaceVariant,
-                  fontWeight: FontWeight.bold,
-                  letterSpacing: 0.5,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }

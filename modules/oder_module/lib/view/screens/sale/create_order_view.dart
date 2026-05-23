@@ -479,18 +479,19 @@ class _ProductPickerSheetState extends State<_ProductPickerSheet> {
       return name.contains(query);
     }).toList();
 
-    return Container(
-      constraints: BoxConstraints(
-        maxHeight: MediaQuery.of(context).size.height * 0.75,
-      ),
+    return Padding(
       padding: EdgeInsets.only(
         bottom: MediaQuery.of(context).viewInsets.bottom,
       ),
-      decoration: const BoxDecoration(
-        color: AppColors.white,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(AppSpacing.radiusXl)),
-      ),
-      child: Column(
+      child: Container(
+        constraints: BoxConstraints(
+          maxHeight: MediaQuery.of(context).size.height * 0.75,
+        ),
+        decoration: const BoxDecoration(
+          color: AppColors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(AppSpacing.radiusXl)),
+        ),
+        child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
           const SizedBox(height: 12),
@@ -626,6 +627,7 @@ class _ProductPickerSheetState extends State<_ProductPickerSheet> {
           SizedBox(height: MediaQuery.of(context).padding.bottom + 16),
         ],
       ),
+    ),
     );
   }
 }

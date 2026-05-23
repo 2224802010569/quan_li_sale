@@ -26,8 +26,8 @@ class OrderRoot {
       role: role,
       userId: user['id'],
       employeeName: user['full_name'] ?? '',
-      storeId: storeId,
-      storeName: storeName,
+      storeId: isCreate ? storeId : null,
+      storeName: isCreate ? storeName : null,
       groupId: user['groupId'] ?? storage.get<String>('groupId'),
     );
 
