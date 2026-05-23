@@ -371,16 +371,16 @@ class _KpiDashboardViewState extends ConsumerState<KpiDashboardView> {
 
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(32),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFC3C6D2)), // outlineVariant
+        borderRadius: BorderRadius.circular(32),
+        border: Border.all(color: const Color(0x19C4C6D2)),
         boxShadow: const [
           BoxShadow(
-            color: Color(0x100D3B7A),
-            blurRadius: 12,
-            offset: Offset(0, 4),
+            color: Color(0x0C0D47A1),
+            blurRadius: 24,
+            offset: Offset(0, 8),
           )
         ],
       ),
@@ -389,91 +389,158 @@ class _KpiDashboardViewState extends ConsumerState<KpiDashboardView> {
         children: [
           Row(
             children: [
-              const Icon(Icons.bar_chart, color: Color(0xFF0051D5), size: 24), // secondary
-              const SizedBox(width: 8),
+              Container(
+                width: 40,
+                height: 40,
+                decoration: const BoxDecoration(
+                  color: Color(0x19001D4E),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.leaderboard, color: Color(0xFF001D4E), size: 20),
+              ),
+              const SizedBox(width: 12),
               const Text(
                 'Top 3 Doanh thu',
                 style: TextStyle(
-                  color: Color(0xFF002556), // primary
-                  fontSize: 18, // headline-sm
-                  fontWeight: FontWeight.w600,
-                  fontFamily: 'BeVietnamPro',
+                  color: Color(0xFF001D4E),
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 16),
-          ...top3.asMap().entries.map((entry) {
-            final idx = entry.key;
-            final item = entry.value;
-            final isLast = idx == top3.length - 1;
-            
-            Color badgeBg;
-            Color badgeText;
-            if (idx == 0) {
-              badgeBg = const Color(0xFF002556);
-              badgeText = Colors.white;
-            } else if (idx == 1) {
-              badgeBg = const Color(0xFFDCE9FF);
-              badgeText = const Color(0xFF0B1C30);
-            } else {
-              badgeBg = const Color(0xFFEFF4FF);
-              badgeText = const Color(0xFF0B1C30);
-            }
+          const SizedBox(height: 24),
+          ...List.generate(top3.length, (index) {
+            return _buildTop3Item(top3[index], index + 1);
+          }),
+        ],
+      ),
+    );
+  }
 
-            return Column(
+  Widget _buildTop3Item(KpiReportEntity report, int rank) {
+    Color rankColor;
+    String rankStr;
+    switch (rank) {
+      case 1:
+        rankColor = const Color(0xFFFACC15);
+        rankStr = '1ST';
+        break;
+      case 2:
+        rankColor = const Color(0xFFCBD5E1);
+        rankStr = '2ND';
+        break;
+      case 3:
+      default:
+        rankColor = const Color(0xFFD97706);
+        rankStr = '3RD';
+        break;
+    }
+
+    final currencyFormat = NumberFormat.currency(locale: 'vi_VN', symbol: 'VND');
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: rank == 1 ? const Color(0x0C001D4E) : Colors.transparent,
+        borderRadius: BorderRadius.circular(32),
+        border: rank == 1 ? Border.all(color: const Color(0x19001D4E)) : null,
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Expanded(
+            child: Row(
               children: [
-                Row(
+                Stack(
+                  clipBehavior: Clip.none,
                   children: [
-                    Container(
-                      width: 28,
-                      height: 28,
-                      decoration: BoxDecoration(
-                        color: badgeBg,
-                        shape: BoxShape.circle,
-                      ),
+                    CircleAvatar(
+                      radius: rank == 1 ? 28 : 24,
+                      backgroundColor: const Color(0xFFE8E8E8),
+                      backgroundImage: report.avatarUrl.isNotEmpty ? NetworkImage(report.avatarUrl) : null,
+                      child: report.avatarUrl.isEmpty
+                          ? Text(
+                              report.userName.isNotEmpty ? report.userName[0].toUpperCase() : '?',
+                              style: TextStyle(color: const Color(0xFF001D4E), fontWeight: FontWeight.bold, fontSize: rank == 1 ? 24 : 18),
+                            )
+                          : null,
+                    ),
+                    Positioned(
+                      bottom: -4,
+                      left: 0,
+                      right: 0,
                       child: Center(
-                        child: Text(
-                          '${idx + 1}',
-                          style: TextStyle(
-                            color: badgeText,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                            fontFamily: 'BeVietnamPro',
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: rankColor,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Text(
+                            rankStr,
+                            style: TextStyle(
+                              color: rank == 1 ? const Color(0xFF001D4E) : Colors.white,
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
                         ),
                       ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Text(
-                        item.userName,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          color: Color(0xFF0B1C30), // onSurface
-                          fontSize: 14, // body-md w600
-                          fontWeight: FontWeight.w600,
-                          fontFamily: 'BeVietnamPro',
-                        ),
-                      ),
-                    ),
-                    Text(
-                      NumberFormat.currency(locale: 'vi_VN', symbol: 'VND').format(item.actualRevenue),
-                      style: const TextStyle(
-                        color: Color(0xFF434750), // onSurfaceVariant
-                        fontSize: 14, // body-md
-                        fontWeight: FontWeight.w400,
-                        fontFamily: 'BeVietnamPro',
-                      ),
-                    ),
+                    )
                   ],
                 ),
-                if (!isLast)
-                  const Divider(color: Color(0xFFC3C6D2), height: 24, thickness: 1),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        report.userName,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: const Color(0xFF001D4E),
+                          fontSize: rank == 1 ? 16 : 14,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const Text(
+                        'Sale',
+                        style: TextStyle(
+                          color: Color(0xFF434651),
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               ],
-            );
-          }).toList(),
+            ),
+          ),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Text(
+                currencyFormat.format(report.actualRevenue),
+                style: TextStyle(
+                  color: const Color(0xFF001D4E),
+                  fontSize: rank == 1 ? 18 : 16,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+              Text(
+                '${report.percentCompleted.toStringAsFixed(1)}%',
+                style: TextStyle(
+                  color: report.percentCompleted >= 100 ? const Color(0xFF059669) : const Color(0xFF94A3B8),
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
+          ),
         ],
       ),
     );
