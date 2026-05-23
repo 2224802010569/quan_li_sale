@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:core/theme/theme.dart';
 
 class OrderSummaryPanel extends StatelessWidget {
   final int productCount;
@@ -31,56 +32,44 @@ class OrderSummaryPanel extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(32),
-      decoration: ShapeDecoration(
-        color: Colors.white,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(32),
-        ),
-        shadows: const [
-          BoxShadow(
-            color: Color(0x1E0D47A1),
-            blurRadius: 48,
-            offset: Offset(0, 24),
-          ),
-        ],
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: AppColors.white,
+        borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
+        boxShadow: AppShadows.level2,
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
+          Text(
             'Tổng kết đơn hàng',
-            style: TextStyle(
-              color: Color(0xFF172554),
-              fontSize: 20,
-              fontFamily: 'Manrope',
-              fontWeight: FontWeight.w800,
-              height: 1.40,
-              letterSpacing: -0.50,
+            style: AppTextStyles.headlineSm.copyWith(
+              color: AppColors.primary,
+              fontWeight: FontWeight.w700,
             ),
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 16),
           _SummaryRow(
             label: 'Số lượng sản phẩm:',
             value: '$productCount',
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 8),
           _SummaryRow(
             label: 'Tổng số lượng (đv):',
             value: '$totalQuantity',
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 8),
           _SummaryRow(
             label: 'Tạm tính:',
             value: _currencyFormat.format(subtotal),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 8),
           _SummaryRow(
             label: 'VAT (10%):',
             value: _currencyFormat.format(vatAmount),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 16),
           Container(
             width: double.infinity,
             padding: const EdgeInsets.only(top: 16),
@@ -88,40 +77,33 @@ class OrderSummaryPanel extends StatelessWidget {
               border: Border(
                 top: BorderSide(
                   width: 1,
-                  color: Color(0xFFE8E8E8),
+                  color: AppColors.outlineVariant,
                 ),
               ),
             ),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              crossAxisAlignment: CrossAxisAlignment.end,
+              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                const Text(
+                Text(
                   'TỔNG CỘNG',
-                  style: TextStyle(
-                    color: Color(0xFF172554),
-                    fontSize: 14,
-                    fontFamily: 'Manrope',
-                    fontWeight: FontWeight.w700,
-                    height: 1.43,
-                    letterSpacing: 1.40,
+                  style: AppTextStyles.labelLg.copyWith(
+                    color: AppColors.primary,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 1.2,
                   ),
                 ),
                 Text(
                   _currencyFormat.format(totalAmount),
-                  style: const TextStyle(
-                    color: Color(0xFF001D4E),
-                    fontSize: 30,
-                    fontFamily: 'Manrope',
+                  style: AppTextStyles.headlineMd.copyWith(
+                    color: AppColors.secondary,
                     fontWeight: FontWeight.w900,
-                    height: 1.20,
-                    letterSpacing: -1.50,
                   ),
                 ),
               ],
             ),
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 20),
           _SubmitButton(
             onTap: isSubmitting ? null : onSubmit,
             isSubmitting: isSubmitting,
@@ -148,22 +130,16 @@ class _SummaryRow extends StatelessWidget {
       children: [
         Text(
           label,
-          style: const TextStyle(
-            color: Color(0xFF434651),
-            fontSize: 16,
-            fontFamily: 'Manrope',
+          style: AppTextStyles.bodyLg.copyWith(
+            color: AppColors.onSurfaceVariant,
             fontWeight: FontWeight.w500,
-            height: 1.50,
           ),
         ),
         Text(
           value,
-          style: const TextStyle(
-            color: Color(0xFF434651),
-            fontSize: 16,
-            fontFamily: 'Manrope',
-            fontWeight: FontWeight.w500,
-            height: 1.50,
+          style: AppTextStyles.bodyLg.copyWith(
+            color: AppColors.onSurface,
+            fontWeight: FontWeight.w600,
           ),
         ),
       ],
@@ -186,30 +162,15 @@ class _SubmitButton extends StatelessWidget {
       onTap: onTap,
       child: Container(
         width: double.infinity,
-        padding: const EdgeInsets.symmetric(vertical: 16),
-        decoration: ShapeDecoration(
+        padding: const EdgeInsets.symmetric(vertical: 14),
+        decoration: BoxDecoration(
           gradient: const LinearGradient(
-            begin: Alignment(0.45, -0.45),
-            end: Alignment(0.55, 1.45),
-            colors: [Color(0xFF001D4E), Color(0xFF003178)],
+            begin: Alignment.centerLeft,
+            end: Alignment.centerRight,
+            colors: [AppColors.primary, AppColors.secondary],
           ),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(9999),
-          ),
-          shadows: const [
-            BoxShadow(
-              color: Color(0x331E3A8A),
-              blurRadius: 10,
-              offset: Offset(0, 8),
-              spreadRadius: -6,
-            ),
-            BoxShadow(
-              color: Color(0x331E3A8A),
-              blurRadius: 25,
-              offset: Offset(0, 20),
-              spreadRadius: -5,
-            ),
-          ],
+          borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
+          boxShadow: AppShadows.level1,
         ),
         child: Center(
           child: isSubmitting
@@ -217,19 +178,16 @@ class _SubmitButton extends StatelessWidget {
                   width: 24,
                   height: 24,
                   child: CircularProgressIndicator(
-                    color: Colors.white,
+                    color: AppColors.white,
                     strokeWidth: 2.5,
                   ),
                 )
-              : const Text(
+              : Text(
                   'Hoàn tất & Lưu đơn hàng',
                   textAlign: TextAlign.center,
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 18,
-                    fontFamily: 'Manrope',
-                    fontWeight: FontWeight.w700,
-                    height: 1.56,
+                  style: AppTextStyles.labelLg.copyWith(
+                    color: AppColors.white,
+                    fontWeight: FontWeight.bold,
                   ),
                 ),
         ),

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:core/theme/theme.dart';
 
 import '../../entity/leave_request_entity.dart';
 import '../../entity/leave_status.dart';
@@ -15,7 +16,7 @@ class ApproveDetailState {
   final bool isLoading;
   final ApproveAction action;
   final String? errorMessage;
-  final bool isDone; // true sau khi duyệt/từ chối xong
+  final bool isDone;
 
   const ApproveDetailState({
     this.isLoading = false,
@@ -58,7 +59,7 @@ class ApproveDetailNotifier extends StateNotifier<ApproveDetailState> {
 
   Future<bool> decide({
     required int leaveId,
-    required String decision, // 'Approved' | 'Rejected'
+    required String decision,
   }) async {
     final action =
         decision == 'Approved' ? ApproveAction.approving : ApproveAction.rejecting;
@@ -71,8 +72,8 @@ class ApproveDetailNotifier extends StateNotifier<ApproveDetailState> {
         approverId: approverId,
         groupId: groupId,
       );
-      state = state.copyWith(isLoading: false, isDone: true,
-          action: ApproveAction.none);
+      state = state.copyWith(
+          isLoading: false, isDone: true, action: ApproveAction.none);
       return true;
     } on Exception catch (e) {
       final msg = e.toString().replaceFirst('Exception: ', '');
@@ -98,12 +99,9 @@ final approveDetailNotifierProvider = StateNotifierProvider.autoDispose<
 // View
 // ---------------------------------------------------------------------------
 
-/// Màn hình chi tiết đơn nghỉ + nút Duyệt / Từ chối dành cho Manager.
-/// Layout theo design system: dark scaffold + white card + action buttons.
+/// Màn hình chi tiết đơn nghỉ + nút Duyệt / Từ chối (Manager) — Marine Precision.
 class ApproveDetailView extends ConsumerWidget {
   final LeaveRequestEntity leave;
-
-  /// Callback sau khi Manager duyệt hoặc từ chối thành công.
   final VoidCallback? onDecisionSuccess;
   final VoidCallback? onBack;
 
@@ -131,6 +129,17 @@ class ApproveDetailView extends ConsumerWidget {
     return '${leave.totalDays} ngày ($start – $end)';
   }
 
+  Color _statusColor(LeaveStatus status) {
+    switch (status) {
+      case LeaveStatus.approved:
+        return const Color(0xFF16a34a);
+      case LeaveStatus.rejected:
+        return AppColors.error;
+      case LeaveStatus.pending:
+        return const Color(0xFFF59E0B);
+    }
+  }
+
   // ── build ─────────────────────────────────────────────────────────────────────
 
   @override
@@ -138,7 +147,6 @@ class ApproveDetailView extends ConsumerWidget {
     final state = ref.watch(approveDetailNotifierProvider);
     final notifier = ref.read(approveDetailNotifierProvider.notifier);
 
-    // Auto-pop khi done
     ref.listen<ApproveDetailState>(approveDetailNotifierProvider, (_, next) {
       if (next.isDone) {
         onDecisionSuccess?.call();
@@ -146,81 +154,70 @@ class ApproveDetailView extends ConsumerWidget {
     });
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF4F6FA),
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.only(
-              top: 24, left: 24, right: 24, bottom: 40),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // ── Back + Header ────────────────────────────────────────
-              _buildHeader(),
-              const SizedBox(height: 32),
+      backgroundColor: AppColors.background,
+      appBar: AppBar(
+        backgroundColor: AppColors.white,
+        elevation: 0,
+        leading: onBack != null
+            ? IconButton(
+                icon: const Icon(Icons.arrow_back_ios_new_rounded,
+                    color: AppColors.onSurface, size: 20),
+                onPressed: onBack,
+              )
+            : null,
+        title: Text(
+          'Chi tiết đơn nghỉ phép',
+          style: AppTextStyles.headlineSm.copyWith(
+            color: AppColors.primary,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+        centerTitle: false,
+      ),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.fromLTRB(
+          AppSpacing.containerMargin,
+          AppSpacing.lg,
+          AppSpacing.containerMargin,
+          AppSpacing.xxl,
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // ── Leave detail card ──────────────────────────────────────────
+            _buildDetailCard(),
+            const SizedBox(height: AppSpacing.lg),
 
-              // ── Leave detail card ────────────────────────────────────
-              _buildDetailCard(),
-              const SizedBox(height: 24),
+            // ── Reason card ────────────────────────────────────────────────
+            _buildReasonCard(),
+            const SizedBox(height: AppSpacing.xxl),
 
-              // ── Reason card ──────────────────────────────────────────
-              _buildReasonCard(),
-              const SizedBox(height: 32),
-
-              // ── Error message ────────────────────────────────────────
-              if (state.errorMessage != null)
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 16),
-                  child: Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFEF4444).withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    child: Text(
-                      state.errorMessage!,
-                      style: const TextStyle(
-                        color: Color(0xFFEF4444),
-                        fontSize: 14,
-                        fontFamily: 'Manrope',
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
+            // ── Error message ──────────────────────────────────────────────
+            if (state.errorMessage != null)
+              Padding(
+                padding: const EdgeInsets.only(bottom: AppSpacing.md),
+                child: Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(AppSpacing.lg),
+                  decoration: BoxDecoration(
+                    color: AppColors.error.withValues(alpha: 0.08),
+                    borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
+                  ),
+                  child: Text(
+                    state.errorMessage!,
+                    style: AppTextStyles.bodyMd.copyWith(color: AppColors.error),
                   ),
                 ),
+              ),
 
-              // ── Action buttons ───────────────────────────────────────
-              if (leave.status == LeaveStatus.pending)
-                _buildActionButtons(state, notifier, context)
-              else
-                _buildAlreadyProcessed(),
-            ],
-          ),
+            // ── Action buttons ─────────────────────────────────────────────
+            if (leave.status == LeaveStatus.pending)
+              _buildActionButtons(state, notifier, context)
+            else
+              _buildAlreadyProcessed(),
+          ],
         ),
       ),
-    );
-  }
-
-  // ── Header ────────────────────────────────────────────────────────────────────
-
-  Widget _buildHeader() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        
-        const SizedBox(height: 4),
-        const Text(
-          'Chi tiết đơn\nnghỉ phép',
-          style: TextStyle(
-            color: Color(0xFF0F3c8f),
-            fontSize: 30,
-            fontFamily: 'Manrope',
-            fontWeight: FontWeight.w800,
-            letterSpacing: -0.75,
-            height: 1.20,
-          ),
-        ),
-      ],
     );
   }
 
@@ -229,88 +226,76 @@ class ApproveDetailView extends ConsumerWidget {
   Widget _buildDetailCard() {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(32),
-      decoration: ShapeDecoration(
-        color: Colors.white,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-        ),
-        shadows: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
+      padding: const EdgeInsets.all(AppSpacing.cardPadding),
+      decoration: BoxDecoration(
+        color: AppColors.white,
+        borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
+        boxShadow: AppShadows.level1,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Date box + title row
+          // Date box + reason row
           Row(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               Container(
                 width: 72,
                 height: 72,
-                decoration: ShapeDecoration(
-                  color: const Color(0xFFF3F3F3),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(36),
-                  ),
+                decoration: BoxDecoration(
+                  color: AppColors.surfaceContainerLow,
+                  borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
                 ),
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Text(
                       '${leave.startDate.day}',
-                      style: const TextStyle(
-                        color: Color(0xFF0F3c8f),
-                        fontSize: 22,
-                        fontFamily: 'Manrope',
+                      style: AppTextStyles.headlineSm.copyWith(
+                        color: AppColors.primary,
                         fontWeight: FontWeight.w800,
-                        height: 1.20,
                       ),
                     ),
                     Text(
                       _monthLabel(leave.startDate),
-                      style: const TextStyle(
-                        color: Color(0xFF0F3c8f),
-                        fontSize: 10,
-                        fontFamily: 'Manrope',
+                      style: AppTextStyles.caption.copyWith(
+                        color: AppColors.secondary,
                         fontWeight: FontWeight.w700,
-                        height: 1.50,
                       ),
                     ),
                   ],
                 ),
               ),
-              const SizedBox(width: 24),
+              const SizedBox(width: AppSpacing.lg),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
+                      leave.userName ?? 'Nhân viên',
+                      style: AppTextStyles.bodyLg.copyWith(
+                        color: AppColors.primary,
+                        fontWeight: FontWeight.w700,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
                       leave.reason.length > 32
                           ? '${leave.reason.substring(0, 32)}…'
                           : leave.reason,
-                      style: const TextStyle(
-                        color: Color(0xFF0F3c8f),
-                        fontSize: 20,
-                        fontFamily: 'Manrope',
-                        fontWeight: FontWeight.w700,
-                        height: 1.40,
+                      style: AppTextStyles.bodyMd.copyWith(
+                        color: AppColors.secondary,
+                        fontWeight: FontWeight.w600,
                       ),
                     ),
                     const SizedBox(height: 4),
                     Text(
                       _dayRange(),
-                      style: const TextStyle(
-                        color: Color(0xFF434651),
-                        fontSize: 14,
-                        fontFamily: 'Manrope',
-                        fontWeight: FontWeight.w400,
-                        height: 1.43,
+                      style: AppTextStyles.bodyMd.copyWith(
+                        color: AppColors.onSurfaceVariant,
+                        height: 1.5,
                       ),
                     ),
                   ],
@@ -318,9 +303,12 @@ class ApproveDetailView extends ConsumerWidget {
               ),
             ],
           ),
-          const SizedBox(height: 24),
-          const Divider(color: Color(0xFFF3F3F3), thickness: 1),
-          const SizedBox(height: 20),
+          const SizedBox(height: AppSpacing.lg),
+          Divider(
+            color: AppColors.outlineVariant.withValues(alpha: 0.5),
+            height: 1,
+          ),
+          const SizedBox(height: AppSpacing.lg),
 
           // Info rows
           _buildInfoRow('NGÀY BẮT ĐẦU', _formatDate(leave.startDate)),
@@ -336,8 +324,10 @@ class ApproveDetailView extends ConsumerWidget {
           ),
           if (leave.approvedBy != null) ...[
             const SizedBox(height: 12),
-            _buildInfoRow('DUYỆT BỞI',
-                leave.approvedBy!.substring(0, 8).toUpperCase()),
+            _buildInfoRow(
+              'DUYỆT BỞI',
+              leave.approvedBy!.substring(0, 8).toUpperCase(),
+            ),
           ],
         ],
       ),
@@ -350,38 +340,21 @@ class ApproveDetailView extends ConsumerWidget {
       children: [
         Text(
           label,
-          style: const TextStyle(
-            color: Color(0x99434651),
-            fontSize: 11,
-            fontFamily: 'Manrope',
+          style: AppTextStyles.caption.copyWith(
+            color: AppColors.onSurfaceVariant,
             fontWeight: FontWeight.w700,
-            letterSpacing: 1.10,
-            height: 1.50,
+            letterSpacing: 0.8,
           ),
         ),
         Text(
           value,
-          style: TextStyle(
-            color: valueColor ?? const Color(0xFF0F3c8f),
-            fontSize: 14,
-            fontFamily: 'Manrope',
+          style: AppTextStyles.bodyMd.copyWith(
+            color: valueColor ?? AppColors.primary,
             fontWeight: FontWeight.w700,
-            height: 1.43,
           ),
         ),
       ],
     );
-  }
-
-  Color _statusColor(LeaveStatus status) {
-    switch (status) {
-      case LeaveStatus.approved:
-        return const Color(0xFF22C55E);
-      case LeaveStatus.rejected:
-        return const Color(0xFFEF4444);
-      case LeaveStatus.pending:
-        return const Color(0xFFF59E0B);
-    }
   }
 
   // ── Reason card ───────────────────────────────────────────────────────────────
@@ -389,36 +362,28 @@ class ApproveDetailView extends ConsumerWidget {
   Widget _buildReasonCard() {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(24),
-      decoration: ShapeDecoration(
-        color: const Color(0xFFF3F3F3),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-        ),
+      padding: const EdgeInsets.all(AppSpacing.cardPadding),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceContainer,
+        borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
+          Text(
             'LÝ DO CHI TIẾT',
-            style: TextStyle(
-              color: Color(0x99434651),
-              fontSize: 11,
-              fontFamily: 'Manrope',
+            style: AppTextStyles.caption.copyWith(
+              color: AppColors.onSurfaceVariant,
               fontWeight: FontWeight.w700,
-              letterSpacing: 1.20,
-              height: 1.50,
+              letterSpacing: 1.0,
             ),
           ),
           const SizedBox(height: 8),
           Text(
             leave.reason,
-            style: const TextStyle(
-              color: Color(0xFF1A1C1C),
-              fontSize: 16,
-              fontFamily: 'Manrope',
-              fontWeight: FontWeight.w400,
-              height: 1.63,
+            style: AppTextStyles.bodyLg.copyWith(
+              color: AppColors.onSurface,
+              height: 1.6,
             ),
           ),
         ],
@@ -439,204 +404,177 @@ class ApproveDetailView extends ConsumerWidget {
 
     return Column(
       children: [
-        // DUYỆT button (navy gradient)
-        GestureDetector(
-          key: const Key('approve_button'),
-          onTap: busy
-              ? null
-              : () async {
-                  final ok = await notifier.decide(
-                    leaveId: leave.id,
-                    decision: 'Approved',
-                  );
-                  if (!ok && context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text(
-                          state.errorMessage ?? 'Đã xảy ra lỗi.',
-                          style: const TextStyle(
-                            fontFamily: 'Manrope',
-                            fontWeight: FontWeight.w600,
+        // DUYỆT button
+        SizedBox(
+          width: double.infinity,
+          height: 52,
+          child: Material(
+            color: busy ? AppColors.primary.withValues(alpha: 0.5) : AppColors.primary,
+            borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
+            child: InkWell(
+              key: const Key('approve_button'),
+              borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
+              onTap: busy
+                  ? null
+                  : () async {
+                      final ok = await notifier.decide(
+                        leaveId: leave.id,
+                        decision: 'Approved',
+                      );
+                      if (!ok && context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(
+                              state.errorMessage ?? 'Đã xảy ra lỗi.',
+                              style: AppTextStyles.bodyMd
+                                  .copyWith(fontWeight: FontWeight.w600),
+                            ),
+                            backgroundColor: AppColors.error,
+                            behavior: SnackBarBehavior.floating,
+                            shape: RoundedRectangleBorder(
+                              borderRadius:
+                                  BorderRadius.circular(AppSpacing.radius),
+                            ),
+                            margin: const EdgeInsets.all(
+                                AppSpacing.containerMargin),
                           ),
+                        );
+                      }
+                    },
+              child: Center(
+                child: isApproving
+                    ? const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(
+                          color: AppColors.white,
+                          strokeWidth: 2.5,
                         ),
-                        backgroundColor: const Color(0xFFEF4444),
-                        behavior: SnackBarBehavior.floating,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        margin: const EdgeInsets.all(16),
-                      ),
-                    );
-                  }
-                },
-          child: Container(
-            width: double.infinity,
-            padding: const EdgeInsets.symmetric(vertical: 18),
-            decoration: ShapeDecoration(
-              gradient: const LinearGradient(
-                begin: Alignment(0.20, -0.99),
-                end: Alignment(0.80, 1.99),
-                colors: [Color(0xFF0F3c8f), Color(0xFF003178)],
-              ),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-              shadows: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.05),
-                  blurRadius: 10,
-                  offset: const Offset(0, 4),
-                ),
-              ],
-            ),
-            child: Center(
-              child: isApproving
-                  ? const SizedBox(
-                      width: 20,
-                      height: 20,
-                      child: CircularProgressIndicator(
-                        color: Colors.white,
-                        strokeWidth: 2.5,
-                      ),
-                    )
-                  : Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: const [
-                        Icon(Icons.check_circle_outline,
-                            color: Colors.white, size: 20),
-                        SizedBox(width: 8),
-                        Text(
-                          'Duyệt đơn',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 16,
-                            fontFamily: 'Manrope',
-                            fontWeight: FontWeight.w700,
-                            height: 1.50,
+                      )
+                    : Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(Icons.check_circle_outline_rounded,
+                              color: AppColors.white, size: 20),
+                          const SizedBox(width: 8),
+                          Text(
+                            'Duyệt đơn',
+                            style: AppTextStyles.labelLg.copyWith(
+                              color: AppColors.white,
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
-                        ),
-                      ],
-                    ),
+                        ],
+                      ),
+              ),
             ),
           ),
         ),
         const SizedBox(height: 12),
 
-        // TỪ CHỐI button (outlined red)
-        GestureDetector(
-          key: const Key('reject_button'),
-          onTap: busy
-              ? null
-              : () async {
-                  // Hiển thị confirm dialog trước khi từ chối
-                  final confirmed = await _showRejectConfirm(context);
-                  if (!confirmed) return;
-                  await notifier.decide(
-                    leaveId: leave.id,
-                    decision: 'Rejected',
-                  );
-                },
-          child: Container(
-            width: double.infinity,
-            padding: const EdgeInsets.symmetric(vertical: 18),
-            decoration: ShapeDecoration(
-              color: Colors.transparent,
+        // TỪ CHỐI button
+        SizedBox(
+          width: double.infinity,
+          height: 52,
+          child: OutlinedButton(
+            key: const Key('reject_button'),
+            style: OutlinedButton.styleFrom(
+              side: BorderSide(
+                color: busy
+                    ? AppColors.error.withValues(alpha: 0.4)
+                    : AppColors.error,
+                width: 1.5,
+              ),
               shape: RoundedRectangleBorder(
-                side: BorderSide(
-                  color: busy
-                      ? const Color(0xFFEF4444).withValues(alpha: 0.4)
-                      : const Color(0xFFEF4444),
-                  width: 2,
-                ),
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
               ),
             ),
-            child: Center(
-              child: isRejecting
-                  ? const SizedBox(
-                      width: 20,
-                      height: 20,
-                      child: CircularProgressIndicator(
-                        color: Color(0xFFEF4444),
-                        strokeWidth: 2.5,
-                      ),
-                    )
-                  : Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          Icons.cancel_outlined,
-                          color: busy
-                              ? const Color(0xFFEF4444).withValues(alpha: 0.4)
-                              : const Color(0xFFEF4444),
-                          size: 20,
-                        ),
-                        const SizedBox(width: 8),
-                        Text(
-                          'Từ chối',
-                          style: TextStyle(
-                            color: busy
-                                ? const Color(0xFFEF4444).withValues(alpha: 0.4)
-                                : const Color(0xFFEF4444),
-                            fontSize: 16,
-                            fontFamily: 'Manrope',
-                            fontWeight: FontWeight.w700,
-                            height: 1.50,
-                          ),
-                        ),
-                      ],
+            onPressed: busy
+                ? null
+                : () async {
+                    final confirmed = await _showRejectConfirm(context);
+                    if (!confirmed) return;
+                    await notifier.decide(
+                      leaveId: leave.id,
+                      decision: 'Rejected',
+                    );
+                  },
+            child: isRejecting
+                ? SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(
+                      color: AppColors.error,
+                      strokeWidth: 2.5,
                     ),
-            ),
+                  )
+                : Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.cancel_outlined,
+                        color: busy
+                            ? AppColors.error.withValues(alpha: 0.4)
+                            : AppColors.error,
+                        size: 20,
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        'Từ chối',
+                        style: AppTextStyles.labelLg.copyWith(
+                          color: busy
+                              ? AppColors.error.withValues(alpha: 0.4)
+                              : AppColors.error,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
           ),
         ),
       ],
     );
   }
 
-  /// Confirm dialog trước khi từ chối.
   Future<bool> _showRejectConfirm(BuildContext context) async {
     return await showDialog<bool>(
           context: context,
           builder: (ctx) => AlertDialog(
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
             ),
-            title: const Text(
+            title: Text(
               'Xác nhận từ chối',
-              style: TextStyle(
-                fontFamily: 'Manrope',
+              style: AppTextStyles.headlineSm.copyWith(
+                color: AppColors.primary,
                 fontWeight: FontWeight.w700,
-                color: Color(0xFF0F3c8f),
               ),
             ),
-            content: const Text(
+            content: Text(
               'Bạn có chắc muốn từ chối đơn nghỉ này không?',
-              style: TextStyle(
-                fontFamily: 'Manrope',
-                color: Color(0xFF434651),
+              style: AppTextStyles.bodyMd.copyWith(
+                color: AppColors.onSurfaceVariant,
               ),
             ),
             actions: [
               TextButton(
                 onPressed: () => Navigator.of(ctx).pop(false),
-                child: const Text(
+                child: Text(
                   'Huỷ',
-                  style: TextStyle(
-                    fontFamily: 'Manrope',
+                  style: AppTextStyles.labelLg.copyWith(
+                    color: AppColors.onSurfaceVariant,
                     fontWeight: FontWeight.w600,
-                    color: Color(0xFF434651),
                   ),
                 ),
               ),
               TextButton(
                 key: const Key('confirm_reject_button'),
                 onPressed: () => Navigator.of(ctx).pop(true),
-                child: const Text(
+                child: Text(
                   'Từ chối',
-                  style: TextStyle(
-                    fontFamily: 'Manrope',
-                    fontWeight: FontWeight.w700,
-                    color: Color(0xFFEF4444),
+                  style: AppTextStyles.labelLg.copyWith(
+                    color: AppColors.error,
+                    fontWeight: FontWeight.bold,
                   ),
                 ),
               ),
@@ -652,10 +590,10 @@ class ApproveDetailView extends ConsumerWidget {
     final color = _statusColor(leave.status);
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(AppSpacing.lg),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
         border: Border.all(color: color.withValues(alpha: 0.3)),
       ),
       child: Row(
@@ -668,10 +606,8 @@ class ApproveDetailView extends ConsumerWidget {
           const SizedBox(width: 12),
           Text(
             'Đơn này đã được xử lý: ${leave.status.label}',
-            style: TextStyle(
+            style: AppTextStyles.bodyMd.copyWith(
               color: color,
-              fontSize: 14,
-              fontFamily: 'Manrope',
               fontWeight: FontWeight.w700,
             ),
           ),

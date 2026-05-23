@@ -28,18 +28,7 @@ class _KpiDashboardViewState extends ConsumerState<KpiDashboardView> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF5F6FA),
-      appBar: AppBar(
-        title: const Text('Báo cáo KPI', style: TextStyle(color: Color(0xFF001D4E), fontWeight: FontWeight.bold)),
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        iconTheme: const IconThemeData(color: Color(0xFF001D4E)),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.filter_alt_outlined),
-            onPressed: _showFilterDialog,
-          )
-        ],
-      ),
+
       body: FutureBuilder<List<KpiReportEntity>>(
         future: _fetchDashboard(),
         builder: (context, snapshot) {
@@ -75,6 +64,34 @@ class _KpiDashboardViewState extends ConsumerState<KpiDashboardView> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Row(
+                        children: [
+                          InkWell(
+                            onTap: () => Navigator.maybePop(context),
+                            child: const Icon(Icons.arrow_back_ios_new_rounded, color: Color(0xFF002556), size: 20),
+                          ),
+                          const SizedBox(width: 8),
+                          const Text(
+                            'Báo cáo KPI',
+                            style: TextStyle(
+                              color: Color(0xFF002556), // primary
+                              fontSize: 18, // headline-sm
+                              fontWeight: FontWeight.w700,
+                              fontFamily: 'BeVietnamPro',
+                            ),
+                          ),
+                        ],
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.filter_alt_outlined, color: Color(0xFF0051D5)), // secondary
+                        onPressed: _showFilterDialog,
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
                   _buildHeaderCards(totalTarget, totalActual),
                   const SizedBox(height: 32),
                   _buildExecutiveOverview(),
@@ -157,74 +174,128 @@ class _KpiDashboardViewState extends ConsumerState<KpiDashboardView> {
 
   Widget _buildHeaderCards(double target, double actual) {
     final currencyFormat = NumberFormat.currency(locale: 'vi_VN', symbol: 'VND');
-    
     return Column(
       children: [
-        _buildStatCard(
-          title: 'KPI TEAM',
-          value: currencyFormat.format(target),
-          borderColor: const Color(0xFF001D4E),
-          titleColor: const Color(0xFF434651),
-          valueColor: const Color(0xFF001D4E),
+        // KPI TEAM Card
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: const Color(0xFF002556), width: 2), // primary
+            boxShadow: const [
+              BoxShadow(
+                color: Color(0x100D3B7A),
+                blurRadius: 12,
+                offset: Offset(0, 4),
+              )
+            ],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'KPI TEAM',
+                style: TextStyle(
+                  color: Color(0xFF434750), // onSurfaceVariant
+                  fontSize: 14, // label-lg
+                  fontWeight: FontWeight.w600,
+                  letterSpacing: 0.05,
+                  fontFamily: 'BeVietnamPro',
+                ),
+              ),
+              const SizedBox(height: 8),
+              FittedBox(
+                fit: BoxFit.scaleDown,
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  currencyFormat.format(target),
+                  style: const TextStyle(
+                    color: Color(0xFF0B1C30), // onSurface
+                    fontSize: 22,
+                    fontWeight: FontWeight.w700,
+                    fontFamily: 'BeVietnamPro',
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
-        const SizedBox(height: 16),
-        _buildStatCard(
-          title: 'TIẾN ĐỘ THỰC HIỆN TEAM',
-          value: currencyFormat.format(actual),
-          borderColor: const Color(0xFFE6845D),
-          titleColor: const Color(0xFF434651),
-          valueColor: const Color(0xFFE6845D),
+        const SizedBox(height: 12),
+        // TIẾN ĐỘ THỰC HIỆN TEAM Card
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: const Color(0xFFC2410C), width: 2), // accentWarm
+            boxShadow: const [
+              BoxShadow(
+                color: Color(0x100D3B7A),
+                blurRadius: 12,
+                offset: Offset(0, 4),
+              )
+            ],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'TIẾN ĐỘ THỰC HIỆN TEAM',
+                style: TextStyle(
+                  color: Color(0xFF434750), // onSurfaceVariant
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  letterSpacing: 0.05,
+                  fontFamily: 'BeVietnamPro',
+                ),
+              ),
+              const SizedBox(height: 8),
+              FittedBox(
+                fit: BoxFit.scaleDown,
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  currencyFormat.format(actual),
+                  style: const TextStyle(
+                    color: Color(0xFFC2410C), // accentWarm
+                    fontSize: 22,
+                    fontWeight: FontWeight.w700,
+                    fontFamily: 'BeVietnamPro',
+                  ),
+                ),
+              ),
+              // Progress bar
+              if (target > 0) ...[
+                const SizedBox(height: 12),
+                Stack(
+                  children: [
+                    Container(
+                      width: double.infinity,
+                      height: 6,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFDCE9FF), // surfaceContainerHigh
+                        borderRadius: BorderRadius.circular(3),
+                      ),
+                    ),
+                    FractionallySizedBox(
+                      widthFactor: (actual / target).clamp(0.0, 1.0),
+                      child: Container(
+                        height: 6,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFC2410C), // accentWarm
+                          borderRadius: BorderRadius.circular(3),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ],
+          ),
         ),
       ],
-    );
-  }
-
-  Widget _buildStatCard({
-    required String title,
-    required String value,
-    required Color borderColor,
-    required Color titleColor,
-    required Color valueColor,
-  }) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(32),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(32),
-        border: Border.all(color: borderColor, width: 4),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x0C0D47A1),
-            blurRadius: 24,
-            offset: Offset(0, 8),
-          )
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            title,
-            style: TextStyle(
-              color: titleColor,
-              fontSize: 14,
-              fontWeight: FontWeight.w600,
-              letterSpacing: 1.40,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            value,
-            style: TextStyle(
-              color: valueColor,
-              fontSize: 30,
-              fontWeight: FontWeight.bold,
-              height: 1.20,
-            ),
-          ),
-        ],
-      ),
     );
   }
 
@@ -235,20 +306,20 @@ class _KpiDashboardViewState extends ConsumerState<KpiDashboardView> {
         const Text(
           'EXECUTIVE OVERVIEW',
           style: TextStyle(
-            color: Color(0xFF434651),
-            fontSize: 14,
+            color: Color(0xFF434750), // onSurfaceVariant
+            fontSize: 12, // label-md
             fontWeight: FontWeight.w500,
-            letterSpacing: 0.70,
+            fontFamily: 'BeVietnamPro',
           ),
         ),
         const SizedBox(height: 4),
         const Text(
           'Dashboard',
           style: TextStyle(
-            color: Color(0xFF001D4E),
-            fontSize: 36,
-            fontWeight: FontWeight.w800,
-            letterSpacing: -0.90,
+            color: Color(0xFF0B1C30), // onSurface
+            fontSize: 24, // headline-lg
+            fontWeight: FontWeight.w700,
+            fontFamily: 'BeVietnamPro',
           ),
         ),
         const SizedBox(height: 16),
@@ -259,31 +330,32 @@ class _KpiDashboardViewState extends ConsumerState<KpiDashboardView> {
           },
           borderRadius: BorderRadius.circular(9999),
           child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+            height: 48,
+            padding: const EdgeInsets.symmetric(horizontal: 24),
             decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                colors: [Color(0xFF001D4E), Color(0xFF003178)],
-              ),
+              color: const Color(0xFF002556), // primary
               borderRadius: BorderRadius.circular(9999),
               boxShadow: const [
                 BoxShadow(
-                  color: Color(0x330D47A1),
-                  blurRadius: 24,
-                  offset: Offset(0, 8),
+                  color: Color(0x100D3B7A), // Level 1
+                  blurRadius: 12,
+                  offset: Offset(0, 4),
                 )
               ],
             ),
             child: const Row(
               mainAxisSize: MainAxisSize.min,
+              mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(Icons.add_circle_outline, color: Colors.white, size: 24),
+                Icon(Icons.add, color: Colors.white, size: 20),
                 SizedBox(width: 8),
                 Text(
                   'Chỉ tiêu nhân viên',
                   style: TextStyle(
                     color: Colors.white,
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    fontFamily: 'BeVietnamPro',
                   ),
                 ),
               ],
@@ -299,16 +371,16 @@ class _KpiDashboardViewState extends ConsumerState<KpiDashboardView> {
 
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(32),
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(32),
-        border: Border.all(color: const Color(0x19C4C6D2)),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFC3C6D2)), // outlineVariant
         boxShadow: const [
           BoxShadow(
-            color: Color(0x0C0D47A1),
-            blurRadius: 24,
-            offset: Offset(0, 8),
+            color: Color(0x100D3B7A),
+            blurRadius: 12,
+            offset: Offset(0, 4),
           )
         ],
       ),
@@ -317,158 +389,91 @@ class _KpiDashboardViewState extends ConsumerState<KpiDashboardView> {
         children: [
           Row(
             children: [
-              Container(
-                width: 40,
-                height: 40,
-                decoration: const BoxDecoration(
-                  color: Color(0x19001D4E),
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(Icons.leaderboard, color: Color(0xFF001D4E), size: 20),
-              ),
-              const SizedBox(width: 12),
+              const Icon(Icons.bar_chart, color: Color(0xFF0051D5), size: 24), // secondary
+              const SizedBox(width: 8),
               const Text(
                 'Top 3 Doanh thu',
                 style: TextStyle(
-                  color: Color(0xFF001D4E),
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF002556), // primary
+                  fontSize: 18, // headline-sm
+                  fontWeight: FontWeight.w600,
+                  fontFamily: 'BeVietnamPro',
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 24),
-          ...List.generate(top3.length, (index) {
-            return _buildTop3Item(top3[index], index + 1);
-          }),
-        ],
-      ),
-    );
-  }
+          const SizedBox(height: 16),
+          ...top3.asMap().entries.map((entry) {
+            final idx = entry.key;
+            final item = entry.value;
+            final isLast = idx == top3.length - 1;
+            
+            Color badgeBg;
+            Color badgeText;
+            if (idx == 0) {
+              badgeBg = const Color(0xFF002556);
+              badgeText = Colors.white;
+            } else if (idx == 1) {
+              badgeBg = const Color(0xFFDCE9FF);
+              badgeText = const Color(0xFF0B1C30);
+            } else {
+              badgeBg = const Color(0xFFEFF4FF);
+              badgeText = const Color(0xFF0B1C30);
+            }
 
-  Widget _buildTop3Item(KpiReportEntity report, int rank) {
-    Color rankColor;
-    String rankStr;
-    switch (rank) {
-      case 1:
-        rankColor = const Color(0xFFFACC15);
-        rankStr = '1ST';
-        break;
-      case 2:
-        rankColor = const Color(0xFFCBD5E1);
-        rankStr = '2ND';
-        break;
-      case 3:
-      default:
-        rankColor = const Color(0xFFD97706);
-        rankStr = '3RD';
-        break;
-    }
-
-    final currencyFormat = NumberFormat.compact(locale: 'vi_VN');
-
-    return Container(
-      margin: const EdgeInsets.only(bottom: 16),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: rank == 1 ? const Color(0x0C001D4E) : Colors.transparent,
-        borderRadius: BorderRadius.circular(32),
-        border: rank == 1 ? Border.all(color: const Color(0x19001D4E)) : null,
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Expanded(
-            child: Row(
+            return Column(
               children: [
-                Stack(
-                  clipBehavior: Clip.none,
+                Row(
                   children: [
-                    CircleAvatar(
-                      radius: rank == 1 ? 28 : 24,
-                      backgroundColor: const Color(0xFFE8E8E8),
-                      backgroundImage: report.avatarUrl.isNotEmpty ? NetworkImage(report.avatarUrl) : null,
-                      child: report.avatarUrl.isEmpty
-                          ? Text(
-                              report.userName.isNotEmpty ? report.userName[0].toUpperCase() : '?',
-                              style: TextStyle(color: const Color(0xFF001D4E), fontWeight: FontWeight.bold, fontSize: rank == 1 ? 24 : 18),
-                            )
-                          : null,
-                    ),
-                    Positioned(
-                      bottom: -4,
-                      left: 0,
-                      right: 0,
+                    Container(
+                      width: 28,
+                      height: 28,
+                      decoration: BoxDecoration(
+                        color: badgeBg,
+                        shape: BoxShape.circle,
+                      ),
                       child: Center(
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                          decoration: BoxDecoration(
-                            color: rankColor,
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Text(
-                            rankStr,
-                            style: TextStyle(
-                              color: rank == 1 ? const Color(0xFF001D4E) : Colors.white,
-                              fontSize: 10,
-                              fontWeight: FontWeight.bold,
-                            ),
+                        child: Text(
+                          '${idx + 1}',
+                          style: TextStyle(
+                            color: badgeText,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            fontFamily: 'BeVietnamPro',
                           ),
                         ),
                       ),
-                    )
-                  ],
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        report.userName,
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        item.userName,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          color: const Color(0xFF001D4E),
-                          fontSize: rank == 1 ? 16 : 14,
-                          fontWeight: FontWeight.bold,
+                        style: const TextStyle(
+                          color: Color(0xFF0B1C30), // onSurface
+                          fontSize: 14, // body-md w600
+                          fontWeight: FontWeight.w600,
+                          fontFamily: 'BeVietnamPro',
                         ),
                       ),
-                      const Text(
-                        'Sale',
-                        style: TextStyle(
-                          color: Color(0xFF434651),
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                        ),
+                    ),
+                    Text(
+                      NumberFormat.currency(locale: 'vi_VN', symbol: 'VND').format(item.actualRevenue),
+                      style: const TextStyle(
+                        color: Color(0xFF434750), // onSurfaceVariant
+                        fontSize: 14, // body-md
+                        fontWeight: FontWeight.w400,
+                        fontFamily: 'BeVietnamPro',
                       ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
+                if (!isLast)
+                  const Divider(color: Color(0xFFC3C6D2), height: 24, thickness: 1),
               ],
-            ),
-          ),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Text(
-                currencyFormat.format(report.actualRevenue),
-                style: TextStyle(
-                  color: const Color(0xFF001D4E),
-                  fontSize: rank == 1 ? 18 : 16,
-                  fontWeight: FontWeight.w900,
-                ),
-              ),
-              Text(
-                '${report.percentCompleted.toStringAsFixed(1)}%',
-                style: TextStyle(
-                  color: report.percentCompleted >= 100 ? const Color(0xFF059669) : const Color(0xFF94A3B8),
-                  fontSize: 12,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ],
-          ),
+            );
+          }).toList(),
         ],
       ),
     );

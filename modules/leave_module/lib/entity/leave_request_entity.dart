@@ -25,6 +25,9 @@ class LeaveRequestEntity {
   /// FK → users.id (Manager đã duyệt); null nếu chưa duyệt
   final String? approvedBy;
 
+  /// Tên nhân viên (khi join bảng users)
+  final String? userName;
+
   /// Timestamp tạo bản ghi (UTC)
   final DateTime createdAt;
 
@@ -39,6 +42,7 @@ class LeaveRequestEntity {
     required this.reason,
     required this.status,
     this.approvedBy,
+    this.userName,
     required this.createdAt,
     this.data,
   });
@@ -49,6 +53,11 @@ class LeaveRequestEntity {
 
   /// Tạo entity từ row JSON trả về bởi Supabase
   factory LeaveRequestEntity.fromJson(Map<String, dynamic> json) {
+    String? name;
+    if (json['users'] != null && json['users'] is Map) {
+      name = json['users']['full_name'] as String?;
+    }
+
     return LeaveRequestEntity(
       id: json['id'] as int,
       userId: json['user_id'] as String,
@@ -57,6 +66,7 @@ class LeaveRequestEntity {
       reason: json['reason'] as String,
       status: LeaveStatus.fromString(json['status'] as String),
       approvedBy: json['approved_by'] as String?,
+      userName: name,
       createdAt: DateTime.parse(json['created_at'] as String),
       data: json['data'] as Map<String, dynamic>?,
     );
@@ -93,6 +103,7 @@ class LeaveRequestEntity {
     String? reason,
     LeaveStatus? status,
     String? approvedBy,
+    String? userName,
     DateTime? createdAt,
     Map<String, dynamic>? data,
   }) {
@@ -104,6 +115,7 @@ class LeaveRequestEntity {
       reason: reason ?? this.reason,
       status: status ?? this.status,
       approvedBy: approvedBy ?? this.approvedBy,
+      userName: userName ?? this.userName,
       createdAt: createdAt ?? this.createdAt,
       data: data ?? this.data,
     );
@@ -119,6 +131,7 @@ class LeaveRequestEntity {
         'reason: $reason, '
         'status: ${status.toDbString()}, '
         'approvedBy: $approvedBy, '
+        'userName: $userName, '
         'createdAt: $createdAt'
         ')';
   }

@@ -17,7 +17,7 @@ class StoreInfoBottomSheet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    bool inRange = currentDistance != null && currentDistance! <= 20.0;
+    bool inRange = currentDistance != null && currentDistance! <= 15.0;
     String distanceText = currentDistance != null ? '${currentDistance!.toStringAsFixed(1)}m' : 'Đang tìm...';
 
     return Container(

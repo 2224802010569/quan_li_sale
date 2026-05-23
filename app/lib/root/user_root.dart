@@ -27,7 +27,7 @@ class UserRoot {
     );
   }
 
-  Widget buildManager(Function(AppOutput) onOutput) {
+  Widget buildManager(Function(AppOutput) onOutput, VoidCallback onBack) {
     return ManagerView(
       input: ManagerInput(),
       onOpenProfile: (userId) {
@@ -38,6 +38,7 @@ class UserRoot {
           ),
         );
       },
+      onBack: onBack,
     );
   }
 

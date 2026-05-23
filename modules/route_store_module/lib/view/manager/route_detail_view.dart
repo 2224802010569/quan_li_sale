@@ -9,6 +9,7 @@ import 'package:route_store_module/entity/route_detail_entity.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:core/theme/theme.dart';
 
 class StoreWithDistance {
   final RouteDetailEntity detail;
@@ -114,7 +115,7 @@ class RouteDetailView extends ConsumerWidget {
         } catch (_) {}
 
         return Scaffold(
-          backgroundColor: const Color(0xFFFAF8FF),
+          backgroundColor: AppColors.background,
           body: Stack(
             children: [
               // ==================== CONTENT ====================
@@ -124,40 +125,64 @@ class RouteDetailView extends ConsumerWidget {
                     const SizedBox(height: 80),
                     Expanded(
                       child: SingleChildScrollView(
-                        padding: const EdgeInsets.all(24),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: AppSpacing.containerMargin,
+                          vertical: AppSpacing.xxl,
+                        ),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             _buildRouteTitle(),
-                            const SizedBox(height: 32),
+                            const SizedBox(height: AppSpacing.xxxl),
                             if (routeInfo != null) _buildAssignmentInfo(routeInfo),
-                            const SizedBox(height: 32),
-                            const Text(
-                              'Lộ trình cửa hàng',
-                              style: TextStyle(
-                                color: Color(0xFF1A1B21),
-                                fontSize: 18,
-                                fontFamily: 'Manrope',
-                                fontWeight: FontWeight.w700,
-                              ),
+                            const SizedBox(height: AppSpacing.xxxl),
+                            Row(
+                              children: [
+                                Text(
+                                  'Lộ trình cửa hàng',
+                                  style: AppTextStyles.headlineSm.copyWith(
+                                    color: AppColors.onSurface,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                                const SizedBox(width: AppSpacing.sm),
+                                detailsAsync.maybeWhen(
+                                  data: (details) => Container(
+                                    decoration: BoxDecoration(
+                                      color: AppColors.surfaceContainer,
+                                      borderRadius: BorderRadius.circular(AppSpacing.radiusFull),
+                                    ),
+                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                    child: Text(
+                                      '${details.length} Cửa hàng',
+                                      style: AppTextStyles.labelMd.copyWith(color: AppColors.secondary),
+                                    ),
+                                  ),
+                                  orElse: () => const SizedBox.shrink(),
+                                ),
+                              ],
                             ),
-                            const SizedBox(height: 24),
+                            const SizedBox(height: AppSpacing.xl),
                             detailsAsync.when(
                               loading: () =>
-                                  const Center(child: CircularProgressIndicator()),
-                              error: (err, _) => Center(child: Text('Lỗi: $err')),
+                                  const Center(child: CircularProgressIndicator(color: AppColors.secondary)),
+                              error: (err, _) => Center(child: Text('Lỗi: $err', style: AppTextStyles.bodyMd.copyWith(color: AppColors.error))),
                               data: (details) {
                                 return storesAsync.when(
                                   loading: () => const Center(
-                                    child: CircularProgressIndicator(),
+                                    child: CircularProgressIndicator(color: AppColors.secondary),
                                   ),
                                   error: (err, _) =>
-                                      Center(child: Text('Lỗi tải cửa hàng: $err')),
+                                      Center(child: Text('Lỗi tải cửa hàng: $err', style: AppTextStyles.bodyMd.copyWith(color: AppColors.error))),
                                   data: (allStores) {
                                     if (details.isEmpty) {
-                                      return const Center(
-                                        child: Text(
-                                          'Chưa có cửa hàng nào trong tuyến này',
+                                      return Center(
+                                        child: Padding(
+                                          padding: const EdgeInsets.only(top: 32),
+                                          child: Text(
+                                            'Chưa có cửa hàng nào trong tuyến này',
+                                            style: AppTextStyles.bodyMd.copyWith(color: AppColors.onSurfaceVariant),
+                                          ),
                                         ),
                                       );
                                     }
@@ -253,31 +278,23 @@ class RouteDetailView extends ConsumerWidget {
     return Container(
       height: 80,
       decoration: const BoxDecoration(
-        color: Color(0xD8FAF8FF),
-        boxShadow: [
-          BoxShadow(
-            color: Color(0x0F1A1B21),
-            blurRadius: 32,
-            offset: Offset(0, 12),
-          ),
-        ],
+        color: AppColors.white,
       ),
       child: SafeArea(
         bottom: false,
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 12),
+          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.containerMargin),
           child: Row(
             children: [
               IconButton(
-                icon: const Icon(Icons.arrow_back, color: Color(0xFF0D47A1)),
+                icon: const Icon(Icons.arrow_back_ios_new_rounded, color: AppColors.onSurface, size: 20),
                 onPressed: () => Navigator.pop(context),
               ),
-              const Text(
+              Text(
                 'Chi tiết Lộ trình',
-                style: TextStyle(
-                  color: Color(0xFF0D47A1),
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
+                style: AppTextStyles.headlineMd.copyWith(
+                  color: AppColors.primary,
+                  fontWeight: FontWeight.w700,
                 ),
               ),
               const Spacer(),
@@ -289,100 +306,133 @@ class RouteDetailView extends ConsumerWidget {
   }
 
   Widget _buildRouteTitle() {
-    return Column(
+    return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          route.routeName,
-          style: const TextStyle(
-            color: Color(0xFF1A1B21),
-            fontSize: 30,
-            fontFamily: 'Manrope',
-            fontWeight: FontWeight.w800,
-            letterSpacing: -0.75,
+        Container(
+          width: 44,
+          height: 44,
+          decoration: BoxDecoration(
+            color: AppColors.surfaceContainerLow,
+            borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
+          ),
+          child: const Icon(Icons.map_outlined, color: AppColors.secondary),
+        ),
+        const SizedBox(width: AppSpacing.lg),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                route.routeName,
+                style: AppTextStyles.headlineLg.copyWith(
+                  color: AppColors.onSurface,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                'Hành trình bán hàng hằng ngày',
+                style: AppTextStyles.bodyMd.copyWith(color: AppColors.onSurfaceVariant),
+              ),
+            ],
           ),
         ),
-        // Đã xóa thông tin thời gian theo yêu cầu
       ],
     );
   }
 
   Widget _buildAssignmentInfo(RouteWithInfo info) {
     final saleUser = info.saleUser;
+    final String employeeCode = saleUser?['employee_code']?.toString() ?? 'SKM-992';
+    final avatarPath = saleUser?['avatar_path']?.toString() ?? saleUser?['avatarPath']?.toString() ?? '';
+    final avatarUrl = avatarPath.isNotEmpty 
+        ? Supabase.instance.client.storage.from('user_avatars').getPublicUrl(avatarPath)
+        : '';
+
     return Container(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(AppSpacing.cardPadding),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(24),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x0F1A1B21),
-            blurRadius: 32,
-            offset: Offset(0, 12),
-          ),
-        ],
+        color: AppColors.white,
+        borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
+        boxShadow: AppShadows.level1,
       ),
       child: Row(
         children: [
-          Builder(
-            builder: (context) {
-              final avatarPath = saleUser?['avatar_path']?.toString() ?? saleUser?['avatarPath']?.toString() ?? '';
-              final avatarUrl = avatarPath.isNotEmpty 
-                  ? Supabase.instance.client.storage.from('user_avatars').getPublicUrl(avatarPath)
-                  : '';
-              return CircleAvatar(
-                radius: 28,
-                backgroundColor: const Color(0xFFD9E2FF),
+          Stack(
+            children: [
+              CircleAvatar(
+                radius: 24,
+                backgroundColor: AppColors.surfaceContainerLow,
                 backgroundImage: avatarUrl.isNotEmpty ? NetworkImage(avatarUrl) : null,
                 child: avatarUrl.isEmpty
                     ? Text(
                         (saleUser?['full_name'] ?? 'S')[0].toUpperCase(),
-                        style: const TextStyle(
-                          color: Color(0xFF0D47A1),
-                          fontSize: 20,
+                        style: AppTextStyles.headlineSm.copyWith(
+                          color: AppColors.primary,
                           fontWeight: FontWeight.bold,
                         ),
                       )
                     : null,
-              );
-            },
+              ),
+              Positioned(
+                right: 0,
+                bottom: 0,
+                child: Container(
+                  width: 12,
+                  height: 12,
+                  decoration: BoxDecoration(
+                    color: AppColors.online,
+                    shape: BoxShape.circle,
+                    border: Border.all(color: AppColors.white, width: 2),
+                  ),
+                ),
+              ),
+            ],
           ),
-          const SizedBox(width: 16),
+          const SizedBox(width: AppSpacing.lg),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  'Nhân viên phụ trách',
-                  style: TextStyle(color: Color(0xFF434652), fontSize: 12),
-                ),
                 Text(
-                  saleUser?['full_name'] ?? 'Chưa phân công',
-                  style: const TextStyle(
-                    color: Color(0xFF1A1B21),
-                    fontSize: 18,
-                    fontWeight: FontWeight.w700,
-                  ),
+                  'Nhân viên phụ trách',
+                  style: AppTextStyles.caption.copyWith(color: AppColors.onSurfaceVariant),
+                ),
+                const SizedBox(height: 2),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        saleUser?['full_name'] ?? 'Chưa phân công',
+                        style: AppTextStyles.bodyLg.copyWith(
+                          color: AppColors.onSurface,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                    if (info.assignment != null) ...[
+                      const SizedBox(width: AppSpacing.sm),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: AppColors.surfaceContainer,
+                          borderRadius: BorderRadius.circular(AppSpacing.radiusFull),
+                        ),
+                        child: Text(
+                          'Chính thức',
+                          style: AppTextStyles.labelMd.copyWith(
+                            color: AppColors.secondary,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ],
                 ),
               ],
             ),
           ),
-          if (info.assignment != null)
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-              decoration: BoxDecoration(
-                color: const Color(0xFFD9E2FF),
-                borderRadius: BorderRadius.circular(9999),
-              ),
-              child: const Text(
-                'Chính thức',
-                style: TextStyle(
-                  color: Color(0xFF00429C),
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ),
         ],
       ),
     );
@@ -412,7 +462,7 @@ class _StoreTimelineItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final Color themeColor = isCompleted ? const Color(0xFF2E7D32) : const Color(0xFF003178);
+    final Color themeColor = isCompleted ? AppColors.statusActiveText : AppColors.primary;
 
     return IntrinsicHeight(
       child: Row(
@@ -421,19 +471,19 @@ class _StoreTimelineItem extends StatelessWidget {
           Column(
             children: [
               Container(
-                width: 40,
-                height: 40,
+                width: 32,
+                height: 32,
                 decoration: BoxDecoration(
                   color: themeColor,
                   shape: BoxShape.circle,
                 ),
                 alignment: Alignment.center,
                 child: isCompleted
-                    ? const Icon(Icons.check, color: Colors.white, size: 20)
+                    ? const Icon(Icons.check_rounded, color: AppColors.white, size: 18)
                     : Text(
                         '$index',
-                        style: const TextStyle(
-                          color: Colors.white,
+                        style: AppTextStyles.labelLg.copyWith(
+                          color: AppColors.white,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
@@ -442,20 +492,21 @@ class _StoreTimelineItem extends StatelessWidget {
                 Expanded(
                   child: Container(
                     width: 2,
-                    color: isCompleted ? const Color(0xFF81C784) : const Color(0xFFB0C6FF),
+                    color: isCompleted ? AppColors.statusActiveText.withOpacity(0.5) : AppColors.outlineVariant,
                   ),
                 ),
             ],
           ),
-          const SizedBox(width: 16),
+          const SizedBox(width: AppSpacing.lg),
           Expanded(
             child: Container(
-              margin: const EdgeInsets.only(bottom: 24),
-              padding: const EdgeInsets.all(16),
+              margin: const EdgeInsets.only(bottom: AppSpacing.xxl),
+              padding: const EdgeInsets.all(AppSpacing.lg),
               decoration: BoxDecoration(
-                color: isCompleted ? const Color(0xFFE8F5E9).withOpacity(0.5) : const Color(0xFFF3F3FB),
-                borderRadius: BorderRadius.circular(24),
-                border: isCompleted ? Border.all(color: const Color(0xFFC8E6C9), width: 1) : null,
+                color: AppColors.white,
+                borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
+                boxShadow: AppShadows.level1,
+                border: isCompleted ? Border.all(color: AppColors.statusActiveText.withOpacity(0.3), width: 1) : null,
               ),
               child: Row(
                 children: [
@@ -465,34 +516,40 @@ class _StoreTimelineItem extends StatelessWidget {
                       children: [
                         Text(
                           storeName,
-                          style: TextStyle(
-                            color: isCompleted ? const Color(0xFF1B5E20) : const Color(0xFF1A1B21),
-                            fontSize: 16,
-                            fontWeight: FontWeight.w700,
+                          style: AppTextStyles.bodyLg.copyWith(
+                            color: isCompleted ? AppColors.statusActiveText : AppColors.onSurface,
+                            fontWeight: FontWeight.w600,
                             decoration: isCompleted ? TextDecoration.lineThrough : null,
                           ),
                         ),
                         const SizedBox(height: 4),
-                        Text(
-                          address,
-                          style: TextStyle(
-                            color: isCompleted ? const Color(0xFF4C8C50) : const Color(0xFF434652),
-                            fontSize: 14,
-                          ),
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Icon(Icons.location_on_outlined, size: 16, color: AppColors.secondary),
+                            const SizedBox(width: 4),
+                            Expanded(
+                              child: Text(
+                                address,
+                                style: AppTextStyles.bodyMd.copyWith(
+                                  color: AppColors.onSurfaceVariant,
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
                         if (distance > 0) ...[
                           const SizedBox(height: 6),
                           Row(
                             children: [
-                              const Icon(Icons.location_on, size: 12, color: Color(0xFF0D47A1)),
+                              const Icon(Icons.navigation_outlined, size: 12, color: AppColors.secondary),
                               const SizedBox(width: 4),
                               Text(
                                 distance >= 1000
                                     ? 'Cách ${(distance / 1000).toStringAsFixed(1)} km'
                                     : 'Cách ${distance.toStringAsFixed(0)} m',
-                                style: const TextStyle(
-                                  color: Color(0xFF0D47A1),
-                                  fontSize: 11,
+                                style: AppTextStyles.labelMd.copyWith(
+                                  color: AppColors.secondary,
                                   fontWeight: FontWeight.bold,
                                 ),
                               ),
@@ -503,24 +560,23 @@ class _StoreTimelineItem extends StatelessWidget {
                     ),
                   ),
                   if (isCompleted) ...[
-                    const SizedBox(width: 8),
+                    const SizedBox(width: AppSpacing.sm),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                       decoration: BoxDecoration(
-                        color: const Color(0xFFE8F5E9),
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: const Color(0xFF81C784)),
+                        color: AppColors.statusActiveBg,
+                        borderRadius: BorderRadius.circular(AppSpacing.radius),
+                        border: Border.all(color: AppColors.statusActiveText.withOpacity(0.5)),
                       ),
-                      child: const Row(
+                      child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Icon(Icons.check_circle, color: Color(0xFF2E7D32), size: 16),
-                          SizedBox(width: 4),
+                          const Icon(Icons.check_circle, color: AppColors.statusActiveText, size: 14),
+                          const SizedBox(width: 4),
                           Text(
                             'Hoàn thành',
-                            style: TextStyle(
-                              color: Color(0xFF2E7D32),
-                              fontSize: 12,
+                            style: AppTextStyles.labelMd.copyWith(
+                              color: AppColors.statusActiveText,
                               fontWeight: FontWeight.bold,
                             ),
                           ),
@@ -528,19 +584,27 @@ class _StoreTimelineItem extends StatelessWidget {
                       ),
                     ),
                   ] else if (isSaleRole && onCheckinPressed != null) ...[
-                    const SizedBox(width: 8),
+                    const SizedBox(width: AppSpacing.sm),
                     ElevatedButton.icon(
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF003178),
-                        foregroundColor: Colors.white,
+                        backgroundColor: AppColors.secondary,
+                        foregroundColor: AppColors.white,
+                        elevation: 0,
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
+                          borderRadius: BorderRadius.circular(AppSpacing.radius),
                         ),
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                        minimumSize: const Size(80, AppSpacing.touchTarget),
                       ),
                       onPressed: onCheckinPressed,
-                      icon: const Icon(Icons.check_circle_outline, size: 16),
-                      label: const Text('Check-in', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                      icon: const Icon(Icons.login_rounded, size: 14),
+                      label: Text(
+                        'Check-in',
+                        style: AppTextStyles.labelMd.copyWith(
+                          color: AppColors.white,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
                     ),
                   ]
                 ],

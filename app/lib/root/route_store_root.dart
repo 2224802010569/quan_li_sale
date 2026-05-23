@@ -26,17 +26,19 @@ class RouteStoreRoot {
     );
   }
 
-  Widget buildStoreManager(Function(AppOutput) onNavigate) {
+  Widget buildStoreManager(Function(AppOutput) onNavigate, VoidCallback onBack) {
     return StoreListView(
       onAdd: () => onNavigate(AppOutput(toModule: 'CREATE_STORE')),
       onEdit: (store) => onNavigate(AppOutput(toModule: 'EDIT_STORE', data: {'store': store})),
+      onBack: onBack,
     );
   }
 
-  Widget buildRouteManager(Function(AppOutput) onNavigate) {
+  Widget buildRouteManager(Function(AppOutput) onNavigate, VoidCallback onBack) {
     return RouteListView(
       onAdd: () => onNavigate(AppOutput(toModule: 'CREATE_ROUTE')),
       onEdit: (route) => onNavigate(AppOutput(toModule: 'EDIT_ROUTE', data: {'route': route})),
+      onBack: onBack,
     );
   }
 

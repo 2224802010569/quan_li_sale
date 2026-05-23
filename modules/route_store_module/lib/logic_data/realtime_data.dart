@@ -38,7 +38,8 @@ final realtimeAllRouteDetailsProvider = StreamProvider<List<RouteDetailEntity>>(
 });
 
 /// Stream provider cho assignments của user hiện tại (realtime)
-final realtimeUserAssignmentsProvider = StreamProvider.family<List<AssignmentEntity>, String>((ref, userId) {
+final realtimeUserAssignmentsProvider = StreamProvider.autoDispose.family<List<AssignmentEntity>, String>((ref, userId) {
+  ref.keepAlive();
   if (userId.isEmpty) return Stream.value([]);
   final assignmentData = ref.read(assignmentDataProvider);
   return assignmentData.streamAssignmentsByUser(userId);
@@ -139,8 +140,17 @@ final routeListWithInfoProvider = Provider<AsyncValue<List<RouteWithInfo>>>((ref
     
     double progress = 0.0;
     if (totalStores > 0) {
-      final visitedStores = storesInRoute.where((storeId) => 
-        attendance.any((a) => a['store_id'] == storeId && a['checkin_time'] != null && a['checkout_time'] != null)
+      final todayStr = DateTime.now().toIso8601String().split('T')[0];
+      final visitedStores = storesInRoute.where((storeId) =>
+        attendance.any((a) {
+          final checkinStr = a['checkin_time']?.toString() ?? '';
+          final checkoutStr = a['checkout_time']?.toString() ?? '';
+          final isToday = checkinStr.startsWith(todayStr);
+          return a['store_id'] == storeId
+              && isToday
+              && checkinStr.isNotEmpty
+              && checkoutStr.isNotEmpty;
+        })
       ).length;
       progress = visitedStores / totalStores;
     }

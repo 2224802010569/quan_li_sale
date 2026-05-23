@@ -1,0 +1,1422 @@
+
+FILE: c:\Users\Admin\Documents\GitHub\quan_li_sale\modules\inventory_module\lib\entity\display_entity.dart
+class DisplayEntity {
+  final String id;
+  final String userId;
+  final String storeId;
+  final String imageUrl;
+  final String? note;
+  final DateTime createdAt;
+
+  DisplayEntity({
+    required this.id,
+    required this.userId,
+    required this.storeId,
+    required this.imageUrl,
+    this.note,
+    required this.createdAt,
+  });
+
+  factory DisplayEntity.fromJson(Map<String, dynamic> json) {
+    return DisplayEntity(
+      id: json['id'].toString(),
+      userId: json['user_id'].toString(),
+      storeId: json['store_id'].toString(),
+      imageUrl: json['image_url'].toString(),
+      note: json['note']?.toString(),
+      createdAt: DateTime.parse(json['created_at'].toString()),
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'user_id': userId,
+      'store_id': storeId,
+      'image_url': imageUrl,
+      'note': note,
+      'created_at': createdAt.toIso8601String(),
+    };
+  }
+}
+
+
+FILE: c:\Users\Admin\Documents\GitHub\quan_li_sale\modules\inventory_module\lib\entity\inventory_check_entity.dart
+class InventoryCheckEntity {
+  final String id;
+  final String userId;
+  final String storeId;
+  final DateTime createdAt;
+
+  InventoryCheckEntity({
+    required this.id,
+    required this.userId,
+    required this.storeId,
+    required this.createdAt,
+  });
+
+  factory InventoryCheckEntity.fromJson(Map<String, dynamic> json) {
+    return InventoryCheckEntity(
+      id: json['id'].toString(),
+      userId: json['user_id'].toString(),
+      storeId: json['store_id'].toString(),
+      createdAt: DateTime.parse(json['created_at'].toString()),
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'user_id': userId,
+      'store_id': storeId,
+      'created_at': createdAt.toIso8601String(),
+    };
+  }
+}
+
+
+FILE: c:\Users\Admin\Documents\GitHub\quan_li_sale\modules\inventory_module\lib\entity\inventory_detail_entity.dart
+class InventoryDetailEntity {
+  final String id;
+  final int checkId;
+  final String productId;
+  final int quantity;
+  final String status;
+  final DateTime createdAt;
+
+  InventoryDetailEntity({
+    required this.id,
+    required this.checkId,
+    required this.productId,
+    required this.quantity,
+    required this.status,
+    required this.createdAt,
+  });
+
+  factory InventoryDetailEntity.fromJson(Map<String, dynamic> json) {
+    return InventoryDetailEntity(
+      id: json['id'].toString(),
+      checkId: json['check_id'] as int,
+      productId: json['product_id'].toString(),
+      quantity: json['quantity'] as int,
+      status: json['status'].toString(),
+      createdAt: DateTime.parse(json['created_at'].toString()),
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'check_id': checkId,
+      'product_id': productId,
+      'quantity': quantity,
+      'status': status,
+      'created_at': createdAt.toIso8601String(),
+    };
+  }
+}
+
+
+FILE: c:\Users\Admin\Documents\GitHub\quan_li_sale\modules\inventory_module\lib\entity\product_entity.dart
+class ProductEntity {
+  final String id;
+  final String productName;
+  final double price;
+
+  ProductEntity({
+    required this.id,
+    required this.productName,
+    required this.price,
+  });
+
+  factory ProductEntity.fromJson(Map<String, dynamic> json) {
+    return ProductEntity(
+      id: json['id'].toString(),
+      productName: json['product_name'].toString(),
+      price: (json['price'] as num).toDouble(),
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'product_name': productName,
+      'price': price,
+    };
+  }
+}
+
+
+FILE: c:\Users\Admin\Documents\GitHub\quan_li_sale\modules\inventory_module\lib\input\inventory_input.dart
+class InventoryInput {
+  final String userId;
+  final String storeId;
+  final List<int> productIds;
+
+  InventoryInput({
+    required this.userId,
+    required this.storeId,
+    required this.productIds,
+  });
+
+  bool canOpen() {
+    return userId.isNotEmpty && storeId.isNotEmpty && storeId != '0';
+  }
+}
+
+
+FILE: c:\Users\Admin\Documents\GitHub\quan_li_sale\modules\inventory_module\lib\inventory_module.dart
+import 'dart:io';
+import 'package:flutter/material.dart';
+import 'package:core/di/injector.dart';
+import 'package:core/di/supabase.dart';
+
+import 'input/inventory_input.dart';
+import 'output/inventory_output.dart';
+import 'view/inventory_audit_view.dart';
+import 'view/inventory_confirm_view.dart';
+import 'logic_data/inventory_data_service.dart';
+import 'logic_uc/inventory_use_case.dart';
+import 'entity/product_entity.dart';
+import 'entity/inventory_check_entity.dart';
+import 'entity/inventory_detail_entity.dart';
+import 'entity/display_entity.dart';
+
+class InventoryModule extends StatefulWidget {
+  final InventoryInput input;
+  final Function(InventoryOutput) onOutput;
+  final VoidCallback onBack;
+
+  const InventoryModule({
+    super.key,
+    required this.input,
+    required this.onOutput,
+    required this.onBack,
+  });
+
+  @override
+  State<InventoryModule> createState() => _InventoryModuleState();
+}
+
+class _InventoryModuleState extends State<InventoryModule> {
+  late final InventoryDataService _dataService;
+  final _useCase = InventoryUseCase();
+
+  List<ProductEntity> _products = [];
+  Map<String, int> _previousQuantities = {};
+  
+  bool _isLoading = true;
+  String? _error;
+
+  // State for submitting overlay
+  Map<String, int> _actualStocks = {};
+
+  @override
+  void initState() {
+    super.initState();
+    final client = get<SupabaseConnect>().client!;
+    _dataService = InventoryDataService(client);
+    _loadData();
+  }
+
+  Future<void> _loadData() async {
+    if (!widget.input.canOpen()) {
+      setState(() {
+        _error = "Dữ liệu đầu vào không hợp lệ (Thiếu storeId hoặc userId)";
+        _isLoading = false;
+      });
+      return;
+    }
+
+    try {
+      final productsFuture = _dataService.fetchAllProducts();
+      final previousQuantitiesFuture = _dataService.fetchLastCheckQuantities(widget.input.storeId);
+
+      final results = await Future.wait([productsFuture, previousQuantitiesFuture]);
+      
+      setState(() {
+        _products = results[0] as List<ProductEntity>;
+        _previousQuantities = results[1] as Map<String, int>;
+        _isLoading = false;
+      });
+    } catch (e) {
+      setState(() {
+        _error = e.toString();
+        _isLoading = false;
+      });
+    }
+  }
+
+  void _showConfirmSheet(Map<String, int> actualStocks) {
+    setState(() {
+      _actualStocks = actualStocks;
+    });
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      builder: (context) {
+        return InventoryConfirmView(
+          actualStocks: actualStocks,
+          previousStocks: _previousQuantities,
+          allProducts: _products,
+          onBack: () => Navigator.pop(context),
+          onSubmit: (File proofImage) {
+            Navigator.pop(context);
+            _handleSubmit(proofImage);
+          },
+          isLoading: false,
+        );
+      },
+    );
+  }
+
+  Future<void> _handleSubmit(File proofImage) async {
+    try {
+      setState(() => _isLoading = true);
+
+      // 1. Validate UseCase
+      int checkedItems = _actualStocks.values.where((qty) => qty > 0).length;
+      
+      _useCase.validateSubmission(
+        totalCheckedItems: checkedItems,
+        requiredItemsCount: 1, 
+        hasProofImage: true,
+      );
+
+      // 2. Chuẩn bị Entity Phiếu kiểm tồn
+      final checkEntity = InventoryCheckEntity(
+        id: '', // Sẽ bị drop trước khi insert vào DB để tự sinh ID
+        userId: widget.input.userId,
+        storeId: widget.input.storeId,
+        createdAt: DateTime.now(),
+      );
+
+      // 3. Chuẩn bị danh sách Chi tiết kiểm tồn
+      List<InventoryDetailEntity> details = [];
+      _actualStocks.forEach((productId, actualQty) {
+        final previousQty = _previousQuantities[productId];
+        
+        final status = _useCase.determineStockStatus(
+          previousQty: previousQty, 
+          actualQty: actualQty,
+        );
+
+        details.add(InventoryDetailEntity(
+          id: '', // DB tự sinh
+          checkId: 0, // Sẽ được cập nhật tự động trong Data Service
+          productId: productId,
+          quantity: actualQty,
+          status: status,
+          createdAt: DateTime.now(),
+        ));
+      });
+
+      // 4. Lưu toàn bộ dữ liệu kiểm tồn vào Database
+      await _dataService.submitInventoryData(checkEntity, details);
+
+      // 5. Upload ảnh minh chứng
+      final displayEntity = DisplayEntity(
+        id: '', // DB tự sinh
+        userId: widget.input.userId,
+        storeId: widget.input.storeId,
+        imageUrl: '', // Sẽ được gán Public URL sau khi upload
+        createdAt: DateTime.now(),
+      );
+      await _dataService.uploadDisplayImage(displayEntity, proofImage);
+
+      setState(() => _isLoading = false);
+
+      // 6. Hoàn tất & Gửi sự kiện Output ra ngoài App
+      widget.onOutput(InventoryOutput.success());
+
+    } catch (e) {
+      setState(() => _isLoading = false);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(e.toString())),
+        );
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_isLoading && _products.isEmpty) {
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    if (_error != null) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('Lỗi tải dữ liệu')),
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(_error!, textAlign: TextAlign.center, style: const TextStyle(color: Colors.red)),
+              const SizedBox(height: 16),
+              ElevatedButton(onPressed: _loadData, child: const Text('Thử lại')),
+            ],
+          ),
+        ),
+      );
+    }
+
+    return Stack(
+      children: [
+        InventoryAuditView(
+          allProducts: _products,
+          onBack: widget.onBack,
+          onConfirm: _showConfirmSheet,
+        ),
+        if (_isLoading)
+          Container(
+            color: Colors.black.withValues(alpha: 0.3),
+            child: const Center(
+              child: CircularProgressIndicator(),
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+
+FILE: c:\Users\Admin\Documents\GitHub\quan_li_sale\modules\inventory_module\lib\inventory_module_export.dart
+library inventory_module;
+
+export 'inventory_module.dart';
+export 'input/inventory_input.dart';
+export 'output/inventory_output.dart';
+
+
+FILE: c:\Users\Admin\Documents\GitHub\quan_li_sale\modules\inventory_module\lib\logic_data\inventory_data_service.dart
+import 'dart:io';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import '../entity/product_entity.dart';
+import '../entity/inventory_check_entity.dart';
+import '../entity/inventory_detail_entity.dart';
+import '../entity/display_entity.dart';
+
+class InventoryDataService {
+  final SupabaseClient _supabase;
+
+  InventoryDataService(this._supabase);
+
+  // Lấy danh sách toàn bộ sản phẩm
+  Future<List<ProductEntity>> fetchAllProducts() async {
+    try {
+      final data = await _supabase
+          .from('products')
+          .select();
+
+      return (data as List<dynamic>)
+          .map((e) => ProductEntity.fromJson(e as Map<String, dynamic>))
+          .toList();
+    } catch (e) {
+      throw Exception('Lỗi khi lấy danh sách sản phẩm: $e');
+    }
+  }
+
+  // Lấy số lượng tồn từ lần kiểm trước của cửa hàng
+  Future<Map<String, int>> fetchLastCheckQuantities(String storeId) async {
+    try {
+      final storeIdInt = int.parse(storeId);
+      final lastCheck = await _supabase
+          .from('inventory_checks')
+          .select('id')
+          .eq('store_id', storeIdInt)
+          .order('created_at', ascending: false)
+          .limit(1)
+          .maybeSingle();
+
+      if (lastCheck == null) {
+        return {};
+      }
+
+      final checkId = lastCheck['id'] as int;
+      final detailsData = await _supabase
+          .from('inventory_details')
+          .select('product_id, quantity')
+          .eq('check_id', checkId);
+
+      final Map<String, int> previousQuantities = {};
+      for (var row in (detailsData as List<dynamic>)) {
+        previousQuantities[row['product_id'].toString()] = row['quantity'] as int;
+      }
+      return previousQuantities;
+    } catch (e) {
+      throw Exception('Lỗi khi lấy dữ liệu kiểm tồn trước: $e');
+    }
+  }
+
+  // Lưu dữ liệu kiểm tồn (gồm phiếu check và danh sách detail)
+  Future<void> submitInventoryData(
+      InventoryCheckEntity check, List<InventoryDetailEntity> details) async {
+    try {
+      // 1. Lưu vào inventory_checks VÀ LẤY VỀ ID VỪA ĐƯỢC TẠO
+      var checkJson = check.toJson();
+      checkJson.remove('id'); // Xóa id để DB tự sinh
+
+      final checkResponse = await _supabase
+          .from('inventory_checks')
+          .insert(checkJson)
+          .select()
+          .single();
+
+      final int newCheckId = checkResponse['id'];
+
+      // 2. Cập nhật check_id cho toàn bộ chi tiết và lưu vào inventory_details
+      if (details.isNotEmpty) {
+        final detailsJson = details.map((d) {
+          var json = d.toJson();
+          json['check_id'] = newCheckId; // Gắn ID phiếu mẹ vào chi tiết (kiểu int)
+          json.remove('id'); // Xóa id chi tiết để DB tự sinh
+          return json;
+        }).toList();
+
+        await _supabase.from('inventory_details').insert(detailsJson);
+      }
+    } catch (e) {
+      throw Exception('Lỗi khi lưu dữ liệu kiểm tồn: $e');
+    }
+  }
+
+  // Upload ảnh minh chứng và lưu DB
+  Future<void> uploadDisplayImage(DisplayEntity display, File imageFile) async {
+    try {
+      // Tạo đường dẫn upload (Dùng store_id thay vì display.id vì id lúc này đang null)
+      final fileName = 'store_${display.storeId}_${DateTime.now().millisecondsSinceEpoch}.jpg';
+      final storagePath = '${display.storeId}/$fileName';
+      
+      // Upload file lên bucket 'displays'
+      await _supabase.storage.from('displays').upload(storagePath, imageFile);
+      
+      // Lấy public URL của ảnh vừa upload
+      final publicUrl = _supabase.storage.from('displays').getPublicUrl(storagePath);
+      
+      // Tạo json để insert, bỏ qua id để DB tự sinh
+      var insertData = display.toJson();
+      insertData.remove('id');
+      insertData['image_url'] = publicUrl;
+
+      // Lưu thông tin hiển thị (ảnh) vào bảng displays
+      await _supabase.from('displays').insert(insertData);
+    } catch (e) {
+      throw Exception('Lỗi khi upload ảnh trưng bày: $e');
+    }
+  }
+}
+
+FILE: c:\Users\Admin\Documents\GitHub\quan_li_sale\modules\inventory_module\lib\logic_uc\inventory_use_case.dart
+class InventoryUseCase {
+  /// Tính toán chênh lệch tồn kho
+  /// Trả về số lượng chênh lệch (Thực tế - Hệ thống)
+  int calculateStockDifference({required int systemStock, required int actualStock}) {
+    return actualStock - systemStock;
+  }
+
+  /// Xác định trạng thái kiểm tồn dựa trên độ chênh lệch
+  /// Để lưu vào cột 'status' của bảng inventory_details
+  String determineStockStatus({int? previousQty, required int actualQty}) {
+    if (previousQty == null) return 'NEW';
+    final diff = actualQty - previousQty;
+    if (diff == 0) return 'MATCHED';   // Khớp
+    if (diff > 0) return 'SURPLUS';    // Dư thừa
+    return 'SHORTAGE';                 // Thiếu hụt
+  }
+
+  /// Kiểm tra điều kiện hợp lệ để submit báo cáo kiểm tồn
+  /// - Phải kiểm tra ít nhất 1 mặt hàng
+  /// - Nếu yêu cầu kiểm kê đủ danh sách, số lượng đã kiểm phải >= số lượng yêu cầu
+  /// - Bắt buộc phải có ảnh minh chứng kệ hàng
+  void validateSubmission({
+    required int totalCheckedItems,
+    required int requiredItemsCount,
+    required bool hasProofImage,
+  }) {
+    if (totalCheckedItems == 0) {
+      throw Exception('Bạn chưa kiểm kê bất kỳ mặt hàng nào.');
+    }
+    
+    // Tùy vào yêu cầu nghiệp vụ: có bắt buộc kiểm hết danh sách hay không
+    if (totalCheckedItems < requiredItemsCount) {
+      throw Exception('Bạn chưa kiểm kê đầy đủ các mặt hàng được yêu cầu ($totalCheckedItems/$requiredItemsCount).');
+    }
+
+    if (!hasProofImage) {
+      throw Exception('Bắt buộc phải có ảnh chụp minh chứng kệ hàng hoặc trưng bày.');
+    }
+  }
+
+  /// Xử lý logic nhận diện mã vạch
+  /// Trả về true nếu mã vạch nằm trong danh sách cần kiểm kê
+  bool isValidBarcode(String scannedBarcode, List<String> validBarcodes) {
+    if (scannedBarcode.isEmpty) return false;
+    return validBarcodes.contains(scannedBarcode);
+  }
+}
+
+
+FILE: c:\Users\Admin\Documents\GitHub\quan_li_sale\modules\inventory_module\lib\output\inventory_output.dart
+class InventoryOutput {
+  final bool success;
+  final String? errorMessage;
+  final String from;
+  final String to;
+  final String view;
+
+  InventoryOutput({
+    required this.success,
+    this.errorMessage,
+    required this.from,
+    required this.to,
+    required this.view,
+  });
+
+  factory InventoryOutput.success() {
+    return InventoryOutput(
+      success: true,
+      from: 'INVENTORY',
+      to: 'ROUTE_STORE', // Trở về danh sách tuyến hoặc cửa hàng
+      view: 'HOME',
+    );
+  }
+
+  factory InventoryOutput.failure(String error) {
+    return InventoryOutput(
+      success: false,
+      errorMessage: error,
+      from: 'INVENTORY',
+      to: '',
+      view: '',
+    );
+  }
+}
+
+
+FILE: c:\Users\Admin\Documents\GitHub\quan_li_sale\modules\inventory_module\lib\view\barcode_scanner_view.dart
+import 'package:flutter/material.dart';
+import 'package:mobile_scanner/mobile_scanner.dart';
+
+class BarcodeScannerView extends StatefulWidget {
+  const BarcodeScannerView({super.key});
+
+  @override
+  State<BarcodeScannerView> createState() => _BarcodeScannerViewState();
+}
+
+class _BarcodeScannerViewState extends State<BarcodeScannerView> with SingleTickerProviderStateMixin {
+  final MobileScannerController _cameraController = MobileScannerController();
+  late AnimationController _animationController;
+
+  @override
+  void initState() {
+    super.initState();
+    _animationController = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 2),
+    )..repeat(reverse: true);
+  }
+
+  @override
+  void dispose() {
+    _animationController.dispose();
+    _cameraController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Quét mã vạch sản phẩm'),
+        actions: [
+          IconButton(
+            icon: ValueListenableBuilder(
+              valueListenable: _cameraController.torchState,
+              builder: (context, state, child) {
+                switch (state) {
+                  case TorchState.off:
+                    return const Icon(Icons.flash_off, color: Colors.grey);
+                  case TorchState.on:
+                    return const Icon(Icons.flash_on, color: Colors.yellow);
+                }
+              },
+            ),
+            iconSize: 32.0,
+            onPressed: () => _cameraController.toggleTorch(),
+          ),
+          IconButton(
+            icon: ValueListenableBuilder(
+              valueListenable: _cameraController.cameraFacingState,
+              builder: (context, state, child) {
+                switch (state) {
+                  case CameraFacing.front:
+                    return const Icon(Icons.camera_front);
+                  case CameraFacing.back:
+                    return const Icon(Icons.camera_rear);
+                }
+              },
+            ),
+            iconSize: 32.0,
+            onPressed: () => _cameraController.switchCamera(),
+          ),
+        ],
+      ),
+      body: Stack(
+        children: [
+          MobileScanner(
+            controller: _cameraController,
+            onDetect: (capture) {
+              final List<Barcode> barcodes = capture.barcodes;
+              if (barcodes.isNotEmpty) {
+                final String code = barcodes.first.rawValue ?? '';
+                if (code.isNotEmpty) {
+                   _cameraController.stop();
+                   Navigator.pop(context, code);
+                }
+              }
+            },
+          ),
+          AnimatedBuilder(
+            animation: _animationController,
+            builder: (context, child) {
+              return CustomPaint(
+                painter: ScannerOverlayPainter(animationValue: _animationController.value),
+                child: Container(),
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class ScannerOverlayPainter extends CustomPainter {
+  final double animationValue;
+
+  ScannerOverlayPainter({required this.animationValue});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final double scanAreaSize = 250.0;
+    final double cornerLength = 40.0;
+    final double strokeWidth = 4.0;
+    
+    // Background overlay
+    final paintBg = Paint()..color = Colors.black.withValues(alpha: 0.5);
+    final backgroundPath = Path()
+      ..addRect(Rect.fromLTWH(0, 0, size.width, size.height))
+      ..addRect(Rect.fromCenter(
+        center: Offset(size.width / 2, size.height / 2),
+        width: scanAreaSize,
+        height: scanAreaSize,
+      ))
+      ..fillType = PathFillType.evenOdd;
+    canvas.drawPath(backgroundPath, paintBg);
+
+    final Paint paintCorner = Paint()
+      ..color = Colors.white
+      ..strokeWidth = strokeWidth
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.square;
+
+    final double left = (size.width - scanAreaSize) / 2;
+    final double top = (size.height - scanAreaSize) / 2;
+    final double right = left + scanAreaSize;
+    final double bottom = top + scanAreaSize;
+
+    // Top-Left Corner
+    canvas.drawPath(Path()
+      ..moveTo(left, top + cornerLength)
+      ..lineTo(left, top)
+      ..lineTo(left + cornerLength, top), paintCorner);
+
+    // Top-Right Corner
+    canvas.drawPath(Path()
+      ..moveTo(right - cornerLength, top)
+      ..lineTo(right, top)
+      ..lineTo(right, top + cornerLength), paintCorner);
+
+    // Bottom-Left Corner
+    canvas.drawPath(Path()
+      ..moveTo(left, bottom - cornerLength)
+      ..lineTo(left, bottom)
+      ..lineTo(left + cornerLength, bottom), paintCorner);
+
+    // Bottom-Right Corner
+    canvas.drawPath(Path()
+      ..moveTo(right - cornerLength, bottom)
+      ..lineTo(right, bottom)
+      ..lineTo(right, bottom - cornerLength), paintCorner);
+
+    // Animating Scan Line
+    final Paint paintLine = Paint()
+      ..color = Colors.red
+      ..strokeWidth = 2.0;
+
+    final double lineY = top + (scanAreaSize * animationValue);
+    canvas.drawLine(Offset(left, lineY), Offset(right, lineY), paintLine);
+  }
+
+  @override
+  bool shouldRepaint(covariant ScannerOverlayPainter oldDelegate) {
+    return oldDelegate.animationValue != animationValue;
+  }
+}
+
+
+FILE: c:\Users\Admin\Documents\GitHub\quan_li_sale\modules\inventory_module\lib\view\components\camera_capture_box.dart
+import 'dart:io';
+import 'package:flutter/material.dart';
+
+class CameraCaptureBox extends StatelessWidget {
+  final String? imagePath;
+  final VoidCallback onCapture;
+  final VoidCallback? onRemove;
+
+  const CameraCaptureBox({
+    super.key,
+    this.imagePath,
+    required this.onCapture,
+    this.onRemove,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    if (imagePath != null) {
+      return Stack(
+        children: [
+          ClipRRect(
+            borderRadius: BorderRadius.circular(12),
+            child: Image.file(
+              File(imagePath!),
+              width: double.infinity,
+              height: 200,
+              fit: BoxFit.cover,
+            ),
+          ),
+          Positioned(
+            top: 8,
+            right: 8,
+            child: Container(
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                shape: BoxShape.circle,
+              ),
+              child: IconButton(
+                icon: const Icon(Icons.cancel, color: Colors.red, size: 24),
+                onPressed: onRemove,
+              ),
+            ),
+          ),
+        ],
+      );
+    }
+
+    return InkWell(
+      onTap: onCapture,
+      child: Container(
+        width: double.infinity,
+        height: 120,
+        decoration: BoxDecoration(
+          color: Colors.blue.withValues(alpha: 0.1),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: Colors.blue),
+        ),
+        child: const Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.camera_alt, color: Colors.blue, size: 40),
+            SizedBox(height: 8),
+            Text(
+              'Chụp ảnh kệ hàng (Bắt buộc)',
+              style: TextStyle(color: Colors.blue, fontWeight: FontWeight.bold),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+
+FILE: c:\Users\Admin\Documents\GitHub\quan_li_sale\modules\inventory_module\lib\view\inventory_audit_view.dart
+import 'package:flutter/material.dart';
+import '../entity/product_entity.dart';
+import 'product_picker_sheet.dart';
+import 'barcode_scanner_view.dart';
+
+class InventoryAuditView extends StatefulWidget {
+  final List<ProductEntity> allProducts;
+  final VoidCallback onBack;
+  final Function(Map<String, int> actualStocks) onConfirm;
+
+  const InventoryAuditView({
+    super.key,
+    required this.allProducts,
+    required this.onBack,
+    required this.onConfirm,
+  });
+
+  @override
+  State<InventoryAuditView> createState() => _InventoryAuditViewState();
+}
+
+class _InventoryAuditViewState extends State<InventoryAuditView> {
+  final Map<String, int> _actualStocks = {};
+
+  void _updateStock(String id, int delta) {
+    setState(() {
+      final current = _actualStocks[id] ?? 0;
+      final newValue = current + delta;
+      if (newValue >= 0) {
+        _actualStocks[id] = newValue;
+      }
+    });
+  }
+
+  void _updateExactStock(String id, int value) {
+    setState(() {
+      if (value >= 0) {
+        _actualStocks[id] = value;
+      }
+    });
+  }
+
+  void _showQuantityDialog(BuildContext context, String productId, int initialValue) {
+    final controller = TextEditingController(text: initialValue.toString());
+    showDialog(
+      context: context,
+      builder: (ctx) {
+        return AlertDialog(
+          title: const Text('Nhập số lượng'),
+          content: TextField(
+            controller: controller,
+            keyboardType: TextInputType.number,
+            autofocus: true,
+            decoration: const InputDecoration(
+              border: OutlineInputBorder(),
+              labelText: 'Số lượng',
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Hủy'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                final val = int.tryParse(controller.text) ?? 0;
+                _updateExactStock(productId, val);
+                Navigator.pop(ctx);
+              },
+              child: const Text('Xác nhận'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _openProductPicker() async {
+    final selectedProduct = await showModalBottomSheet<ProductEntity>(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (_) => ProductPickerSheet(allProducts: widget.allProducts),
+    );
+
+    if (selectedProduct != null) {
+      setState(() {
+        if (!_actualStocks.containsKey(selectedProduct.id)) {
+          _actualStocks[selectedProduct.id] = 0;
+        }
+      });
+    }
+  }
+
+  void _openScanner() async {
+    final scannedBarcode = await Navigator.push<String>(
+      context,
+      MaterialPageRoute(builder: (_) => const BarcodeScannerView()),
+    );
+
+    if (scannedBarcode != null && mounted) {
+      final product = widget.allProducts.where((p) => p.id == scannedBarcode).firstOrNull;
+      if (product != null) {
+        setState(() {
+          final current = _actualStocks[product.id] ?? 0;
+          _actualStocks[product.id] = current + 1;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Đã quét: ${product.productName} (+1)')),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Không tìm thấy sản phẩm')),
+        );
+      }
+    }
+  }
+
+  void _handleConfirm() {
+    if (_actualStocks.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Vui lòng thêm ít nhất 1 sản phẩm để kiểm tồn.')),
+      );
+      return;
+    }
+    widget.onConfirm(_actualStocks);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final selectedProductIds = _actualStocks.keys.toList();
+
+    return Scaffold(
+      backgroundColor: const Color(0xFFF4F6F8),
+      appBar: AppBar(
+        title: const Text('Kiểm tồn kho'),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: widget.onBack,
+        ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.add),
+            onPressed: _openProductPicker,
+          )
+        ],
+      ),
+      body: Column(
+        children: [
+          Expanded(
+            child: selectedProductIds.isEmpty
+                ? Center(
+                    child: Text(
+                      'Chưa có sản phẩm nào.\nBấm "+" hoặc quét mã để bắt đầu.',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(color: Colors.grey[600], fontSize: 16),
+                    ),
+                  )
+                : ListView.builder(
+                    padding: const EdgeInsets.all(16),
+                    itemCount: selectedProductIds.length,
+                    itemBuilder: (context, index) {
+                      final productId = selectedProductIds[index];
+                      final product = widget.allProducts.firstWhere((p) => p.id == productId);
+                      final currentStock = _actualStocks[productId] ?? 0;
+                      
+                      return Card(
+                        margin: const EdgeInsets.only(bottom: 16),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        child: Padding(
+                          padding: const EdgeInsets.all(16),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      product.productName,
+                                      style: const TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      'Giá: ${product.price}',
+                                      style: TextStyle(
+                                        color: Colors.grey[600],
+                                        fontSize: 14,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              Row(
+                                children: [
+                                  IconButton(
+                                    icon: const Icon(Icons.remove_circle_outline),
+                                    onPressed: () => _updateStock(product.id, -1),
+                                    color: Colors.red,
+                                  ),
+                                  GestureDetector(
+                                    onTap: () => _showQuantityDialog(context, product.id, currentStock),
+                                    child: SizedBox(
+                                      width: 40,
+                                      child: Text(
+                                        '$currentStock',
+                                        textAlign: TextAlign.center,
+                                        style: const TextStyle(
+                                          fontSize: 18,
+                                          fontWeight: FontWeight.bold,
+                                          decoration: TextDecoration.underline,
+                                          color: Colors.blue,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                  IconButton(
+                                    icon: const Icon(Icons.add_circle_outline),
+                                    onPressed: () => _updateStock(product.id, 1),
+                                    color: Colors.green,
+                                  ),
+                                ],
+                              )
+                            ],
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+          ),
+          
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              children: [
+                Expanded(
+                  flex: 2,
+                  child: SizedBox(
+                    height: 50,
+                    child: OutlinedButton(
+                      onPressed: _openScanner,
+                      style: OutlinedButton.styleFrom(
+                        padding: EdgeInsets.zero,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      child: const Icon(Icons.qr_code_scanner),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  flex: 8,
+                  child: SizedBox(
+                    height: 50,
+                    child: ElevatedButton(
+                      onPressed: _handleConfirm,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.blue[800],
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      child: const Text(
+                        'XÁC NHẬN',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+
+FILE: c:\Users\Admin\Documents\GitHub\quan_li_sale\modules\inventory_module\lib\view\inventory_confirm_view.dart
+import 'dart:io';
+import 'package:flutter/material.dart';
+import '../entity/product_entity.dart';
+import 'proof_capture_view.dart';
+import 'components/camera_capture_box.dart';
+
+class InventoryConfirmView extends StatefulWidget {
+  final Map<String, int> actualStocks;
+  final Map<String, int> previousStocks;
+  final List<ProductEntity> allProducts;
+  final VoidCallback onBack;
+  final Function(File proofImage) onSubmit;
+  final bool isLoading;
+
+  const InventoryConfirmView({
+    super.key,
+    required this.actualStocks,
+    required this.previousStocks,
+    required this.allProducts,
+    required this.onBack,
+    required this.onSubmit,
+    this.isLoading = false,
+  });
+
+  @override
+  State<InventoryConfirmView> createState() => _InventoryConfirmViewState();
+}
+
+class _InventoryConfirmViewState extends State<InventoryConfirmView> {
+  File? _proofImage;
+
+  Future<void> _openCamera() async {
+    final file = await Navigator.push<File>(
+      context,
+      MaterialPageRoute(builder: (_) => const ProofCaptureView()),
+    );
+
+    if (file != null && mounted) {
+      setState(() {
+        _proofImage = file;
+      });
+    }
+  }
+
+  void _submit() {
+    if (_proofImage == null) return;
+    widget.onSubmit(_proofImage!);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final selectedIds = widget.actualStocks.keys.toList();
+
+    return Container(
+      decoration: const BoxDecoration(
+        color: Color(0xFFF4F6F8),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      child: Column(
+        children: [
+          AppBar(
+            title: const Text('Xác nhận kiểm tồn'),
+            leading: IconButton(
+              icon: const Icon(Icons.close),
+              onPressed: widget.onBack,
+            ),
+            backgroundColor: Colors.transparent,
+            elevation: 0,
+            centerTitle: true,
+          ),
+          Expanded(
+            child: ListView.builder(
+              padding: const EdgeInsets.all(16),
+              itemCount: selectedIds.length,
+              itemBuilder: (context, index) {
+                final productId = selectedIds[index];
+                final product = widget.allProducts.firstWhere((p) => p.id == productId);
+                final actual = widget.actualStocks[productId]!;
+                final previous = widget.previousStocks[productId];
+
+                return Card(
+                  margin: const EdgeInsets.only(bottom: 12),
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          product.productName,
+                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                        ),
+                        const SizedBox(height: 8),
+                        if (previous == null)
+                          Text(
+                            'Lần đầu kiểm -> Tồn nay: $actual',
+                            style: const TextStyle(color: Colors.green, fontWeight: FontWeight.bold),
+                          )
+                        else
+                          Text(
+                            'Tồn trước: $previous -> Tồn nay: $actual',
+                            style: TextStyle(
+                              color: actual == previous ? Colors.blue : (actual > previous ? Colors.green : Colors.red),
+                              fontWeight: FontWeight.bold,
+                            ),
+                          )
+                      ],
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: CameraCaptureBox(
+              imagePath: _proofImage?.path,
+              onCapture: _openCamera,
+              onRemove: _proofImage != null ? () => setState(() => _proofImage = null) : null,
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: SizedBox(
+              width: double.infinity,
+              height: 50,
+              child: ElevatedButton(
+                onPressed: _proofImage != null && !widget.isLoading ? _submit : null,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.blue[800],
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                child: const Text(
+                  'XÁC NHẬN GỬI',
+                  style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+
+FILE: c:\Users\Admin\Documents\GitHub\quan_li_sale\modules\inventory_module\lib\view\product_picker_sheet.dart
+import 'package:flutter/material.dart';
+import '../entity/product_entity.dart';
+
+class ProductPickerSheet extends StatefulWidget {
+  final List<ProductEntity> allProducts;
+
+  const ProductPickerSheet({super.key, required this.allProducts});
+
+  @override
+  State<ProductPickerSheet> createState() => _ProductPickerSheetState();
+}
+
+class _ProductPickerSheetState extends State<ProductPickerSheet> {
+  String _searchQuery = '';
+
+  @override
+  Widget build(BuildContext context) {
+    final filtered = widget.allProducts.where((p) {
+      return p.productName.toLowerCase().contains(_searchQuery.toLowerCase());
+    }).toList();
+
+    return Container(
+      height: MediaQuery.of(context).size.height * 0.7,
+      padding: const EdgeInsets.all(16).copyWith(bottom: 0),
+      child: Column(
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text(
+                'Chọn sản phẩm',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+              IconButton(
+                icon: const Icon(Icons.close),
+                onPressed: () => Navigator.pop(context),
+              )
+            ],
+          ),
+          const SizedBox(height: 16),
+          TextField(
+            decoration: InputDecoration(
+              prefixIcon: const Icon(Icons.search),
+              hintText: 'Tìm kiếm sản phẩm...',
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+            onChanged: (val) {
+              setState(() {
+                _searchQuery = val;
+              });
+            },
+          ),
+          const SizedBox(height: 16),
+          Expanded(
+            child: ListView.builder(
+              itemCount: filtered.length,
+              itemBuilder: (context, index) {
+                final product = filtered[index];
+                return Card(
+                  margin: const EdgeInsets.only(bottom: 8),
+                  child: ListTile(
+                    title: Text(product.productName, style: const TextStyle(fontWeight: FontWeight.bold)),
+                    subtitle: Text('Giá: ${product.price}'),
+                    trailing: const Icon(Icons.add_circle, color: Colors.blue),
+                    onTap: () {
+                      Navigator.pop(context, product);
+                    },
+                  ),
+                );
+              },
+            ),
+          )
+        ],
+      ),
+    );
+  }
+}
+
+
+FILE: c:\Users\Admin\Documents\GitHub\quan_li_sale\modules\inventory_module\lib\view\proof_capture_view.dart
+import 'dart:io';
+import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
+
+class ProofCaptureView extends StatefulWidget {
+  const ProofCaptureView({super.key});
+
+  @override
+  State<ProofCaptureView> createState() => _ProofCaptureViewState();
+}
+
+class _ProofCaptureViewState extends State<ProofCaptureView> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _takePicture();
+    });
+  }
+
+  Future<void> _takePicture() async {
+    try {
+      final ImagePicker picker = ImagePicker();
+      final XFile? photo = await picker.pickImage(source: ImageSource.camera);
+      
+      if (mounted) {
+        if (photo != null) {
+          Navigator.pop(context, File(photo.path));
+        } else {
+          Navigator.pop(context, null);
+        }
+      }
+    } catch (e) {
+      debugPrint('Lỗi khi chụp ảnh: $e');
+      if (mounted) {
+        Navigator.pop(context, null);
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return const Scaffold(
+      backgroundColor: Colors.black,
+      body: Center(
+        child: CircularProgressIndicator(color: Colors.white),
+      ),
+    );
+  }
+}
+

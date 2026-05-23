@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:core/theme/theme.dart';
 
 import '../../entity/leave_request_entity.dart';
 import '../../entity/leave_status.dart';
-import '../../logic_data/leave_data.dart';
 import '../../logic_uc/fetch_leave_list_uc.dart';
 
 // ---------------------------------------------------------------------------
@@ -96,10 +96,8 @@ final pendingListNotifierProvider =
 // View
 // ---------------------------------------------------------------------------
 
-/// Màn hình danh sách đơn nghỉ phép đang chờ duyệt (Manager).
-/// Layout theo Figma: header + badge count + list card.
+/// Màn hình danh sách đơn nghỉ phép đang chờ duyệt (Manager) — Marine Precision.
 class PendingListView extends ConsumerWidget {
-  /// Callback khi Manager tap vào một đơn để xem chi tiết/duyệt.
   final void Function(LeaveRequestEntity leave)? onTapLeave;
   final VoidCallback? onBack;
 
@@ -133,96 +131,86 @@ class PendingListView extends ConsumerWidget {
     final notifier = ref.read(pendingListNotifierProvider.notifier);
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF4F6FA),
-      body: SafeArea(
-        child: RefreshIndicator(
-          color: const Color(0xFF0F3c8f),
-          onRefresh: notifier.refresh,
-          child: CustomScrollView(
-            slivers: [
-              SliverPadding(
-                padding: const EdgeInsets.only(
-                    top: 24, left: 24, right: 24, bottom: 40),
-                sliver: SliverList(
-                  delegate: SliverChildListDelegate([
-                    _buildHeader(state),
-                    const SizedBox(height: 48),
-                    _buildBody(state),
-                  ]),
-                ),
-              ),
-            ],
+      backgroundColor: AppColors.background,
+      appBar: AppBar(
+        backgroundColor: AppColors.white,
+        elevation: 0,
+        leading: onBack != null
+            ? IconButton(
+                icon: const Icon(Icons.arrow_back_ios_new_rounded,
+                    color: AppColors.onSurface, size: 20),
+                onPressed: onBack,
+              )
+            : null,
+        title: Text(
+          'Duyệt đơn nghỉ phép',
+          style: AppTextStyles.headlineSm.copyWith(
+            color: AppColors.primary,
+            fontWeight: FontWeight.w700,
           ),
         ),
-      ),
-    );
-  }
-
-  // ── Header ───────────────────────────────────────────────────────────────────
-
-  Widget _buildHeader(PendingListState state) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        // Role label
-        
-        const SizedBox(height: 4),
-        // Title row: heading + pending badge
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            Expanded(
-              child: const Text(
-                'Duyệt đơn\nnghỉ phép',
-                style: TextStyle(
-                  color: Color(0xFF0F3c8f),
-                  fontSize: 30,
-                  fontFamily: 'Manrope',
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: -0.75,
-                  height: 1.20,
+        centerTitle: false,
+        actions: [
+          if (!state.isLoading)
+            Padding(
+              padding: const EdgeInsets.only(right: 16),
+              child: Center(
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: AppColors.surfaceContainerLow,
+                    borderRadius:
+                        BorderRadius.circular(AppSpacing.radiusFull),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
+                        width: 7,
+                        height: 7,
+                        decoration: const BoxDecoration(
+                          color: Color(0xFFF59E0B),
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      Text(
+                        '${state.pendingCount} đơn chờ',
+                        style: AppTextStyles.labelMd.copyWith(
+                          color: AppColors.onSurfaceVariant,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),
-            // Pending count badge
-            if (!state.isLoading)
-              Container(
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 16, vertical: 8),
-                decoration: ShapeDecoration(
-                  color: const Color(0xFFE8E8E8),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(9999),
-                  ),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Container(
-                      width: 8,
-                      height: 8,
-                      decoration: const BoxDecoration(
-                        color: Color(0xFFF59E0B),
-                        shape: BoxShape.circle,
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      '${state.pendingCount} đơn\nchờ duyệt',
-                      style: const TextStyle(
-                        color: Color(0xFF434651),
-                        fontSize: 12,
-                        fontFamily: 'Manrope',
-                        fontWeight: FontWeight.w600,
-                        height: 1.33,
-                      ),
-                    ),
-                  ],
-                ),
+        ],
+      ),
+      body: RefreshIndicator(
+        color: AppColors.secondary,
+        backgroundColor: AppColors.white,
+        onRefresh: notifier.refresh,
+        child: CustomScrollView(
+          slivers: [
+            SliverPadding(
+              padding: const EdgeInsets.fromLTRB(
+                AppSpacing.containerMargin,
+                AppSpacing.lg,
+                AppSpacing.containerMargin,
+                AppSpacing.xxl,
               ),
+              sliver: SliverList(
+                delegate: SliverChildListDelegate([
+                  _buildBody(state),
+                ]),
+              ),
+            ),
           ],
         ),
-      ],
+      ),
     );
   }
 
@@ -233,24 +221,23 @@ class PendingListView extends ConsumerWidget {
       return const Padding(
         padding: EdgeInsets.only(top: 48),
         child: Center(
-          child: CircularProgressIndicator(color: Color(0xFF0F3c8f)),
+          child: CircularProgressIndicator(color: AppColors.secondary),
         ),
       );
     }
 
     if (state.errorMessage != null) {
       return Padding(
-        padding: const EdgeInsets.only(top: 48),
-        child: Center(
+        padding: const EdgeInsets.only(top: 16),
+        child: Container(
+          padding: const EdgeInsets.all(AppSpacing.lg),
+          decoration: BoxDecoration(
+            color: AppColors.error.withValues(alpha: 0.08),
+            borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
+          ),
           child: Text(
             state.errorMessage!,
-            textAlign: TextAlign.center,
-            style: const TextStyle(
-              color: Color(0xFFEF4444),
-              fontSize: 14,
-              fontFamily: 'Manrope',
-              fontWeight: FontWeight.w500,
-            ),
+            style: AppTextStyles.bodyMd.copyWith(color: AppColors.error),
           ),
         ),
       );
@@ -258,20 +245,26 @@ class PendingListView extends ConsumerWidget {
 
     if (state.leaves.isEmpty) {
       return Padding(
-        padding: const EdgeInsets.only(top: 48),
+        padding: const EdgeInsets.only(top: 56),
         child: Center(
           child: Column(
-            children: const [
-              Icon(Icons.check_circle_outline,
-                  size: 48, color: Color(0xFF22C55E)),
-              SizedBox(height: 12),
+            children: [
+              Container(
+                width: 72,
+                height: 72,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFdcfce7),
+                  borderRadius: BorderRadius.circular(AppSpacing.radiusXl),
+                ),
+                child: const Icon(Icons.check_circle_outline_rounded,
+                    size: 36, color: Color(0xFF16a34a)),
+              ),
+              const SizedBox(height: 16),
               Text(
                 'Không có đơn nào cần duyệt.',
-                style: TextStyle(
-                  color: Color(0xFF434651),
-                  fontSize: 16,
-                  fontFamily: 'Manrope',
-                  fontWeight: FontWeight.w500,
+                style: AppTextStyles.bodyLg.copyWith(
+                  color: AppColors.onSurfaceVariant,
+                  height: 1.6,
                 ),
               ),
             ],
@@ -283,38 +276,30 @@ class PendingListView extends ConsumerWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Section label + count
+        // Section label + count badge
         Padding(
-          padding: const EdgeInsets.only(bottom: 16),
+          padding: const EdgeInsets.only(bottom: AppSpacing.md),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text(
+              Text(
                 'Đang chờ duyệt',
-                style: TextStyle(
-                  color: Color(0xFF0F3c8f),
-                  fontSize: 24,
-                  fontFamily: 'Manrope',
+                style: AppTextStyles.headlineSm.copyWith(
+                  color: AppColors.primary,
                   fontWeight: FontWeight.w700,
-                  letterSpacing: -0.60,
-                  height: 1.33,
                 ),
               ),
               Container(
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 12, vertical: 4),
-                decoration: ShapeDecoration(
-                  color: const Color(0xFFF59E0B).withOpacity(0.15),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(9999),
-                  ),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF59E0B).withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(AppSpacing.radiusFull),
                 ),
                 child: Text(
                   '${state.pendingCount}',
-                  style: const TextStyle(
-                    color: Color(0xFFF59E0B),
-                    fontSize: 14,
-                    fontFamily: 'Manrope',
+                  style: AppTextStyles.labelLg.copyWith(
+                    color: const Color(0xFFF59E0B),
                     fontWeight: FontWeight.w700,
                   ),
                 ),
@@ -322,7 +307,7 @@ class PendingListView extends ConsumerWidget {
             ],
           ),
         ),
-        ...state.leaves.map((leave) => _buildPendingCard(leave)).toList(),
+        ...state.leaves.map((leave) => _buildPendingCard(leave)),
       ],
     );
   }
@@ -331,30 +316,22 @@ class PendingListView extends ConsumerWidget {
 
   Widget _buildPendingCard(LeaveRequestEntity leave) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 4),
+      padding: const EdgeInsets.only(bottom: AppSpacing.stackGap),
       child: GestureDetector(
         key: Key('pending_card_${leave.id}'),
         onTap: () => onTapLeave?.call(leave),
         child: Container(
           width: double.infinity,
-          padding: const EdgeInsets.all(24),
-          decoration: ShapeDecoration(
-            color: Colors.white,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
-            shadows: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.05),
-                blurRadius: 10,
-                offset: const Offset(0, 4),
-              ),
-            ],
+          padding: const EdgeInsets.all(AppSpacing.cardPadding),
+          decoration: BoxDecoration(
+            color: AppColors.white,
+            borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
+            boxShadow: AppShadows.level1,
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Top row: date box + info
+              // Top row: date box + reason/range
               Row(
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
@@ -362,67 +339,49 @@ class PendingListView extends ConsumerWidget {
                   Container(
                     width: 64,
                     height: 64,
-                    decoration: ShapeDecoration(
-                      color: const Color(0xFFF3F3F3),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
+                    decoration: BoxDecoration(
+                      color: AppColors.surfaceContainerLow,
+                      borderRadius: BorderRadius.circular(AppSpacing.radius),
                     ),
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Text(
                           '${leave.startDate.day}',
-                          style: const TextStyle(
-                            color: Color(0xFF0F3c8f),
-                            fontSize: 18,
-                            fontFamily: 'Manrope',
+                          style: AppTextStyles.headlineSm.copyWith(
+                            color: AppColors.primary,
                             fontWeight: FontWeight.w800,
-                            height: 1.56,
                           ),
                         ),
                         Text(
                           _monthLabel(leave.startDate),
-                          style: const TextStyle(
-                            color: Color(0xFF0F3c8f),
-                            fontSize: 10,
-                            fontFamily: 'Manrope',
+                          style: AppTextStyles.caption.copyWith(
+                            color: AppColors.secondary,
                             fontWeight: FontWeight.w700,
-                            height: 1.50,
                           ),
                         ),
                       ],
                     ),
                   ),
-                  const SizedBox(width: 24),
-                  // Info block
+                  const SizedBox(width: AppSpacing.lg),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        // Reason title
                         Text(
                           leave.reason.length > 28
                               ? '${leave.reason.substring(0, 28)}…'
                               : leave.reason,
-                          style: const TextStyle(
-                            color: Color(0xFF0F3c8f),
-                            fontSize: 18,
-                            fontFamily: 'Manrope',
+                          style: AppTextStyles.bodyLg.copyWith(
+                            color: AppColors.onSurface,
                             fontWeight: FontWeight.w700,
-                            height: 1.56,
                           ),
                         ),
                         const SizedBox(height: 2),
-                        // Date range
                         Text(
                           _dayRange(leave),
-                          style: const TextStyle(
-                            color: Color(0xFF434651),
-                            fontSize: 14,
-                            fontFamily: 'Manrope',
-                            fontWeight: FontWeight.w400,
-                            height: 1.43,
+                          style: AppTextStyles.bodyMd.copyWith(
+                            color: AppColors.onSurfaceVariant,
                           ),
                         ),
                       ],
@@ -430,49 +389,48 @@ class PendingListView extends ConsumerWidget {
                   ),
                 ],
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: AppSpacing.md),
 
-              // Bottom row: status badge + employee id chip + chevron
+              Divider(
+                color: AppColors.outlineVariant.withValues(alpha: 0.5),
+                height: 1,
+              ),
+              const SizedBox(height: AppSpacing.md),
+
+              // Bottom row: status + employee chip + chevron
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
+                  // Status
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // TRẠNG THÁI label
-                      const Text(
+                      Text(
                         'TRẠNG THÁI',
-                        style: TextStyle(
-                          color: Color(0x99434651),
-                          fontSize: 10,
-                          fontFamily: 'Manrope',
+                        style: AppTextStyles.caption.copyWith(
+                          color: AppColors.onSurfaceVariant,
                           fontWeight: FontWeight.w700,
-                          letterSpacing: -0.50,
-                          height: 1.50,
+                          letterSpacing: 0.6,
                         ),
                       ),
-                      const SizedBox(height: 2),
-                      // Pending badge
+                      const SizedBox(height: 4),
                       Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           Container(
-                            width: 6,
-                            height: 6,
+                            width: 8,
+                            height: 8,
                             decoration: const BoxDecoration(
                               color: Color(0xFFF59E0B),
                               shape: BoxShape.circle,
                             ),
                           ),
-                          const SizedBox(width: 4),
-                          const Text(
+                          const SizedBox(width: 6),
+                          Text(
                             'Đang chờ',
-                            style: TextStyle(
-                              color: Color(0xFFF59E0B),
-                              fontSize: 14,
-                              fontFamily: 'Manrope',
+                            style: AppTextStyles.bodyMd.copyWith(
+                              color: const Color(0xFFF59E0B),
                               fontWeight: FontWeight.w700,
-                              height: 1.43,
                             ),
                           ),
                         ],
@@ -483,25 +441,24 @@ class PendingListView extends ConsumerWidget {
                     children: [
                       // Employee ID chip
                       Container(
+                        constraints: const BoxConstraints(maxWidth: 120),
                         padding: const EdgeInsets.symmetric(
                             horizontal: 12, vertical: 6),
-                        decoration: ShapeDecoration(
-                          color: const Color(0xFFF3F3F3),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(9999),
-                          ),
+                        decoration: BoxDecoration(
+                          color: AppColors.surfaceContainerLow,
+                          borderRadius:
+                              BorderRadius.circular(AppSpacing.radiusFull),
                         ),
                         child: Text(
-                          // Hiển thị 8 ký tự đầu của userId
-                          leave.userId.length > 8
+                          leave.userName ?? (leave.userId.length > 8
                               ? '#${leave.userId.substring(0, 8)}'
-                              : '#${leave.userId}',
-                          style: const TextStyle(
-                            color: Color(0xFF434651),
-                            fontSize: 12,
-                            fontFamily: 'Manrope',
+                              : '#${leave.userId}'),
+                          style: AppTextStyles.labelMd.copyWith(
+                            color: AppColors.onSurfaceVariant,
                             fontWeight: FontWeight.w600,
                           ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ),
                       const SizedBox(width: 8),
@@ -509,15 +466,14 @@ class PendingListView extends ConsumerWidget {
                       Container(
                         width: 40,
                         height: 40,
-                        decoration: ShapeDecoration(
-                          color: const Color(0xFFF3F3F3),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(9999),
-                          ),
+                        decoration: BoxDecoration(
+                          color: AppColors.surfaceContainerLow,
+                          borderRadius:
+                              BorderRadius.circular(AppSpacing.radiusFull),
                         ),
                         child: const Icon(
-                          Icons.chevron_right,
-                          color: Color(0xFF434651),
+                          Icons.chevron_right_rounded,
+                          color: AppColors.onSurfaceVariant,
                           size: 20,
                         ),
                       ),

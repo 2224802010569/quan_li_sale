@@ -3,8 +3,8 @@ import 'package:core/di/supabase.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:core/core.dart';
+import 'core/theme/app_theme.dart';
 import 'app.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart'; // Đảm bảo đã import thư viện này
 
 void main() async {
   await GlobalErrorReporter.runGuarded(

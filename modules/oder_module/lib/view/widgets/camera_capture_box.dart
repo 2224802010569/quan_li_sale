@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:core/theme/theme.dart';
 
 class CameraCaptureBox extends StatelessWidget {
   final String? imagePath;
@@ -24,31 +25,20 @@ class CameraCaptureBox extends StatelessWidget {
   Widget _buildPlaceholder() {
     return Container(
       width: double.infinity,
-      height: 326,
+      height: 300,
       clipBehavior: Clip.antiAlias,
-      decoration: ShapeDecoration(
-        color: const Color(0xFF0F172A),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(32),
-        ),
-        shadows: const [
-          BoxShadow(
-            color: Color(0x0F0D47A1),
-            blurRadius: 24,
-            offset: Offset(0, 8),
-          ),
-        ],
+      decoration: BoxDecoration(
+        color: const Color(0xFF0F172A), // Slate 900
+        borderRadius: BorderRadius.circular(AppSpacing.radiusXl),
+        boxShadow: AppShadows.level2,
       ),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Opacity(
-            opacity: 0.20,
-            child: Icon(
-              Icons.camera_alt_outlined,
-              size: 64,
-              color: Colors.white,
-            ),
+          Icon(
+            Icons.camera_alt_outlined,
+            size: 64,
+            color: AppColors.white.withValues(alpha: 0.20),
           ),
           const SizedBox(height: 16),
           Padding(
@@ -56,11 +46,8 @@ class CameraCaptureBox extends StatelessWidget {
             child: Text(
               'Vui lòng chụp ảnh đơn hàng hoặc phiếu\ngiao nhận thực tế',
               textAlign: TextAlign.center,
-              style: TextStyle(
-                color: Colors.white.withValues(alpha: 0.50),
-                fontSize: 14,
-                fontFamily: 'Manrope',
-                fontWeight: FontWeight.w500,
+              style: AppTextStyles.bodyMd.copyWith(
+                color: AppColors.white.withValues(alpha: 0.50),
                 height: 1.43,
               ),
             ),
@@ -70,34 +57,29 @@ class CameraCaptureBox extends StatelessWidget {
             onTap: onCapture,
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
-              decoration: ShapeDecoration(
-                color: Colors.white.withValues(alpha: 0.10),
-                shape: RoundedRectangleBorder(
-                  side: BorderSide(
-                    width: 1,
-                    color: Colors.white.withValues(alpha: 0.20),
-                  ),
-                  borderRadius: BorderRadius.circular(9999),
+              decoration: BoxDecoration(
+                color: AppColors.white.withValues(alpha: 0.10),
+                border: Border.all(
+                  width: 1,
+                  color: AppColors.white.withValues(alpha: 0.20),
                 ),
+                borderRadius: BorderRadius.circular(AppSpacing.radiusFull),
               ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(
-                    Icons.camera_alt,
+                  const Icon(
+                    Icons.camera_alt_rounded,
                     size: 20,
-                    color: Colors.white,
+                    color: AppColors.white,
                   ),
                   const SizedBox(width: 8),
-                  const Text(
+                  Text(
                     'Bắt đầu chụp',
                     textAlign: TextAlign.center,
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 16,
-                      fontFamily: 'Manrope',
+                    style: AppTextStyles.labelLg.copyWith(
+                      color: AppColors.white,
                       fontWeight: FontWeight.w700,
-                      height: 1.50,
                     ),
                   ),
                 ],
@@ -112,26 +94,18 @@ class CameraCaptureBox extends StatelessWidget {
   Widget _buildPreview() {
     return Container(
       width: double.infinity,
-      height: 326,
+      height: 300,
       clipBehavior: Clip.antiAlias,
-      decoration: ShapeDecoration(
-        color: Colors.white,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(32),
-        ),
-        shadows: const [
-          BoxShadow(
-            color: Color(0x0F0D47A1),
-            blurRadius: 24,
-            offset: Offset(0, 8),
-          ),
-        ],
+      decoration: BoxDecoration(
+        color: AppColors.white,
+        borderRadius: BorderRadius.circular(AppSpacing.radiusXl),
+        boxShadow: AppShadows.level2,
       ),
       child: Stack(
         fit: StackFit.expand,
         children: [
           ClipRRect(
-            borderRadius: BorderRadius.circular(32),
+            borderRadius: BorderRadius.circular(AppSpacing.radiusXl),
             child: Image.file(
               File(imagePath!),
               fit: BoxFit.cover,
@@ -148,23 +122,19 @@ class CameraCaptureBox extends StatelessWidget {
                   onTap: onCapture,
                   child: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
-                    decoration: ShapeDecoration(
+                    decoration: BoxDecoration(
                       color: const Color(0xFF0F172A).withValues(alpha: 0.80),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(9999),
-                      ),
+                      borderRadius: BorderRadius.circular(AppSpacing.radiusFull),
                     ),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(Icons.camera_alt, size: 18, color: Colors.white),
+                        const Icon(Icons.camera_alt_rounded, size: 18, color: AppColors.white),
                         const SizedBox(width: 8),
-                        const Text(
+                        Text(
                           'Chụp lại',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 14,
-                            fontFamily: 'Manrope',
+                          style: AppTextStyles.bodyMd.copyWith(
+                            color: AppColors.white,
                             fontWeight: FontWeight.w600,
                           ),
                         ),
@@ -178,13 +148,11 @@ class CameraCaptureBox extends StatelessWidget {
                     onTap: onRemove,
                     child: Container(
                       padding: const EdgeInsets.all(10),
-                      decoration: ShapeDecoration(
-                        color: Colors.red.withValues(alpha: 0.80),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(9999),
-                        ),
+                      decoration: BoxDecoration(
+                        color: AppColors.error.withValues(alpha: 0.80),
+                        borderRadius: BorderRadius.circular(AppSpacing.radiusFull),
                       ),
-                      child: const Icon(Icons.delete_outline, size: 18, color: Colors.white),
+                      child: const Icon(Icons.delete_outline_rounded, size: 18, color: AppColors.white),
                     ),
                   ),
                 ],

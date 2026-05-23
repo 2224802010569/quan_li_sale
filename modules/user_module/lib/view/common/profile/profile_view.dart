@@ -8,6 +8,7 @@ import 'package:user_module/logic_data/session_manager.dart';
 import 'package:user_module/logic_uc/logout_uc.dart';
 import 'package:user_module/logic_uc/profile_uc.dart';
 import 'package:user_module/view/common/profile/widget/profile_card.dart';
+import 'package:core/theme/theme.dart';
 
 class ProfileView extends StatefulWidget {
   final ProfileInput input;
@@ -107,59 +108,102 @@ class _ProfileViewState extends State<ProfileView> {
             }
 
             return AlertDialog(
-              title: const Text("Chỉnh sửa thông tin"),
+              backgroundColor: AppColors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
+              ),
+              title: Text(
+                "Chỉnh sửa thông tin",
+                style: AppTextStyles.headlineSm.copyWith(
+                  color: AppColors.primary,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
               content: SingleChildScrollView(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    CircleAvatar(
-                      radius: 42,
-                      backgroundColor: const Color(0xFFE8EEF8),
-                      backgroundImage: selectedAvatarBytes != null
-                          ? MemoryImage(selectedAvatarBytes!)
-                          : viewedUser.avatarUrl.isNotEmpty
-                          ? NetworkImage(viewedUser.avatarUrl)
-                          : null,
-                      child:
-                          selectedAvatarBytes == null &&
-                              viewedUser.avatarUrl.isEmpty
-                          ? const Icon(
-                              Icons.person,
-                              color: Color(0xFF001D4E),
-                              size: 36,
-                            )
-                          : null,
+                    Stack(
+                      alignment: Alignment.center,
+                      children: [
+                        CircleAvatar(
+                          radius: 42,
+                          backgroundColor: AppColors.surfaceContainerLow,
+                          backgroundImage: selectedAvatarBytes != null
+                              ? MemoryImage(selectedAvatarBytes!)
+                              : viewedUser.avatarUrl.isNotEmpty
+                              ? NetworkImage(viewedUser.avatarUrl)
+                              : null,
+                          child: selectedAvatarBytes == null &&
+                                  viewedUser.avatarUrl.isEmpty
+                              ? const Icon(
+                                  Icons.person_rounded,
+                                  color: AppColors.primary,
+                                  size: 36,
+                                )
+                              : null,
+                        ),
+                        Positioned(
+                          right: 0,
+                          bottom: 0,
+                          child: GestureDetector(
+                            onTap: pickAvatar,
+                            child: Container(
+                              width: 28,
+                              height: 28,
+                              decoration: const BoxDecoration(
+                                color: AppColors.secondary,
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Icon(
+                                Icons.photo_camera_rounded,
+                                color: AppColors.white,
+                                size: 16,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
-                    const SizedBox(height: 12),
-                    OutlinedButton.icon(
-                      onPressed: pickAvatar,
-                      icon: const Icon(Icons.photo_camera),
-                      label: const Text("Chọn ảnh đại diện"),
-                    ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: AppSpacing.xxl),
                     TextField(
                       controller: fullNameCtrl,
-                      decoration: const InputDecoration(
+                      style: AppTextStyles.bodyLg.copyWith(color: AppColors.onSurface),
+                      decoration: InputDecoration(
                         labelText: "Họ tên",
-                        border: OutlineInputBorder(),
+                        labelStyle: AppTextStyles.bodyMd.copyWith(color: AppColors.onSurfaceVariant),
+                        border: const OutlineInputBorder(),
+                        focusedBorder: const OutlineInputBorder(
+                          borderSide: BorderSide(color: AppColors.secondary, width: 2),
+                        ),
                       ),
                     ),
                     const SizedBox(height: 12),
                     TextField(
                       controller: emailCtrl,
                       keyboardType: TextInputType.emailAddress,
-                      decoration: const InputDecoration(
+                      style: AppTextStyles.bodyLg.copyWith(color: AppColors.onSurface),
+                      decoration: InputDecoration(
                         labelText: "Email",
-                        border: OutlineInputBorder(),
+                        labelStyle: AppTextStyles.bodyMd.copyWith(color: AppColors.onSurfaceVariant),
+                        border: const OutlineInputBorder(),
+                        focusedBorder: const OutlineInputBorder(
+                          borderSide: BorderSide(color: AppColors.secondary, width: 2),
+                        ),
                       ),
                     ),
                     const SizedBox(height: 12),
                     TextField(
                       controller: phoneCtrl,
                       keyboardType: TextInputType.phone,
-                      decoration: const InputDecoration(
+                      style: AppTextStyles.bodyLg.copyWith(color: AppColors.onSurface),
+                      decoration: InputDecoration(
                         labelText: "Số điện thoại",
-                        border: OutlineInputBorder(),
+                        labelStyle: AppTextStyles.bodyMd.copyWith(color: AppColors.onSurfaceVariant),
+                        border: const OutlineInputBorder(),
+                        focusedBorder: const OutlineInputBorder(
+                          borderSide: BorderSide(color: AppColors.secondary, width: 2),
+                        ),
                       ),
                     ),
                   ],
@@ -168,11 +212,24 @@ class _ProfileViewState extends State<ProfileView> {
               actions: [
                 TextButton(
                   onPressed: () => Navigator.pop(context, false),
-                  child: const Text("Hủy"),
+                  child: Text(
+                    "Hủy",
+                    style: AppTextStyles.labelLg.copyWith(color: AppColors.onSurfaceVariant),
+                  ),
                 ),
                 ElevatedButton(
                   onPressed: () => Navigator.pop(context, true),
-                  child: const Text("Lưu"),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.secondary,
+                    foregroundColor: AppColors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(AppSpacing.radius),
+                    ),
+                  ),
+                  child: Text(
+                    "Lưu",
+                    style: AppTextStyles.labelLg.copyWith(fontWeight: FontWeight.bold, color: AppColors.white),
+                  ),
                 ),
               ],
             );
@@ -234,8 +291,10 @@ class _ProfileViewState extends State<ProfileView> {
 
   @override
   Widget build(BuildContext context) {
+    final canPop = Navigator.canPop(context);
+
     return Scaffold(
-      backgroundColor: const Color(0xFFF9F9F9),
+      backgroundColor: AppColors.background,
       body: SafeArea(
         child: LayoutBuilder(
           builder: (context, constraints) {
@@ -247,20 +306,64 @@ class _ProfileViewState extends State<ProfileView> {
             return Align(
               alignment: Alignment.topCenter,
               child: SingleChildScrollView(
-                padding: EdgeInsets.all(horizontalPadding),
+                padding: EdgeInsets.symmetric(
+                  horizontal: horizontalPadding,
+                  vertical: AppSpacing.xxl,
+                ),
                 child: ConstrainedBox(
                   constraints: BoxConstraints(maxWidth: maxWidth),
-                  child: loading
-                      ? const Center(child: CircularProgressIndicator())
-                      : error.isNotEmpty
-                      ? Text(error)
-                      : ProfileCard(
-                          user: user!,
-                          onChangeRole: null,
-                          onEdit: isOwnProfile ? handleEditProfile : null,
-                          editingProfile: savingProfile,
-                          onLogout: isOwnProfile ? handleLogout : null,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      if (canPop) ...[
+                        Row(
+                          children: [
+                            IconButton(
+                              icon: const Icon(
+                                Icons.arrow_back_ios_new_rounded,
+                                color: AppColors.onSurface,
+                                size: 20,
+                              ),
+                              onPressed: () => Navigator.pop(context),
+                            ),
+                            const SizedBox(width: AppSpacing.sm),
+                            Text(
+                              isOwnProfile ? "Hồ sơ cá nhân" : "Chi tiết nhân sự",
+                              style: AppTextStyles.headlineMd.copyWith(
+                                color: AppColors.primary,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ],
                         ),
+                        const SizedBox(height: AppSpacing.xxl),
+                      ],
+                      loading
+                          ? const Center(
+                              child: Padding(
+                                padding: EdgeInsets.only(top: 80),
+                                child: CircularProgressIndicator(color: AppColors.secondary),
+                              ),
+                            )
+                          : error.isNotEmpty
+                              ? Center(
+                                  child: Padding(
+                                    padding: const EdgeInsets.only(top: 80),
+                                    child: Text(
+                                      error,
+                                      style: AppTextStyles.bodyLg.copyWith(color: AppColors.error),
+                                    ),
+                                  ),
+                                )
+                              : ProfileCard(
+                                  user: user!,
+                                  onChangeRole: null,
+                                  onEdit: isOwnProfile ? handleEditProfile : null,
+                                  editingProfile: savingProfile,
+                                  onLogout: isOwnProfile ? handleLogout : null,
+                                ),
+                    ],
+                  ),
                 ),
               ),
             );

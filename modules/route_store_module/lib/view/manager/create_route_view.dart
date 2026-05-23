@@ -71,7 +71,7 @@ class _CreateRouteViewState extends ConsumerState<CreateRouteView> {
         foregroundColor: const Color(0xFF1A1B21),
         elevation: 0,
       ),
-      body: Padding(
+      body: SingleChildScrollView(
         padding: const EdgeInsets.all(24.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -111,10 +111,8 @@ class _CreateRouteViewState extends ConsumerState<CreateRouteView> {
               ),
             ),
             const SizedBox(height: 12),
-            Expanded(
-              child: _buildStoreList(),
-            ),
-            const SizedBox(height: 16),
+            _buildStoreList(),
+            const SizedBox(height: 32),
             SizedBox(
               width: double.infinity,
               height: 56,
@@ -153,65 +151,60 @@ class _CreateRouteViewState extends ConsumerState<CreateRouteView> {
       data: (stores) {
         return Column(
           children: [
-            Expanded(
-              child: ListView.builder(
-                itemCount: _selectedStores.length,
-                itemBuilder: (context, index) {
-                  final store = _selectedStores[index];
-                  return Container(
-                    margin: const EdgeInsets.only(bottom: 12),
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: const Color(0xFFE2E8F0)),
+            ...List.generate(_selectedStores.length, (index) {
+              final store = _selectedStores[index];
+              return Container(
+                margin: const EdgeInsets.only(bottom: 12),
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: const Color(0xFFE2E8F0)),
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 32,
+                      height: 32,
+                      decoration: const BoxDecoration(
+                        color: Color(0xFFF3F3FB),
+                        shape: BoxShape.circle,
+                      ),
+                      alignment: Alignment.center,
+                      child: Text(
+                        '${index + 1}',
+                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+                      ),
                     ),
-                    child: Row(
-                      children: [
-                        Container(
-                          width: 32,
-                          height: 32,
-                          decoration: const BoxDecoration(
-                            color: Color(0xFFF3F3FB),
-                            shape: BoxShape.circle,
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            store.storeName,
+                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
                           ),
-                          alignment: Alignment.center,
-                          child: Text(
-                            '${index + 1}',
-                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+                          Text(
+                            store.address,
+                            style: const TextStyle(color: Colors.grey, fontSize: 12),
+                            overflow: TextOverflow.ellipsis,
                           ),
-                        ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                store.storeName,
-                                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-                              ),
-                              Text(
-                                store.address,
-                                style: const TextStyle(color: Colors.grey, fontSize: 12),
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ],
-                          ),
-                        ),
-                        IconButton(
-                          icon: const Icon(Icons.remove_circle_outline, color: Colors.redAccent),
-                          onPressed: () {
-                            setState(() {
-                              _selectedStores.removeAt(index);
-                            });
-                          },
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
-                  );
-                },
-              ),
-            ),
+                    IconButton(
+                      icon: const Icon(Icons.remove_circle_outline, color: Colors.redAccent),
+                      onPressed: () {
+                        setState(() {
+                          _selectedStores.removeAt(index);
+                        });
+                      },
+                    ),
+                  ],
+                ),
+              );
+            }),
             const SizedBox(height: 12),
             InkWell(
               onTap: () {

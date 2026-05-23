@@ -160,7 +160,11 @@ class _InventoryModuleState extends State<InventoryModule> {
       setState(() => _isLoading = false);
 
       // 6. Hoàn tất & Gửi sự kiện Output ra ngoài App
-      widget.onOutput(InventoryOutput.success());
+      widget.onOutput(InventoryOutput.success(
+        actualStocks: _actualStocks,
+        previousStocks: _previousQuantities,
+        products: _products,
+      ));
 
     } catch (e) {
       setState(() => _isLoading = false);
