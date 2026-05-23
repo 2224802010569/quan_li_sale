@@ -45,9 +45,6 @@ dependencies:
   route_store_module:
     path: ../modules/route_store_module
 
-  test_module:
-    path: ../modules/test_module
-
   attendance_module:
     path: ../modules/attendance_module
 
