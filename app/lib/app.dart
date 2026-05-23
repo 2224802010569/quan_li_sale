@@ -6,7 +6,6 @@ import 'package:flutter/services.dart';
 import 'package:core/di/injector.dart';
 import 'package:core/error/global_error_reporter.dart';
 import 'package:core/storage/app_storage.dart';
-import 'package:test_module/test_module.dart';
 import 'root/user_root.dart';
 import 'root/attendance_root.dart';
 import 'root/inventory_root.dart';
@@ -56,10 +55,22 @@ class MyAppState extends State<MyApp> {
   // =========================
   // MODULE
   // =========================
+  // String getInitialModule() {
+  //   final user = storage.get<Map<String, dynamic>>('user');
+  //   return user == null ? 'USER' : 'USER_PROFILE';
+  // }
+
   String getInitialModule() {
     final user = storage.get<Map<String, dynamic>>('user');
-    return user == null ? 'USER' : 'USER_PROFILE';
-  }
+    if (user == null) return 'USER';
+    
+    // Đọc chính xác trường 'role' từ dữ liệu user đã lưu trong Storage
+    final role = user['role']?.toString().toLowerCase() ?? '';
+    if (role == 'manager') {
+      return 'ROUTE_STORE_MANAGER';
+    }
+    return 'ROUTE_STORE';
+}
 
   Widget getScreen(String module) {
     switch (module) {
@@ -126,9 +137,6 @@ class MyAppState extends State<MyApp> {
       case 'KPI_MANAGER':
         return KpiRoot().buildManagerDashboard(handleOutput);
 
-      case 'TEST':
-        return const MyHomePage(title: 'Test Module');
-
       default:
         return const Scaffold(
           body: Center(child: Text('Module không tồn tại')),
@@ -145,9 +153,11 @@ class MyAppState extends State<MyApp> {
 
     final current = moduleStack.last.module;
     if (current == output.toModule) return;
-
+    
     setState(() {
-      if (output.toModule == 'USER') {
+      if (output.toModule == 'USER' || 
+          output.toModule == 'ROUTE_STORE' || 
+          output.toModule == 'ROUTE_STORE_MANAGER') {
         moduleStack
           ..clear()
           ..add(AppState(output.toModule));
